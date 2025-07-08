@@ -1,103 +1,220 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { onAuthStateChanged, User as FirebaseAuthUser, signOut } from 'firebase/auth';
+import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
+import { User, Building2, Briefcase } from 'lucide-react';
+
+import AuthComponent from '@/components/login';
+import AIInterviewer from '@/components/interviewerai';
+import StudentDashboard from '@/components/studentdash';
+import CompanyDashboard from '@/components/companydash';
+import RecruiterDashboard from '@/components/recruiter';
+
+interface UserProfile {
+  email: string;
+  displayName?: string;
+  photoURL?: string;
+  createdAt: string;
+  authProvider: string;
+  profileCompleted: boolean;
+  role: 'student' | 'company' | 'recruiter';
+  interviewReport?: any;
+  name?: string;
+  experience?: string;
+  skills?: string[];
+  interests?: string[];
+  goals?: string;
+  profileVisibility?: 'private' | 'public';
+  paidForPublic?: boolean;
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [user, setUser] = useState<FirebaseAuthUser | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [initialRoleSelection, setInitialRoleSelection] = useState<'none' | 'learner' | 'company' | 'recruiter'>('none');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+
+        const initialDocSnap = await getDoc(userDocRef);
+        if (initialDocSnap.exists()) {
+          setUserProfile(initialDocSnap.data() as UserProfile);
+        } else {
+          console.warn("User document not found for authenticated user.");
+          setUserProfile({
+            email: currentUser.email || 'unknown',
+            displayName: currentUser.displayName ??undefined,
+            photoURL: currentUser.photoURL ?? undefined,
+            createdAt: new Date().toISOString(),
+            authProvider: 'unknown',
+            profileCompleted: false,
+            role: 'student'
+          });
+        }
+        setLoading(false);
+
+        const unsubscribeFirestore = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setUserProfile(docSnap.data() as UserProfile);
+          } else {
+            setUserProfile(null);
+            signOut(auth);
+          }
+        }, (error) => {
+          console.error("Error listening to user profile:", error);
+          setLoading(false);
+        });
+        return () => unsubscribeFirestore();
+      } else {
+        setUserProfile(null);
+        setLoading(false);
+        setInitialRoleSelection('none');
+      }
+    });
+
+    return () => unsubscribeAuth();
+  }, []);
+
+  const handleAuthSuccess = (loggedInUser: FirebaseAuthUser) => {
+    setUser(loggedInUser);
+  };
+
+  const handleInterviewComplete = () => {
+    console.log("AI Interview completed and profile updated.");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-lg font-medium animate-pulse">Loading your experience...</p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      </div>
+    );
+  }
+
+  let contentToRender;
+
+  if (user) {
+    if (!userProfile) {
+      contentToRender = (
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl p-8 shadow-xl text-center">
+          <p className="text-xl text-purple-700 font-medium">Getting your profile ready...</p>
+        </div>
+      );
+    } else if (userProfile.role === 'student' && !userProfile.profileCompleted) {
+      contentToRender = <AIInterviewer user={user} onInterviewComplete={handleInterviewComplete} />;
+    } else {
+      switch (userProfile.role) {
+        case 'student':
+          contentToRender = <StudentDashboard userDisplayName={userProfile.name || user.displayName} userEmail={user.email} />;
+          break;
+        case 'company':
+          contentToRender = <CompanyDashboard userDisplayName={userProfile.displayName ??null} userEmail={user.email} />;
+          break;
+        case 'recruiter':
+          contentToRender = (
+            <RecruiterDashboard
+              onAuthSuccess={handleAuthSuccess}
+              defaultRole="recruiter"
+            />
+          );
+          break;
+        default:
+          contentToRender = (
+            <div className="max-w-4xl mx-auto text-center bg-white/90 backdrop-blur-sm p-8 rounded-xl shadow-2xl">
+              <h2 className="text-3xl font-bold text-red-600 mb-4">Unknown Role</h2>
+              <p className="text-lg text-gray-700 mb-6">Your account role is not recognized. Please contact support.</p>
+              <button 
+                onClick={() => signOut(auth)} 
+                className="mt-4 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
+              >
+                Sign Out
+              </button>
+            </div>
+          );
+      }
+    }
+  } else {
+    if (initialRoleSelection === 'none') {
+      contentToRender = (
+        <div className="max-w-6xl mx-auto text-center animate-fade-in">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-2xl mb-12">
+            <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-6">
+              Welcome to SkillsG Learning Platform
+            </h1>
+            <p className="text-xl text-gray-700 mb-8">
+              Discover your perfect learning journey with us
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div
+              onClick={() => setInitialRoleSelection('learner')}
+              className="bg-gradient-to-br from-blue-50 to-indigo-100 p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer flex flex-col items-center justify-center border-2 border-blue-100 hover:border-blue-300 group"
+            >
+              <div className="bg-blue-100 p-4 rounded-full mb-6 group-hover:bg-blue-200 transition-colors duration-300">
+                <User className="w-12 h-12 text-blue-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-blue-800 mb-3">I'm a Learner</h2>
+              <p className="text-gray-600 mb-4">Start your personalized learning journey with AI.</p>
+              <button className="px-5 py-2 bg-blue-600 text-white rounded-full text-sm font-medium hover:bg-blue-700 transition-colors duration-300">
+                Get Started
+              </button>
+            </div>
+            
+            <div
+              onClick={() => setInitialRoleSelection('company')}
+              className="bg-gradient-to-br from-green-50 to-teal-100 p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer flex flex-col items-center justify-center border-2 border-green-100 hover:border-green-300 group"
+            >
+              <div className="bg-green-100 p-4 rounded-full mb-6 group-hover:bg-green-200 transition-colors duration-300">
+                <Building2 className="w-12 h-12 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-green-800 mb-3">I'm a Company</h2>
+              <p className="text-gray-600 mb-4">Manage training and monitor student progress.</p>
+              <button className="px-5 py-2 bg-green-600 text-white rounded-full text-sm font-medium hover:bg-green-700 transition-colors duration-300">
+                Get Started
+              </button>
+            </div>
+            
+            <div
+              onClick={() => setInitialRoleSelection('recruiter')}
+              className="bg-gradient-to-br from-purple-50 to-violet-100 p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer flex flex-col items-center justify-center border-2 border-purple-100 hover:border-purple-300 group"
+            >
+              <div className="bg-purple-100 p-4 rounded-full mb-6 group-hover:bg-purple-200 transition-colors duration-300">
+                <Briefcase className="w-12 h-12 text-purple-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-purple-800 mb-3">I'm a Recruiter</h2>
+              <p className="text-gray-600 mb-4">Browse student profiles and discover talent.</p>
+              <button className="px-5 py-2 bg-purple-600 text-white rounded-full text-sm font-medium hover:bg-purple-700 transition-colors duration-300">
+                Get Started
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    } else {
+      contentToRender = (
+        <AuthComponent
+          onAuthSuccess={handleAuthSuccess}
+          defaultRole={initialRoleSelection}
+        />
+      );
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        {contentToRender}
+      </div>
+    </main>
   );
 }
