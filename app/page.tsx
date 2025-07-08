@@ -121,13 +121,10 @@ export default function Home() {
           break;
         case 'recruiter':
           contentToRender = (
-            <RecruiterDashboard
-              onAuthSuccess={handleAuthSuccess}
-              defaultRole="recruiter"
-            />
+          <RecruiterDashboard userDisplayName={userProfile.name || user.displayName} userEmail={user.email} />
+
           );
-          break;
-        default:
+          break;        default:
           contentToRender = (
             <div className="max-w-4xl mx-auto text-center bg-white/90 backdrop-blur-sm p-8 rounded-xl shadow-2xl">
               <h2 className="text-3xl font-bold text-red-600 mb-4">Unknown Role</h2>
