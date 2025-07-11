@@ -1,11 +1,11 @@
-// app/recruiter/browse-students/page.tsx
-'use client'; // This page needs client-side functionality (useState, useEffect, useRouter)
+
+'use client'; 
 
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, User as FirebaseAuthUser } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { useRouter } from 'next/navigation'; // Correct import for App Router
+import { useRouter } from 'next/navigation'; 
 
 import StudentBrowser from '@/components/studentbrowser'; // Your component
 

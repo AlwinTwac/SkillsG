@@ -2,26 +2,27 @@ import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getAnalytics, isSupported } from 'firebase/analytics';
+import { getStorage } from 'firebase/storage';
 
-//cofig
+
+// Firebase config using env variable for storageBucket
 const firebaseConfig = {
-  apiKey: "AIzaSyBK9O93vr8jrrCjR_zpb2oiGsRmaUa5kkA",
-  authDomain: "skillsg-platform-97f26.firebaseapp.com",
-  projectId: "skillsg-platform-97f26",
-  storageBucket: "skillsg-platform-97f26.firebasestorage.app",
-  messagingSenderId: "755441486648",
-  appId: "1:755441486648:web:6d2ded80afd7957782cfcd",
-  measurementId: "G-JNFQ6SP470"
+  apiKey: "AIzaSyC92Pf1sN69WxJJALKEGX_oNNJicE6dlfc",
+  authDomain: "skillsg-44ea6.firebaseapp.com",
+  projectId: "skillsg-44ea6",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET, 
+  messagingSenderId: "1018957247865",
+  appId: "1:1018957247865:web:f8d873fb4a7ce95ecb6ba8"
 };
 
-//prevent reinit
+// Preventing re initialization
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 
-// Analytics must be initialized only in the browser
+//Setup Analytics only in browser (SSR-safe)
 let analytics: ReturnType<typeof getAnalytics> | null = null;
 if (typeof window !== 'undefined') {
   isSupported().then((yes) => {

@@ -114,10 +114,10 @@ export default function Home() {
     } else {
       switch (userProfile.role) {
         case 'student':
-          contentToRender = <StudentDashboard userDisplayName={userProfile.name || user.displayName} userEmail={user.email} />;
+          contentToRender = <StudentDashboard userDisplayName={userProfile.name || user.displayName} userEmail={user.email} userUid={user.uid} />;
           break;
         case 'company':
-          contentToRender = <CompanyDashboard userDisplayName={userProfile.displayName ??null} userEmail={user.email} />;
+          contentToRender = <CompanyDashboard userDisplayName={userProfile.displayName ?? null} userEmail={user.email} userUid={user.uid} />;
           break;
         case 'recruiter':
           contentToRender = (

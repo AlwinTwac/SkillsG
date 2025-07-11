@@ -4,21 +4,19 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, Mail, Briefcase, GraduationCap, Code, Heart, Target, Lightbulb } from 'lucide-react';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useSearchParams } from 'next/navigation'; // For search/filter params if needed
+import { useSearchParams } from 'next/navigation'; 
 
-// Define the shape of a student profile for display
 interface StudentProfile {
   uid: string;
   name: string;
-  email: string; // Or a contact method
+  email: string; 
   experience: string;
   skills: string[];
   interests: string[];
   goals: string;
-  courseCompletedDate?: string; // Add this if you track course completion dates
-  // You might want to include summary from AI interview report here
+  courseCompletedDate?: string; //tracking course completion dates optional...
   interviewSummary?: string;
-  // Potentially other relevant fields
+
 }
 
 export default function StudentBrowser() {
@@ -36,12 +34,14 @@ export default function StudentBrowser() {
       try {
         const usersRef = collection(db, 'users');
         const q = query(
-          usersRef,
-          where('role', '==', 'student'),
-          where('profileVisibility', '==', 'public'),
-          where('paidForPublic', '==', true), // Only show if they've paid
-          orderBy('createdAt', 'desc') // Order by most recent public profiles
-        );
+  usersRef,
+  where('role', '==', 'student'),
+  where('profileVisibility', '==', 'public'),
+  where('paidForPublic', '==', true),
+  where('profileCompleted', '==', true),
+  orderBy('createdAt', 'desc')
+);
+
         const querySnapshot = await getDocs(q);
 
         const fetchedProfiles: StudentProfile[] = [];
@@ -55,8 +55,8 @@ export default function StudentBrowser() {
             skills: data.skills || [],
             interests: data.interests || [],
             goals: data.goals || 'No career goals specified',
-            courseCompletedDate: data.courseCompletedDate, // Assuming this field exists
-            interviewSummary: data.interviewReport?.summary || 'No interview summary available', // From AI interview report
+            courseCompletedDate: data.courseCompletedDate, 
+            interviewSummary: data.interviewReport?.summary || 'No interview summary available', 
           });
         });
         setProfiles(fetchedProfiles);
