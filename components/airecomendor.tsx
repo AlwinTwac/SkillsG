@@ -3,15 +3,13 @@
 import React, { useState } from 'react';
 import { Sparkles, Send, User, MessageSquare } from 'lucide-react';
 
-// You will likely need to fetch student profiles here or pass them as props
-// For now, it's a structural placeholder for the AI interaction
 interface StudentProfileSummary {
   uid: string;
   name: string;
   skills: string[];
   experience: string;
   interviewSummary?: string;
-  // Add other relevant fields that AI should consider
+  //add other relevant fields that AI should consider
 }
 
 export default function AIRecommender() {
