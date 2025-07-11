@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, User as FirebaseAuthUser } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
@@ -19,6 +19,33 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [companyAccountExists, setCompanyAccountExists] = useState(false);
+
+  // Check if a company account already exists
+  useEffect(() => {
+    const checkCompanyAccount = async () => {
+      if (defaultRole === 'company') {
+        setLoading(true);
+        try {
+          const usersRef = collection(db, 'users');
+          const q = query(usersRef, where('role', '==', 'company'));
+          const querySnapshot = await getDocs(q);
+          
+          if (!querySnapshot.empty) {
+            setCompanyAccountExists(true);
+            // Force login view if company account exists
+            setIsLogin(true);
+          }
+        } catch (err) {
+          console.error('Error checking company account:', err);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    checkCompanyAccount();
+  }, [defaultRole]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +55,13 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
     try {
       if (!isLogin && password !== confirmPassword) {
         setError('Passwords do not match');
+        setLoading(false);
+        return;
+      }
+
+      // Prevent company account creation if one already exists
+      if (!isLogin && defaultRole === 'company' && companyAccountExists) {
+        setError('Only one company account is allowed. Please login instead.');
         setLoading(false);
         return;
       }
@@ -48,8 +82,16 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
           ...(roleToSet === 'student' && {
             profileVisibility: 'private',
             paidForPublic: false,
+          }),
+          ...(roleToSet === 'company' && {
+            companyName: 'kimtronix' // Add company name to the account
           })
         });
+
+        // If this was a company account, update the state
+        if (roleToSet === 'company') {
+          setCompanyAccountExists(true);
+        }
       }
 
       onAuthSuccess(userCredential.user);
@@ -65,6 +107,13 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
     setError('');
 
     try {
+      // Prevent company account creation via Google if one already exists
+      if (!isLogin && defaultRole === 'company' && companyAccountExists) {
+        setError('Only one company account is allowed. Please login instead.');
+        setLoading(false);
+        return;
+      }
+
       const provider = new GoogleAuthProvider();
       const userCredential = await signInWithPopup(auth, provider);
       const userDocRef = doc(db, 'users', userCredential.user.uid);
@@ -83,8 +132,16 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
         ...(roleToSet === 'student' && !userDocSnap.exists() && {
             profileVisibility: 'private',
             paidForPublic: false,
+        }),
+        ...(roleToSet === 'company' && !userDocSnap.exists() && {
+          companyName: 'kimtronix'
         })
       }, { merge: true });
+
+      // If this was a company account creation, update the state
+      if (roleToSet === 'company' && !userDocSnap.exists()) {
+        setCompanyAccountExists(true);
+      }
 
       onAuthSuccess(userCredential.user);
     } catch (err: any) {
@@ -151,7 +208,9 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
         <p className="text-white/90">
           {isLogin 
             ? `Sign in as a ${defaultRole} to continue` 
-            : `Create your ${defaultRole} account`
+            : defaultRole === 'company' && companyAccountExists 
+              ? 'Company account already exists. Please login instead.'
+              : `Create your ${defaultRole} account`
           }
         </p>
       </div>
@@ -160,6 +219,21 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
         {error && (
           <div className="bg-red-50 border-l-4 border-red-500 rounded-lg p-4 mb-6 animate-shake">
             <p className="text-red-700 font-medium">{error}</p>
+          </div>
+        )}
+
+        {/* For company role when account exists, show message and force login */}
+        {defaultRole === 'company' && companyAccountExists && !isLogin && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-4 mb-6">
+            <p className="text-yellow-700 font-medium">
+              Only one company account is allowed. Please use the login form.
+            </p>
+            <button
+              onClick={() => setIsLogin(true)}
+              className={`mt-2 ${theme.buttonColor} text-white py-2 px-4 rounded-lg transition-all duration-300`}
+            >
+              Go to Login
+            </button>
           </div>
         )}
 
@@ -209,7 +283,7 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
             </div>
           </div>
 
-          {!isLogin && (
+          {!isLogin && defaultRole !== 'company' && (
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Confirm Password
@@ -232,7 +306,7 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (defaultRole === 'company' && companyAccountExists && !isLogin)}
             className={`w-full ${theme.buttonColor} text-white py-3 px-4 rounded-lg transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center shadow-md hover:shadow-lg`}
           >
             {loading ? (
@@ -258,7 +332,7 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
 
           <button
             onClick={handleGoogleAuth}
-            disabled={loading}
+            disabled={loading || (defaultRole === 'company' && companyAccountExists && !isLogin)}
             className="mt-5 w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm hover:shadow-md"
           >
             <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -274,12 +348,14 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             {isLogin ? "Don't have an account?" : "Already have an account?"}
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className={`ml-1 ${theme.textColor} hover:underline font-medium transition-colors duration-300`}
-            >
-              {isLogin ? 'Sign up' : 'Sign in'}
-            </button>
+            {defaultRole !== 'company' || (defaultRole === 'company' && !companyAccountExists) ? (
+              <button
+                onClick={() => setIsLogin(!isLogin)}
+                className={`ml-1 ${theme.textColor} hover:underline font-medium transition-colors duration-300`}
+              >
+                {isLogin ? 'Sign up' : 'Sign in'}
+              </button>
+            ) : null}
           </p>
         </div>
       </div>
