@@ -1,13 +1,12 @@
-// app/recruiter/student/[studentId]/page.tsx
 'use client';
-
-import { useState, useEffect, use } from 'react';
+import { useRouter } from 'next/navigation';
+import { use } from 'react';
+import { useState, useEffect } from 'react';
 import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ArrowLeft, Mail, Briefcase, Code, Heart, Target, Award, BookOpen, UserCheck, Shield, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
-// --- Interfaces for the data we will fetch ---
 interface StudentProfile {
   id: string;
   name: string;
@@ -17,7 +16,7 @@ interface StudentProfile {
   interests: string[];
   goals: string;
   profileVisibility: 'public' | 'private';
-  recommended?: boolean; // Check if the student is recommended
+  recommended?: boolean;
 }
 
 interface Certificate {
@@ -26,6 +25,7 @@ interface Certificate {
   completionDate: string;
   issuedBy: string;
   fileUrl?: string;
+  studentUid: string;
 }
 
 interface Tutorial {
@@ -34,27 +34,33 @@ interface Tutorial {
   description: string;
   fileUrl: string;
   createdAt: string;
+  studentUid: string;
 }
 
-// The page component receives `params` which contains the dynamic route segment
-export default function StudentProfilePage({ params }: { params: { studentId: string } }) {
+interface PageProps {
+  params: Promise<{ studentId: string }>;
+}
+export default function StudentProfilePage({ params }: PageProps) {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [tutorials, setTutorials] = useState<Tutorial[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-const { studentId } = params;
+   const { studentId } = use(params);
 
   useEffect(() => {
-    if (!studentId) return;
+    if (!studentId) {
+      router.push('/recruiter/dashboard');
+      return;
+    }
 
     const fetchStudentData = async () => {
       setLoading(true);
       setError(null);
       
       try {
-        // --- 1. Fetch the main student profile ---
         const profileDocRef = doc(db, 'users', studentId);
         const profileDocSnap = await getDoc(profileDocRef);
 
@@ -66,22 +72,27 @@ const { studentId } = params;
         
         const profileData = profileDocSnap.data();
 
-        // --- SECURITY CHECK: Ensure profile is public ---
         if (profileData.profileVisibility !== 'public') {
-            setError("This student's profile is private.");
-            setLoading(false);
-            return;
+          setError("This student's profile is private.");
+          setLoading(false);
+          return;
         }
         
         setProfile({ id: profileDocSnap.id, ...profileData } as StudentProfile);
 
-        // --- 2. Fetch associated certificates ---
-        const certsQuery = query(collection(db, 'certificates'), where('studentUid', '==', studentId), orderBy('completionDate', 'desc'));
+        const certsQuery = query(
+          collection(db, 'certificates'), 
+          where('studentUid', '==', studentId), 
+          orderBy('completionDate', 'desc')
+        );
         const certsSnapshot = await getDocs(certsQuery);
         setCertificates(certsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Certificate)));
 
-        // --- 3. Fetch associated tutorials/portfolio items ---
-        const tutorialsQuery = query(collection(db, 'tutorials'), where('studentUid', '==', studentId), orderBy('createdAt', 'desc'));
+        const tutorialsQuery = query(
+          collection(db, 'tutorials'), 
+          where('studentUid', '==', studentId), 
+          orderBy('createdAt', 'desc')
+        );
         const tutorialsSnapshot = await getDocs(tutorialsQuery);
         setTutorials(tutorialsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Tutorial)));
 
@@ -94,7 +105,7 @@ const { studentId } = params;
     };
 
     fetchStudentData();
-  }, [studentId]);
+  }, [studentId, router]);
 
   if (loading) {
     return (
@@ -122,13 +133,11 @@ const { studentId } = params;
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
-        {/* Back Button */}
         <Link href="/recruiter/dashboard" className="inline-flex items-center text-gray-600 hover:text-purple-700 mb-6">
           <ArrowLeft className="w-5 h-5 mr-2" />
           Back to All Candidates
         </Link>
         
-        {/* Profile Header */}
         <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
           <div className="flex flex-col sm:flex-row items-start">
             <div className="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mb-4 sm:mb-0 sm:mr-6">
@@ -148,11 +157,8 @@ const { studentId } = params;
           </div>
         </div>
 
-        {/* Profile Details Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Experience & Goals Card */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center"><Briefcase className="w-6 h-6 mr-3 text-purple-600"/>Professional Summary</h2>
               <div className="space-y-4 text-gray-700">
@@ -167,7 +173,6 @@ const { studentId } = params;
               </div>
             </div>
 
-            {/* Certificates Card */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center"><Award className="w-6 h-6 mr-3 text-purple-600"/>Certificates</h2>
               {certificates.length > 0 ? (
@@ -182,7 +187,6 @@ const { studentId } = params;
               ) : <p className="text-gray-500">No certificates listed.</p>}
             </div>
 
-            {/* Portfolio/Tutorials Card */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center"><BookOpen className="w-6 h-6 mr-3 text-purple-600"/>Portfolio & Tutorials</h2>
               {tutorials.length > 0 ? (
@@ -198,22 +202,20 @@ const { studentId } = params;
             </div>
           </div>
 
-          {/* Right Column */}
           <div className="space-y-8">
-            {/* Skills Card */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center"><Code className="w-6 h-6 mr-3 text-purple-600"/>Skills</h2>
               <div className="flex flex-wrap gap-2">
-                {profile?.skills.map((skill, i) => (
+                {profile?.skills?.map((skill, i) => (
                   <span key={i} className="bg-purple-100 text-purple-800 text-sm font-medium px-3 py-1 rounded-full">{skill}</span>
                 ))}
               </div>
             </div>
-            {/* Interests Card */}
+            
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center"><Heart className="w-6 h-6 mr-3 text-purple-600"/>Interests</h2>
               <div className="flex flex-wrap gap-2">
-                {profile?.interests.map((interest, i) => (
+                {profile?.interests?.map((interest, i) => (
                   <span key={i} className="bg-gray-100 text-gray-800 text-sm font-medium px-3 py-1 rounded-full">{interest}</span>
                 ))}
               </div>
