@@ -1,17 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Edit, Award, LayoutDashboard, LogOut, FileText, Video, ArrowLeftCircle, Loader2, Eye, EyeOff, Upload, File, Image, Download, GraduationCap } from 'lucide-react'; // Added GraduationCap for courses
+import { onAuthStateChanged, User as FirebaseAuthUser } from 'firebase/auth';
+import { BookOpen, Edit, Award, LayoutDashboard, LogOut, FileText, Video, ArrowLeftCircle, Loader2, Eye, EyeOff, Upload, File, Image, Download, GraduationCap } from 'lucide-react';
 import { auth, db, storage } from '@/lib/firebase';
-import { collection, query,where, onSnapshot, doc, updateDoc, getDoc, setDoc, getDocs, documentId } from 'firebase/firestore'; // Added getDocs, documentId
+import { collection, query, where, onSnapshot, doc, updateDoc, getDoc, setDoc, getDocs, documentId } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
-
-interface StudentDashboardProps {
-  userDisplayName: string | null;
-  userEmail: string | null;
-  userUid: string;
-}
 
 interface LearningMaterial {
   id: string;
@@ -21,12 +16,12 @@ interface LearningMaterial {
   type: 'video' | 'pdf' | 'image' | 'other';
   fileUrl: string;
   uploadedAt: string;
-  courseId?: string; // Material linked to a course
+  courseId?: string;
 }
 
 interface Tutorial {
   id: string;
-  studentUid: string; // Add studentUid for rule checking if not present
+  studentUid: string;
   title: string;
   description: string;
   type: 'video' | 'pdf' | 'image' | 'other';
@@ -42,7 +37,8 @@ interface Certificate {
   fileUrl: string;
   issuedAt: string;
   issuedBy: string;
-  courseName: string; // Added if not already in your certificate structure
+  courseName: string;
+  studentUid: string;
 }
 
 interface Course {
@@ -53,9 +49,8 @@ interface Course {
   createdDate: string;
 }
 
-// NEW INTERFACE: For student's enrollment data
 interface Enrollment {
-  id: string; // Document ID (e.g., studentUid_courseId)
+  id: string;
   studentUid: string;
   courseId: string;
   companyUid: string;
@@ -63,14 +58,16 @@ interface Enrollment {
   status: string;
 }
 
-export default function StudentDashboard({ userDisplayName, userEmail, userUid }: StudentDashboardProps) {
+export default function StudentDashboard() {
   const router = useRouter();
+  const [user, setUser] = useState<FirebaseAuthUser | null>(null);
   const [activeView, setActiveView] = useState<'overview' | 'learning' | 'tutorials' | 'certificates' | 'settings'>('overview');
   const [learningMaterials, setLearningMaterials] = useState<LearningMaterial[]>([]);
   const [tutorials, setTutorials] = useState<Tutorial[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [enrolledCoursesData, setEnrolledCoursesData] = useState<(Course & { enrollmentId: string })[]>([]); // New state for actual Course objects student is enrolled in
+  const [enrolledCoursesData, setEnrolledCoursesData] = useState<(Course & { enrollmentId: string })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialDataLoading, setInitialDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profileVisibility, setProfileVisibility] = useState<'public' | 'private'>('private');
   const [newTutorial, setNewTutorial] = useState({
@@ -81,28 +78,39 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
     file: null as File | null
   });
 
-  // Main useEffect to fetch ALL student-specific data based on enrollments
+  // Handle authentication state
   useEffect(() => {
-    if (!userUid) return;
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (!currentUser) {
+        setLoading(false);
+      }
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  // Fetch all data only when user is confirmed
+  useEffect(() => {
+    if (!user) return;
 
     const fetchStudentData = async () => {
-      setLoading(true); // Start main loading state
+      setInitialDataLoading(true);
       setError(null);
       try {
-        // --- 1. Fetch User Profile Visibility (existing logic) ---
-        const userDocRef = doc(db, 'users', userUid);
+        // Fetch User Profile
+        const userDocRef = doc(db, 'users', user.uid);
         const userDocSnap = await getDoc(userDocRef);
         if (userDocSnap.exists()) {
           setProfileVisibility(userDocSnap.data().profileVisibility || 'private');
         }
 
-        // --- 2. Fetch Enrolled Courses ---
+        // Fetch Enrolled Courses
         const enrollmentsQuery = query(
           collection(db, 'enrollments'),
-          where('studentUid', '==', userUid),
-          where('status', '==', 'active') // Filter for active enrollments
+          where('studentUid', '==', user.uid),
+          where('status', '==', 'active')
         );
-        const enrollmentsSnapshot = await getDocs(enrollmentsQuery); // Use getDocs for initial fetch
+        const enrollmentsSnapshot = await getDocs(enrollmentsQuery);
         const enrolledCourseIds = enrollmentsSnapshot.docs.map(doc => doc.data().courseId as string);
         const fetchedEnrollments: Enrollment[] = enrollmentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Enrollment));
 
@@ -110,25 +118,22 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
         const materialsToDisplay: LearningMaterial[] = [];
 
         if (enrolledCourseIds.length > 0) {
-          // Fetch actual Course documents for enrolled courses (handle 'in' query limit)
           const chunkSize = 10;
           for (let i = 0; i < enrolledCourseIds.length; i += chunkSize) {
             const chunk = enrolledCourseIds.slice(i, i + chunkSize);
-            // documentId() is imported from 'firebase/firestore'
-           const coursesQuery = query(collection(db, 'courses'), where(documentId(), 'in', chunk));
-           const coursesSnap = await getDocs(coursesQuery);
-           coursesSnap.forEach(doc => {
+            const coursesQuery = query(collection(db, 'courses'), where(documentId(), 'in', chunk));
+            const coursesSnap = await getDocs(coursesQuery);
+            coursesSnap.forEach(doc => {
               coursesToDisplay.push({
-               id: doc.id,
+                id: doc.id,
                 ...(doc.data() as Omit<Course, 'id'>),
-                enrollmentId: fetchedEnrollments.find(e => e.courseId === doc.id)?.id || '' // Attach enrollment ID
+                enrollmentId: fetchedEnrollments.find(e => e.courseId === doc.id)?.id || ''
               });
-           });
+            });
           }
           setEnrolledCoursesData(coursesToDisplay);
 
-          // Fetch Learning Materials associated with these enrolled courses (handle 'in' query limit)
-          for (let i = 0; i < enrolledCourseIds.length; i += chunkSize) {         
+          for (let i = 0; i < enrolledCourseIds.length; i += chunkSize) {
             const chunk = enrolledCourseIds.slice(i, i + chunkSize);
             const materialsQuery = query(collection(db, 'learningContent'), where('courseId', 'in', chunk));
             const materialsSnap = await getDocs(materialsQuery);
@@ -137,34 +142,31 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
             });
           }
           setLearningMaterials(materialsToDisplay);
-
         } else {
           setEnrolledCoursesData([]);
-          setLearningMaterials([]); // No enrolled courses means no materials to show
+          setLearningMaterials([]);
         }
 
-        // --- 3. Fetch Tutorials (using onSnapshot for real-time updates) ---
-        const tutorialsQuery = query(collection(db, 'tutorials'), where('studentUid', '==', userUid));
+        // Set up real-time listeners
+        const tutorialsQuery = query(collection(db, 'tutorials'), where('studentUid', '==', user.uid));
         const unsubscribeTutorials = onSnapshot(tutorialsQuery, (snapshot) => {
           const fetchedTutorials: Tutorial[] = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as Omit<Tutorial, 'id'>) }));
           setTutorials(fetchedTutorials);
         }, (error) => {
           console.error("Error fetching tutorials:", error);
-          // setError("Failed to load tutorials."); // Optional: Set error state
         });
 
-        // --- 4. Fetch Certificates (using onSnapshot for real-time updates) ---
-        const certsQuery = query(collection(db, 'certificates'), where('studentUid', '==', userUid));
+        const certsQuery = query(collection(db, 'certificates'), where('studentUid', '==', user.uid));
         const unsubscribeCerts = onSnapshot(certsQuery, (snapshot) => {
           const fetchedCerts: Certificate[] = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as Omit<Certificate, 'id'>) }));
           setCertificates(fetchedCerts);
         }, (error) => {
           console.error("Error fetching certificates:", error);
-          // setError("Failed to load certificates."); // Optional: Set error state
         });
 
-        setLoading(false); // End main loading
-        // Return cleanup functions for all onSnapshot listeners
+        setInitialDataLoading(false);
+        setLoading(false);
+
         return () => {
           unsubscribeTutorials();
           unsubscribeCerts();
@@ -173,14 +175,13 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
       } catch (err: any) {
         console.error("Error in fetching student dashboard data:", err);
         setError(`Failed to load your dashboard data: ${err.message || 'An unexpected error occurred.'}`);
+        setInitialDataLoading(false);
         setLoading(false);
       }
     };
 
-    fetchStudentData(); // Call the async function immediately
-
-  }, [userUid]); // Re-run when userUid changes (e.g., on initial load)
-
+    fetchStudentData();
+  }, [user]);
 
   const handleSignOut = async () => {
     try {
@@ -194,24 +195,20 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
 
   const handleTutorialSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTutorial.file) {
+    if (!newTutorial.file || !user) {
       setError('Please select a file to upload');
       return;
     }
 
     try {
-      setLoading(true); // Can also have a more specific 'uploadingTutorial' state
-      // Upload file to storage
-      const fileRef = ref(storage, `tutorials/${userUid}/${Date.now()}_${newTutorial.file.name}`);
+      setLoading(true);
+      const fileRef = ref(storage, `tutorials/${user.uid}/${Date.now()}_${newTutorial.file.name}`);
       await uploadBytes(fileRef, newTutorial.file);
       const fileUrl = await getDownloadURL(fileRef);
 
-      // Create a reference to a new document with auto-generated ID
       const tutorialRef = doc(collection(db, 'tutorials'));
-      
-      // Save tutorial data to Firestore
       await setDoc(tutorialRef, {
-        studentUid: userUid, // Ensure studentUid is set for security rules
+        studentUid: user.uid,
         title: newTutorial.title,
         description: newTutorial.description,
         type: newTutorial.type,
@@ -220,7 +217,6 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
         createdAt: new Date().toISOString()
       });
 
-      // Reset form
       setNewTutorial({
         title: '',
         description: '',
@@ -229,7 +225,7 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
         file: null
       });
       setError(null);
-      alert('Tutorial uploaded successfully!'); // Provide success feedback
+      alert('Tutorial uploaded successfully!');
     } catch (err) {
       console.error("Error uploading tutorial:", err);
       setError("Failed to upload tutorial. Please try again.");
@@ -245,9 +241,10 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
   };
 
   const toggleProfileVisibility = async () => {
+    if (!user) return;
     const newVisibility = profileVisibility === 'public' ? 'private' : 'public';
     try {
-      await updateDoc(doc(db, 'users', userUid), {
+      await updateDoc(doc(db, 'users', user.uid), {
         profileVisibility: newVisibility
       });
       setProfileVisibility(newVisibility);
@@ -256,6 +253,48 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
       setError("Failed to update profile visibility. Please try again.");
     }
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Loading Dashboard</h2>
+          <p className="text-gray-600">Please wait while we verify your session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (initialDataLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Loading Your Data</h2>
+          <p className="text-gray-600">Fetching your courses, materials, and progress...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-6">
+            {error}
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
@@ -269,7 +308,7 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
             </div>
             <div className="flex items-center space-x-4">
               <span className="hidden sm:inline">
-                Hello, {userDisplayName || userEmail?.split('@')[0] || 'Student'}!
+                Hello, {user.displayName || user.email?.split('@')[0] || 'Student'}!
               </span>
               <button
                 onClick={handleSignOut}
@@ -281,6 +320,7 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
           </div>
         </div>
 
+        {/* Rest of your existing UI remains exactly the same */}
         {/* Navigation */}
         <div className="bg-gray-100 px-6 py-3 flex overflow-x-auto">
           <button
@@ -346,7 +386,6 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
                   </div>
                 </div>
 
-                {/* NEW: My Enrolled Courses Card */}
                 <div className="bg-green-50 p-6 rounded-lg shadow-sm flex items-start">
                   <GraduationCap className="w-8 h-8 text-green-600 mr-4 mt-1" />
                   <div>
@@ -365,13 +404,8 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
                     ) : (
                       <p className="text-gray-500 mb-3">Not enrolled in any courses yet.</p>
                     )}
-                    {/* Optionally, add a button to a new dedicated "My Courses" tab */}
-                    {/* <button className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-300">
-                      View All Courses
-                    </button> */}
                   </div>
                 </div>
-                {/* End My Enrolled Courses Card */}
 
                 <div className="bg-purple-50 p-6 rounded-lg shadow-sm flex items-start">
                   <Edit className="w-8 h-8 text-purple-600 mr-4 mt-1" />
@@ -645,7 +679,7 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
                     <div key={cert.id} className="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-300">
                       <div className="flex items-center mb-3">
                         <Award className="w-7 h-7 mr-3 text-green-500" />
-                        <h4 className="text-xl font-semibold text-gray-800">{cert.title || cert.courseName}</h4> {/* Display title or courseName */}
+                        <h4 className="text-xl font-semibold text-gray-800">{cert.title || cert.courseName}</h4>
                       </div>
                       <p className="text-gray-600 text-sm mb-4">{cert.description || 'No description provided.'}</p>
                       <p className="text-xs text-gray-500 mb-4">

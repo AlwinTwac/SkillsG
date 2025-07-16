@@ -4,21 +4,16 @@ service cloud.firestore {
 
     // --- Users Collection ---
     match /users/{userId} {
-      // Read rule is now fixed to allow the login page to check for the company
       allow read: if (
         resource.data.profileVisibility == 'public' ||
         (request.auth != null && request.auth.uid == userId) ||
         (request.auth != null && resource.data.role == 'student' && resource.data.companyUid == request.auth.uid) ||
-        resource.data.role == 'company' || // Allow anyone to read the company doc
+        resource.data.role == 'company' ||
         (request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company' && resource.data.role == 'student' && resource.data.profileCompleted == true)
       );
       
-      // *** THIS IS THE KEY CHANGE ***
-      // Create rule now enforces the one-company limit
       allow create: if request.auth != null && (
-        // Allow creating any user that is NOT a company
         request.resource.data.role != 'company' ||
-        // OR, if it IS a company, only allow it if the singleton lock does NOT exist yet.
         !exists(/databases/$(database)/documents/platformConfig/singleton)
       );
       
@@ -31,19 +26,16 @@ service cloud.firestore {
     }
 
     // --- Singleton Config Collection ---
-    // This allows the company account creation to write the lock, but no one else can.
     match /platformConfig/singleton {
-        allow read: if true; // Anyone can check if the lock exists
-        allow create: if request.resource.data.companyAccountCreated == true;
-        allow write, delete: if false; // Prevent modification or deletion
+      allow read: if true;
+      allow create: if request.resource.data.companyAccountCreated == true;
+      allow write, delete: if false;
     }
 
     // --- Courses Collection ---
     match /courses/{courseId} {
       allow read: if request.auth != null && (
-        // Company can read its own courses
         resource.data.companyUid == request.auth.uid ||
-        // Student can read courses they are enrolled in
         (
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student' &&
           resource.id in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.enrolledCourseIds
@@ -55,9 +47,7 @@ service cloud.firestore {
     // --- Learning Content Collection ---
     match /learningContent/{contentId} {
       allow read: if request.auth != null && (
-        // Company can read its own content
         resource.data.companyUid == request.auth.uid ||
-        // Student can read content for courses they are enrolled in
         (
           resource.data.courseId != null &&
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student' &&
@@ -78,9 +68,11 @@ service cloud.firestore {
 
     // --- Tutorials Collection ---
     match /tutorials/{tutorialId} {
-      allow read: if request.auth != null && request.auth.uid == resource.data.studentUid;
-      allow create: if request.auth != null && request.resource.data.studentUid == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.studentUid == request.auth.uid;
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.studentUid ||
+        get(/databases/$(database)/documents/users/$(resource.data.studentUid)).data.profileVisibility == 'public'
+      );
+      allow create, update, delete: if request.auth != null && request.auth.uid == resource.data.studentUid;
     }
 
     // --- Interview Reports Collection ---
@@ -92,7 +84,11 @@ service cloud.firestore {
 
     // --- Certificates Collection ---
     match /certificates/{certificateId} {
-      allow read: if request.auth != null && (request.auth.uid == resource.data.studentUid || request.auth.uid == resource.data.companyUid);
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.studentUid || 
+        request.auth.uid == resource.data.companyUid ||
+        get(/databases/$(database)/documents/users/$(resource.data.studentUid)).data.profileVisibility == 'public'
+      );
       allow create, update, delete: if request.auth != null && request.resource.data.companyUid == request.auth.uid;
     }
   }
