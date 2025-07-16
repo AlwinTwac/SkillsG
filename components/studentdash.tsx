@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Edit, Award, LayoutDashboard, LogOut, FileText, Video, ArrowLeftCircle, Loader2, Eye, EyeOff, Upload, File, Image, Download } from 'lucide-react';
+import { BookOpen, Edit, Award, LayoutDashboard, LogOut, FileText, Video, ArrowLeftCircle, Loader2, Eye, EyeOff, Upload, File, Image, Download, GraduationCap } from 'lucide-react'; // Added GraduationCap for courses
 import { auth, db, storage } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, query,where, onSnapshot, doc, updateDoc, getDoc, setDoc, getDocs, documentId } from 'firebase/firestore'; // Added getDocs, documentId
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
 
@@ -21,11 +21,12 @@ interface LearningMaterial {
   type: 'video' | 'pdf' | 'image' | 'other';
   fileUrl: string;
   uploadedAt: string;
-  accessibleStudentUids: string[];
+  courseId?: string; // Material linked to a course
 }
 
 interface Tutorial {
   id: string;
+  studentUid: string; // Add studentUid for rule checking if not present
   title: string;
   description: string;
   type: 'video' | 'pdf' | 'image' | 'other';
@@ -41,6 +42,25 @@ interface Certificate {
   fileUrl: string;
   issuedAt: string;
   issuedBy: string;
+  courseName: string; // Added if not already in your certificate structure
+}
+
+interface Course {
+  id: string;
+  name: string;
+  description: string;
+  companyUid: string;
+  createdDate: string;
+}
+
+// NEW INTERFACE: For student's enrollment data
+interface Enrollment {
+  id: string; // Document ID (e.g., studentUid_courseId)
+  studentUid: string;
+  courseId: string;
+  companyUid: string;
+  enrolledAt: string;
+  status: string;
 }
 
 export default function StudentDashboard({ userDisplayName, userEmail, userUid }: StudentDashboardProps) {
@@ -49,6 +69,7 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
   const [learningMaterials, setLearningMaterials] = useState<LearningMaterial[]>([]);
   const [tutorials, setTutorials] = useState<Tutorial[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [enrolledCoursesData, setEnrolledCoursesData] = useState<(Course & { enrollmentId: string })[]>([]); // New state for actual Course objects student is enrolled in
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profileVisibility, setProfileVisibility] = useState<'public' | 'private'>('private');
@@ -60,108 +81,106 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
     file: null as File | null
   });
 
-  // Fetch user profile and settings
+  // Main useEffect to fetch ALL student-specific data based on enrollments
   useEffect(() => {
-    const fetchUserProfile = async () => {
+    if (!userUid) return;
+
+    const fetchStudentData = async () => {
+      setLoading(true); // Start main loading state
+      setError(null);
       try {
-        const userDoc = await getDoc(doc(db, 'users', userUid));
-        if (userDoc.exists()) {
-          setProfileVisibility(userDoc.data().profileVisibility || 'private');
+        // --- 1. Fetch User Profile Visibility (existing logic) ---
+        const userDocRef = doc(db, 'users', userUid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          setProfileVisibility(userDocSnap.data().profileVisibility || 'private');
         }
-      } catch (err) {
-        console.error("Error fetching user profile:", err);
+
+        // --- 2. Fetch Enrolled Courses ---
+        const enrollmentsQuery = query(
+          collection(db, 'enrollments'),
+          where('studentUid', '==', userUid),
+          where('status', '==', 'active') // Filter for active enrollments
+        );
+        const enrollmentsSnapshot = await getDocs(enrollmentsQuery); // Use getDocs for initial fetch
+        const enrolledCourseIds = enrollmentsSnapshot.docs.map(doc => doc.data().courseId as string);
+        const fetchedEnrollments: Enrollment[] = enrollmentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Enrollment));
+
+        const coursesToDisplay: (Course & { enrollmentId: string })[] = [];
+        const materialsToDisplay: LearningMaterial[] = [];
+
+        if (enrolledCourseIds.length > 0) {
+          // Fetch actual Course documents for enrolled courses (handle 'in' query limit)
+          const chunkSize = 10;
+          for (let i = 0; i < enrolledCourseIds.length; i += chunkSize) {
+            const chunk = enrolledCourseIds.slice(i, i + chunkSize);
+            // documentId() is imported from 'firebase/firestore'
+           const coursesQuery = query(collection(db, 'courses'), where(documentId(), 'in', chunk));
+           const coursesSnap = await getDocs(coursesQuery);
+           coursesSnap.forEach(doc => {
+              coursesToDisplay.push({
+               id: doc.id,
+                ...(doc.data() as Omit<Course, 'id'>),
+                enrollmentId: fetchedEnrollments.find(e => e.courseId === doc.id)?.id || '' // Attach enrollment ID
+              });
+           });
+          }
+          setEnrolledCoursesData(coursesToDisplay);
+
+          // Fetch Learning Materials associated with these enrolled courses (handle 'in' query limit)
+          for (let i = 0; i < enrolledCourseIds.length; i += chunkSize) {         
+            const chunk = enrolledCourseIds.slice(i, i + chunkSize);
+            const materialsQuery = query(collection(db, 'learningContent'), where('courseId', 'in', chunk));
+            const materialsSnap = await getDocs(materialsQuery);
+            materialsSnap.forEach(doc => {
+              materialsToDisplay.push({ id: doc.id, ...doc.data() } as LearningMaterial);
+            });
+          }
+          setLearningMaterials(materialsToDisplay);
+
+        } else {
+          setEnrolledCoursesData([]);
+          setLearningMaterials([]); // No enrolled courses means no materials to show
+        }
+
+        // --- 3. Fetch Tutorials (using onSnapshot for real-time updates) ---
+        const tutorialsQuery = query(collection(db, 'tutorials'), where('studentUid', '==', userUid));
+        const unsubscribeTutorials = onSnapshot(tutorialsQuery, (snapshot) => {
+          const fetchedTutorials: Tutorial[] = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as Omit<Tutorial, 'id'>) }));
+          setTutorials(fetchedTutorials);
+        }, (error) => {
+          console.error("Error fetching tutorials:", error);
+          // setError("Failed to load tutorials."); // Optional: Set error state
+        });
+
+        // --- 4. Fetch Certificates (using onSnapshot for real-time updates) ---
+        const certsQuery = query(collection(db, 'certificates'), where('studentUid', '==', userUid));
+        const unsubscribeCerts = onSnapshot(certsQuery, (snapshot) => {
+          const fetchedCerts: Certificate[] = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as Omit<Certificate, 'id'>) }));
+          setCertificates(fetchedCerts);
+        }, (error) => {
+          console.error("Error fetching certificates:", error);
+          // setError("Failed to load certificates."); // Optional: Set error state
+        });
+
+        setLoading(false); // End main loading
+        // Return cleanup functions for all onSnapshot listeners
+        return () => {
+          unsubscribeTutorials();
+          unsubscribeCerts();
+        };
+
+      } catch (err: any) {
+        console.error("Error in fetching student dashboard data:", err);
+        setError(`Failed to load your dashboard data: ${err.message || 'An unexpected error occurred.'}`);
+        setLoading(false);
       }
     };
 
-    fetchUserProfile();
-  }, [userUid]);
+    fetchStudentData(); // Call the async function immediately
 
-  // Fetch learning materials
-  useEffect(() => {
-    if (activeView === 'learning' && userUid) {
-      setLoading(true);
-      setError(null);
-      const materialsRef = collection(db, 'learningContent');
+  }, [userUid]); // Re-run when userUid changes (e.g., on initial load)
 
-      const q = query(
-        materialsRef,
-        where('accessibleStudentUids', 'array-contains', userUid)
-      );
-
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const fetchedMaterials: LearningMaterial[] = [];
-        snapshot.forEach(docSnap => {
-          fetchedMaterials.push({ id: docSnap.id, ...(docSnap.data() as Omit<LearningMaterial, 'id'>) });
-        });
-        setLearningMaterials(fetchedMaterials);
-        setLoading(false);
-      }, (error) => {
-        console.error("Error fetching learning materials:", error);
-        setError("Failed to load learning materials. Please try again.");
-        setLoading(false);
-      });
-
-      return () => unsubscribe();
-    }
-  }, [activeView, userUid]);
-
-  // Fetch tutorials
-  useEffect(() => {
-    if (activeView === 'tutorials' && userUid) {
-      setLoading(true);
-      setError(null);
-      const tutorialsRef = collection(db, 'tutorials');
-
-      const q = query(
-        tutorialsRef,
-        where('studentUid', '==', userUid)
-      );
-
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const fetchedTutorials: Tutorial[] = [];
-        snapshot.forEach(docSnap => {
-          fetchedTutorials.push({ id: docSnap.id, ...(docSnap.data() as Omit<Tutorial, 'id'>) });
-        });
-        setTutorials(fetchedTutorials);
-        setLoading(false);
-      }, (error) => {
-        console.error("Error fetching tutorials:", error);
-        setError("Failed to load tutorials. Please try again.");
-        setLoading(false);
-      });
-
-      return () => unsubscribe();
-    }
-  }, [activeView, userUid]);
-
-  // Fetch certificates
-  useEffect(() => {
-    if (activeView === 'certificates' && userUid) {
-      setLoading(true);
-      setError(null);
-      const certsRef = collection(db, 'certificates');
-
-      const q = query(
-        certsRef,
-        where('studentUid', '==', userUid)
-      );
-
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const fetchedCerts: Certificate[] = [];
-        snapshot.forEach(docSnap => {
-          fetchedCerts.push({ id: docSnap.id, ...(docSnap.data() as Omit<Certificate, 'id'>) });
-        });
-        setCertificates(fetchedCerts);
-        setLoading(false);
-      }, (error) => {
-        console.error("Error fetching certificates:", error);
-        setError("Failed to load certificates. Please try again.");
-        setLoading(false);
-      });
-
-      return () => unsubscribe();
-    }
-  }, [activeView, userUid]);
 
   const handleSignOut = async () => {
     try {
@@ -172,50 +191,52 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
       alert("Failed to sign out. Please try again.");
     }
   };
-const handleTutorialSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!newTutorial.file) {
-    setError('Please select a file to upload');
-    return;
-  }
 
-  try {
-    setLoading(true);
-    // Upload file to storage
-    const fileRef = ref(storage, `tutorials/${userUid}/${Date.now()}_${newTutorial.file.name}`);
-    await uploadBytes(fileRef, newTutorial.file);
-    const fileUrl = await getDownloadURL(fileRef);
+  const handleTutorialSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTutorial.file) {
+      setError('Please select a file to upload');
+      return;
+    }
 
-    // Create a reference to a new document with auto-generated ID
-    const tutorialRef = doc(collection(db, 'tutorials'));
-    
-    // Save tutorial data to Firestore
-    await setDoc(tutorialRef, {
-      studentUid: userUid,
-      title: newTutorial.title,
-      description: newTutorial.description,
-      type: newTutorial.type,
-      fileUrl,
-      weekNumber: newTutorial.weekNumber,
-      createdAt: new Date().toISOString()
-    });
+    try {
+      setLoading(true); // Can also have a more specific 'uploadingTutorial' state
+      // Upload file to storage
+      const fileRef = ref(storage, `tutorials/${userUid}/${Date.now()}_${newTutorial.file.name}`);
+      await uploadBytes(fileRef, newTutorial.file);
+      const fileUrl = await getDownloadURL(fileRef);
 
-    // Reset form
-    setNewTutorial({
-      title: '',
-      description: '',
-      type: 'pdf',
-      weekNumber: 1,
-      file: null
-    });
-    setError(null);
-  } catch (err) {
-    console.error("Error uploading tutorial:", err);
-    setError("Failed to upload tutorial. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-};
+      // Create a reference to a new document with auto-generated ID
+      const tutorialRef = doc(collection(db, 'tutorials'));
+      
+      // Save tutorial data to Firestore
+      await setDoc(tutorialRef, {
+        studentUid: userUid, // Ensure studentUid is set for security rules
+        title: newTutorial.title,
+        description: newTutorial.description,
+        type: newTutorial.type,
+        fileUrl,
+        weekNumber: newTutorial.weekNumber,
+        createdAt: new Date().toISOString()
+      });
+
+      // Reset form
+      setNewTutorial({
+        title: '',
+        description: '',
+        type: 'pdf',
+        weekNumber: 1,
+        file: null
+      });
+      setError(null);
+      alert('Tutorial uploaded successfully!'); // Provide success feedback
+    } catch (err) {
+      console.error("Error uploading tutorial:", err);
+      setError("Failed to upload tutorial. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -308,13 +329,13 @@ const handleTutorialSubmit = async (e: React.FormEvent) => {
                 Welcome to your personalized learning space. Here you can access your weekly materials, create tutorials, and track your progress.
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="bg-blue-50 p-6 rounded-lg shadow-sm flex items-start">
                   <BookOpen className="w-8 h-8 text-blue-600 mr-4 mt-1" />
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">Weekly Learning Materials</h3>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">My Learning Materials</h3>
                     <p className="text-gray-600 mb-3">
-                      Access the company-sponsored training content. These are provided by your company to help you grow.
+                      Access company-sponsored training content relevant to your enrolled courses.
                     </p>
                     <button
                       onClick={() => setActiveView('learning')}
@@ -324,6 +345,33 @@ const handleTutorialSubmit = async (e: React.FormEvent) => {
                     </button>
                   </div>
                 </div>
+
+                {/* NEW: My Enrolled Courses Card */}
+                <div className="bg-green-50 p-6 rounded-lg shadow-sm flex items-start">
+                  <GraduationCap className="w-8 h-8 text-green-600 mr-4 mt-1" />
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">My Enrolled Courses</h3>
+                    <p className="text-gray-600 mb-3">
+                      View the courses you are currently taking.
+                    </p>
+                    {loading ? (
+                      <p className="text-gray-500">Loading courses...</p>
+                    ) : enrolledCoursesData.length > 0 ? (
+                      <ul className="list-disc list-inside text-gray-700 mb-3">
+                        {enrolledCoursesData.map(course => (
+                          <li key={course.id} className="font-medium">{course.name}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-gray-500 mb-3">Not enrolled in any courses yet.</p>
+                    )}
+                    {/* Optionally, add a button to a new dedicated "My Courses" tab */}
+                    {/* <button className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-300">
+                      View All Courses
+                    </button> */}
+                  </div>
+                </div>
+                {/* End My Enrolled Courses Card */}
 
                 <div className="bg-purple-50 p-6 rounded-lg shadow-sm flex items-start">
                   <Edit className="w-8 h-8 text-purple-600 mr-4 mt-1" />
@@ -337,22 +385,6 @@ const handleTutorialSubmit = async (e: React.FormEvent) => {
                       className="px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-300"
                     >
                       Create Tutorial
-                    </button>
-                  </div>
-                </div>
-
-                <div className="bg-green-50 p-6 rounded-lg shadow-sm flex items-start">
-                  <Award className="w-8 h-8 text-green-600 mr-4 mt-1" />
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">Certifications & Progress</h3>
-                    <p className="text-gray-600 mb-3">
-                      Track your learning progress and earn certifications upon completion of courses.
-                    </p>
-                    <button
-                      onClick={() => setActiveView('certificates')}
-                      className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-300"
-                    >
-                      View Certificates
                     </button>
                   </div>
                 </div>
@@ -398,7 +430,7 @@ const handleTutorialSubmit = async (e: React.FormEvent) => {
                 </div>
               ) : learningMaterials.length === 0 ? (
                 <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-md text-center">
-                  <p>No learning materials are currently visible to you. Please check back later or contact your company administrator.</p>
+                  <p>No learning materials are currently visible to you. Please ensure you are enrolled in courses with associated materials.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -412,6 +444,9 @@ const handleTutorialSubmit = async (e: React.FormEvent) => {
                         <h4 className="text-xl font-semibold text-gray-800 truncate">{material.title}</h4>
                       </div>
                       <p className="text-gray-600 text-sm mb-4 line-clamp-3">{material.description || 'No description provided.'}</p>
+                      {material.courseId && (
+                           <p className="text-xs text-gray-500 mb-2">Course: {enrolledCoursesData.find(c => c.id === material.courseId)?.name || 'N/A'}</p>
+                      )}
                       <p className="text-xs text-gray-500 mb-4">
                         Type: {material.type.toUpperCase()} | Uploaded: {new Date(material.uploadedAt).toLocaleDateString()}
                       </p>
@@ -610,7 +645,7 @@ const handleTutorialSubmit = async (e: React.FormEvent) => {
                     <div key={cert.id} className="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-300">
                       <div className="flex items-center mb-3">
                         <Award className="w-7 h-7 mr-3 text-green-500" />
-                        <h4 className="text-xl font-semibold text-gray-800">{cert.title}</h4>
+                        <h4 className="text-xl font-semibold text-gray-800">{cert.title || cert.courseName}</h4> {/* Display title or courseName */}
                       </div>
                       <p className="text-gray-600 text-sm mb-4">{cert.description || 'No description provided.'}</p>
                       <p className="text-xs text-gray-500 mb-4">

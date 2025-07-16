@@ -1,0 +1,451 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { LogOut, UploadCloud, Search, BookOpen, FileText, Video, Users, ClipboardList, Award, Mail, UserCheck, Loader2, Image as ImageIcon, ExternalLink } from 'lucide-react';
+import { auth, db, storage } from '@/lib/firebase';
+// Import the functions SDK for calling the certificate generator
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { collection, query, where, getDocs, doc, setDoc, onSnapshot, orderBy, updateDoc, serverTimestamp, documentId } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useRouter } from 'next/navigation';
+
+// --- Interfaces ---
+interface CompanyDashboardProps {
+  userDisplayName: string | null;
+  userEmail: string | null;
+  userUid: string;
+}
+interface EnrollmentReport {
+  id: string;
+  studentUid: string;
+  studentName: string;
+  studentEmail: string;
+  interviewDate: string;
+  reportSummary: string;
+  companyUid: string;
+}
+interface LearningMaterial {
+  id?: string;
+  companyUid: string;
+  title: string;
+  description: string;
+  type: 'video' | 'pdf' | 'image' | 'other';
+  fileUrl: string;
+  uploadedAt: string;
+  courseId?: string;
+}
+interface Certificate {
+  id?: string;
+  studentUid: string;
+  studentName: string;
+  studentEmail: string;
+  courseName: string;
+  completionDate: string;
+  issuedBy: string;
+  fileUrl?: string; // This will hold the URL to the digital certificate
+  companyUid: string;
+}
+interface Course {
+  id?: string;
+  name: string;
+  description: string;
+  companyUid: string;
+  createdDate: string;
+}
+interface Student {
+  id: string;
+  name: string;
+  email: string;
+  profileVisibility: 'public' | 'private';
+  companyUid?: string;
+  profileCompleted: boolean;
+}
+interface Enrollment {
+  id: string;
+  studentUid: string;
+  courseId: string;
+  companyUid: string;
+  enrolledAt: string;
+  status: 'active' | 'completed' | 'dropped';
+}
+
+
+export default function CompanyDashboard({ userDisplayName, userEmail, userUid }: CompanyDashboardProps) {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState('overview');
+  const [enrollmentReports, setEnrollmentReports] = useState<EnrollmentReport[]>([]);
+  const [learningMaterials, setLearningMaterials] = useState<LearningMaterial[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [loading, setLoading] = useState({
+    reports: true,
+    materials: true,
+    courses: true,
+    students: true,
+    certificates: true,
+    enrollments: true
+  });
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [studentToEnrollId, setStudentToEnrollId] = useState<string>('');
+  const [courseToEnrollId, setCourseToEnrollId] = useState<string>('');
+  const [enrollingStudent, setEnrollingStudent] = useState(false);
+  const [newContent, setNewContent] = useState<Partial<LearningMaterial>>({
+    title: '',
+    description: '',
+    type: 'pdf',
+    courseId: ''
+  });
+  const [newCertificate, setNewCertificate] = useState<Partial<Certificate>>({
+    studentUid: '',
+    courseName: '',
+  });
+  const [newCourse, setNewCourse] = useState<Partial<Course>>({
+    name: '',
+    description: ''
+  });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (!userUid) return;
+
+    // --- Data Fetching Listeners ---
+    const reportsUnsub = onSnapshot(query(collection(db, 'interviewReports'), where('companyUid', '==', userUid), orderBy('interviewDate', 'desc')), (snapshot) => {
+        setEnrollmentReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EnrollmentReport)));
+        setLoading(prev => ({ ...prev, reports: false }));
+    });
+
+    const materialsUnsub = onSnapshot(query(collection(db, 'learningContent'), where('companyUid', '==', userUid), orderBy('uploadedAt', 'desc')), (snapshot) => {
+        setLearningMaterials(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LearningMaterial)));
+        setLoading(prev => ({ ...prev, materials: false }));
+    });
+    
+    const coursesUnsub = onSnapshot(query(collection(db, 'courses'), where('companyUid', '==', userUid), orderBy('createdDate', 'desc')), (snapshot) => {
+        setCourses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course)));
+        setLoading(prev => ({ ...prev, courses: false }));
+    });
+    
+    const studentsUnsub = onSnapshot(query(collection(db, 'users'), where('role', '==', 'student'), where('profileCompleted', '==', true)), (snapshot) => {
+        setStudents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student)));
+        setLoading(prev => ({ ...prev, students: false }));
+    });
+
+    const certsUnsub = onSnapshot(query(collection(db, 'certificates'), where('companyUid', '==', userUid), orderBy('completionDate', 'desc')), (snapshot) => {
+        setCertificates(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Certificate)));
+        setLoading(prev => ({ ...prev, certificates: false }));
+    });
+
+    const enrollmentsUnsub = onSnapshot(query(collection(db, 'enrollments'), where('companyUid', '==', userUid)), (snapshot) => {
+        setEnrollments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Enrollment)));
+        setLoading(prev => ({ ...prev, enrollments: false }));
+    });
+
+    return () => {
+        reportsUnsub();
+        materialsUnsub();
+        coursesUnsub();
+        studentsUnsub();
+        certsUnsub();
+        enrollmentsUnsub();
+    };
+  }, [userUid]);
+
+  const handleSignOut = async () => {
+    try {
+      await auth.signOut();
+      router.push('/');
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+  
+  const handleContentUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedFile || !newContent.title || !newContent.courseId) {
+      setUploadError("Please provide a title, select a file, and choose a course.");
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    setUploadSuccess(null);
+    try {
+      const fileRef = ref(storage, `learning_materials/${userUid}/${Date.now()}_${selectedFile.name}`);
+      await uploadBytes(fileRef, selectedFile);
+      const fileUrl = await getDownloadURL(fileRef);
+      await setDoc(doc(collection(db, 'learningContent')), {
+        companyUid: userUid,
+        title: newContent.title,
+        description: newContent.description,
+        type: newContent.type,
+        fileUrl,
+        uploadedAt: new Date().toISOString(),
+        courseId: newContent.courseId
+      });
+      setUploadSuccess("Material uploaded successfully!");
+      setNewContent({ title: '', description: '', type: 'pdf', courseId: '' });
+      setSelectedFile(null);
+    } catch (err: any) {
+      setUploadError(`Failed to upload material: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCreateCertificate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCertificate.studentUid || !newCertificate.courseName) {
+      setUploadError("Please select a student and provide a course name.");
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    setUploadSuccess(null);
+    try {
+      const student = students.find(s => s.id === newCertificate.studentUid);
+      if (!student) throw new Error("Student not found");
+      const functions = getFunctions();
+      const generateCertificate = httpsCallable(functions, 'generateCertificate'); 
+      const result = await generateCertificate({
+        studentUid: newCertificate.studentUid,
+        studentName: student.name,
+        studentEmail: student.email,
+        courseName: newCertificate.courseName,
+        companyUid: userUid,
+        issuedBy: userDisplayName || userEmail || "Company Admin",
+      });
+      if ((result.data as any).success) {
+        setUploadSuccess("Digital certificate generated successfully!");
+        setNewCertificate({ studentUid: '', courseName: '' });
+      } else {
+        throw new Error((result.data as any).error || 'Function execution failed');
+      }
+    } catch (err: any) {
+      setUploadError(`Failed to create certificate: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+  
+  const handleCreateCourse = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!newCourse.name) {
+        setUploadError("Course name is required");
+        return;
+      }
+      setUploading(true);
+      setUploadError(null);
+      try {
+        await setDoc(doc(collection(db, 'courses')), {
+          name: newCourse.name,
+          description: newCourse.description,
+          companyUid: userUid,
+          createdDate: new Date().toISOString()
+        });
+        setUploadSuccess("Course created successfully!");
+        setNewCourse({ name: '', description: '' });
+      } catch (err: any) {
+        setUploadError(`Failed to create course: ${err.message}`);
+      } finally {
+        setUploading(false);
+      }
+  };
+
+  const handleEnrollStudent = async (studentToEnrollUid: string, courseToEnrollId: string) => {
+    if (!studentToEnrollUid || !courseToEnrollId || !userUid) {
+      alert("Please select a student and a course to enroll.");
+      return;
+    }
+    setEnrollingStudent(true);
+    setUploadError(null);
+    setUploadSuccess(null);
+    try {
+      const student = students.find(s => s.id === studentToEnrollUid);
+      const course = courses.find(c => c.id === courseToEnrollId);
+      const enrollmentDocId = `${studentToEnrollUid}_${courseToEnrollId}`;
+      const enrollmentRef = doc(collection(db, 'enrollments'), enrollmentDocId);
+      await setDoc(enrollmentRef, {
+        studentUid: studentToEnrollUid,
+        courseId: courseToEnrollId,
+        companyUid: userUid,
+        enrolledAt: serverTimestamp(),
+        status: 'active'
+      });
+      const studentDocRef = doc(db, 'users', studentToEnrollId);
+      await updateDoc(studentDocRef, {
+        companyUid: userUid,
+      });
+      setUploadSuccess(`Successfully enrolled ${student?.name || 'student'} in ${course?.name || 'course'}!`);
+      setStudentToEnrollId('');
+      setCourseToEnrollId('');
+    } catch (err: any) {
+      setUploadError(`Failed to enroll student: ${err.message}`);
+    } finally {
+      setEnrollingStudent(false);
+    }
+  };
+
+  const studentsLinkedToThisCompany = students.filter(student => student.companyUid === userUid);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-teal-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-teal-600 p-6 text-white">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center">
+              <ClipboardList className="w-8 h-8 mr-3" />
+              <div>
+                <h2 className="text-2xl font-bold">Company Dashboard</h2>
+                <p className="text-blue-100">Welcome back, {userDisplayName || userEmail?.split('@')[0] || 'Admin'}!</p>
+              </div>
+            </div>
+            <button onClick={handleSignOut} className="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg flex items-center transition-all">
+              <LogOut className="w-4 h-4 mr-2" /> Sign Out
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="border-b border-gray-200 bg-gray-50 overflow-x-auto">
+          <nav className="flex space-x-8 px-6">
+            {['overview', 'content', 'reports', 'students', 'certificates', 'courses'].map((tab) => (
+              <button key={tab} onClick={() => setActiveTab(tab)}
+                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === tab ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-6">
+          {uploadError && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4">{uploadError}</div>}
+          {uploadSuccess && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-md mb-4">{uploadSuccess}</div>}
+
+          {activeTab === 'overview' && (
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="bg-blue-50 p-6 rounded-lg shadow-sm">
+                    <h3 className="text-lg font-semibold text-blue-800 flex items-center mb-2"><Users className="w-5 h-5 mr-2" /> Students</h3>
+                    <p className="text-3xl font-bold text-gray-800">{studentsLinkedToThisCompany.length}</p>
+                    <p className="text-sm text-gray-500">students enrolled</p>
+                </div>
+                <div className="bg-green-50 p-6 rounded-lg shadow-sm">
+                    <h3 className="text-lg font-semibold text-green-800 flex items-center mb-2"><BookOpen className="w-5 h-5 mr-2" /> Courses</h3>
+                    <p className="text-3xl font-bold text-gray-800">{courses.length}</p>
+                    <p className="text-sm text-gray-500">courses created</p>
+                </div>
+                <div className="bg-purple-50 p-6 rounded-lg shadow-sm">
+                    <h3 className="text-lg font-semibold text-purple-800 flex items-center mb-2"><Award className="w-5 h-5 mr-2" /> Certificates</h3>
+                    <p className="text-3xl font-bold text-gray-800">{certificates.length}</p>
+                    <p className="text-sm text-gray-500">certificates issued</p>
+                </div>
+             </div>
+          )}
+
+          {activeTab === 'content' && (
+            <div className="space-y-8">
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h3 className="text-xl font-semibold text-gray-800 mb-4">Upload Learning Material</h3>
+                <form onSubmit={handleContentUpload} className="space-y-4">
+                  {/* ... upload form jsx ... */}
+                </form>
+              </div>
+
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h3 className="text-xl font-semibold text-gray-800 mb-4">Uploaded Learning Materials</h3>
+                {loading.materials ? (
+                  <div className="text-center py-8"><Loader2 className="w-8 h-8 mx-auto animate-spin text-blue-600" /></div>
+                ) : learningMaterials.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">No learning materials have been uploaded yet.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Associated Course</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {learningMaterials.map(material => (
+                          <tr key={material.id}>
+                            <td className="px-6 py-4"><div className="text-sm font-medium text-gray-900">{material.title}</div></td>
+                            <td className="px-6 py-4 text-sm text-gray-700">{courses.find(c => c.id === material.courseId)?.name || 'N/A'}</td>
+                            <td className="px-6 py-4"><span className="inline-flex px-2 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">{material.type}</span></td>
+                            <td className="px-6 py-4 text-sm font-medium"><a href={material.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-900">View</a></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'certificates' && (
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h3 className="text-xl font-semibold text-gray-800 mb-4">Generate Certificate</h3>
+                 <form onSubmit={handleCreateCertificate} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Student</label>
+                        <select value={newCertificate.studentUid || ''} onChange={(e) => setNewCertificate({...newCertificate, studentUid: e.target.value})} className="w-full p-2 border border-gray-300 rounded-lg" required>
+                          <option value="">Select a student</option>
+                          {studentsLinkedToThisCompany.map(student => (<option key={student.id} value={student.id}>{student.name}</option>))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Course Name</label>
+                        <input type="text" value={newCertificate.courseName || ''} onChange={(e) => setNewCertificate({...newCertificate, courseName: e.target.value})} className="w-full p-2 border border-gray-300 rounded-lg" required />
+                      </div>
+                    </div>
+                    <button type="submit" disabled={uploading} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
+                      {uploading ? 'Generating...' : 'Generate Certificate'}
+                    </button>
+                 </form>
+              </div>
+
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h3 className="text-xl font-semibold text-gray-800 mb-4">Issued Certificates</h3>
+                {loading.certificates ? (
+                    <div className="text-center py-8"><Loader2 className="w-8 h-8 mx-auto animate-spin text-green-600" /></div>
+                ) : certificates.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">No certificates have been issued yet.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Course</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Certificate</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {certificates.map(cert => (
+                          <tr key={cert.id}>
+                            <td className="px-6 py-4 text-sm text-gray-900">{cert.studentName}</td>
+                            <td className="px-6 py-4 text-sm text-gray-700">{cert.courseName}</td>
+                            <td className="px-6 py-4 text-sm font-medium">
+                              {cert.fileUrl ? (
+                                <a href={cert.fileUrl} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-900 inline-flex items-center">
+                                  View Certificate <ExternalLink className="w-4 h-4 ml-1" />
+                                </a>
+                              ) : (<span className="text-gray-400">Processing...</span>)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
