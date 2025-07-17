@@ -58,7 +58,7 @@ interface Enrollment {
   status: string;
 }
 
-export default function StudentDashboard() {
+export default function StudentDashboard({ userDisplayName, userEmail, userUid }: { userDisplayName: string | null, userEmail: string | null, userUid: string }) {
   const router = useRouter();
   const [user, setUser] = useState<FirebaseAuthUser | null>(null);
   const [activeView, setActiveView] = useState<'overview' | 'learning' | 'tutorials' | 'certificates' | 'settings'>('overview');
@@ -308,7 +308,7 @@ export default function StudentDashboard() {
             </div>
             <div className="flex items-center space-x-4">
               <span className="hidden sm:inline">
-                Hello, {user.displayName || user.email?.split('@')[0] || 'Student'}!
+                Hello, {userDisplayName || userEmail?.split('@')[0] || 'Student'}!
               </span>
               <button
                 onClick={handleSignOut}
@@ -320,7 +320,6 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* Rest of your existing UI remains exactly the same */}
         {/* Navigation */}
         <div className="bg-gray-100 px-6 py-3 flex overflow-x-auto">
           <button
@@ -479,7 +478,7 @@ export default function StudentDashboard() {
                       </div>
                       <p className="text-gray-600 text-sm mb-4 line-clamp-3">{material.description || 'No description provided.'}</p>
                       {material.courseId && (
-                           <p className="text-xs text-gray-500 mb-2">Course: {enrolledCoursesData.find(c => c.id === material.courseId)?.name || 'N/A'}</p>
+                        <p className="text-xs text-gray-500 mb-2">Course: {enrolledCoursesData.find(c => c.id === material.courseId)?.name || 'N/A'}</p>
                       )}
                       <p className="text-xs text-gray-500 mb-4">
                         Type: {material.type.toUpperCase()} | Uploaded: {new Date(material.uploadedAt).toLocaleDateString()}
