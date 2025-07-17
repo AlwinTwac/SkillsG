@@ -208,6 +208,7 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
               <button onClick={() => setIsLogin(!isLogin)} className={`ml-1 ${theme.textColor} hover:underline font-medium`}>
                 {isLogin ? 'Sign up' : 'Sign in'}
               </button>
+              
             )}
           </p>
         </div>

@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, Send, User, Bot } from 'lucide-react';
-import { doc, setDoc, getDoc, collection, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { User as FirebaseAuthUser } from 'firebase/auth';
 import axios from 'axios';
 
+// --- Interfaces (No Changes) ---
 interface Message {
   id: string;
   content: string;
@@ -46,6 +47,7 @@ interface AIInterviewerProps {
   onInterviewComplete: () => void;
 }
 
+// --- Component ---
 export default function AIInterviewer({ user, onInterviewComplete }: AIInterviewerProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState('');
@@ -143,6 +145,7 @@ export default function AIInterviewer({ user, onInterviewComplete }: AIInterview
       if (interviewStatus === 'completed' && reportData) {
         setInterviewFinished(true);
         await generateAndSaveEnrollmentReport(reportData);
+        // Ensure the callback is called to notify the parent component
         onInterviewComplete();
       }
     } catch (error) {
@@ -159,16 +162,24 @@ export default function AIInterviewer({ user, onInterviewComplete }: AIInterview
   };
 
   const generateAndSaveEnrollmentReport = async (reportData: Omit<EnrollmentReport, 'id' | 'companyUid'>) => {
-    if (!user || !user.uid) return;
+    if (!user || !user.uid) {
+        console.error("User not authenticated, cannot save report.");
+        return;
+    }
 
     let companyUid = '';
     try {
-      const userDocSnap = await getDoc(doc(db, 'users', user.uid));
-      if (userDocSnap.exists()) {
-        companyUid = userDocSnap.data().companyUid || '';
+      const companyQuery = query(collection(db, 'users'), where('role', '==', 'company'));
+      const companySnapshot = await getDocs(companyQuery);
+
+      if (!companySnapshot.empty) {
+        companyUid = companySnapshot.docs[0].id;
+      } else {
+        console.error("CRITICAL: No company account found in the database.");
       }
     } catch (fetchError) {
-      console.error("Error fetching student's companyUid:", fetchError);
+      console.error("Error fetching companyUid:", fetchError);
+      return;
     }
 
     const enrollmentReportData: Omit<EnrollmentReport, 'id'> = {
