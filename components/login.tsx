@@ -20,8 +20,6 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [companyAccountExists, setCompanyAccountExists] = useState(false);
-
-  // Check if a company account already exists by looking for the singleton "lock" document
   useEffect(() => {
     const checkCompanyAccount = async () => {
       if (defaultRole === 'company') {
