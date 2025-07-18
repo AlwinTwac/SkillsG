@@ -9,7 +9,6 @@ interface StudentProfileSummary {
   skills: string[];
   experience: string;
   interviewSummary?: string;
-  //add other relevant fields that AI should consider
 }
 
 export default function AIRecommender() {
@@ -26,7 +25,7 @@ export default function AIRecommender() {
 
     setLoading(true);
     setError(null);
-    setRecommendations(null); // Clear previous recommendations
+    setRecommendations(null); 
 
     try {
       // --- IMPORTANT: This is a placeholder for your AI API call ---
