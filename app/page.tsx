@@ -174,7 +174,7 @@ export default function Home() {
               <div className="bg-green-100 p-4 rounded-full mb-6 group-hover:bg-green-200 transition-colors duration-300">
                 <Building2 className="w-12 h-12 text-green-600" />
               </div>
-              <h2 className="text-2xl font-bold text-green-800 mb-3">I'm a Company</h2>
+              <h2 className="text-2xl font-bold text-green-800 mb-3">Kimtronix Global</h2>
               <p className="text-gray-600 mb-4">Manage training and monitor student progress.</p>
               <button className="px-5 py-2 bg-green-600 text-white rounded-full text-sm font-medium hover:bg-green-700 transition-colors duration-300">
                 Get Started
