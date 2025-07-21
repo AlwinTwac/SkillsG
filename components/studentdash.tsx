@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, User as FirebaseAuthUser } from 'firebase/auth';
-import { BookOpen, Edit, Award, LayoutDashboard, LogOut, FileText, Video, ArrowLeftCircle, Loader2, Eye, EyeOff, Upload, File, Image, Download, GraduationCap } from 'lucide-react';
+import { BookOpen, Edit, Award, LayoutDashboard, LogOut, FileText, Video, CheckCircle, XCircle, Clock, ArrowLeftCircle, Loader2, Eye, EyeOff, Upload, File, Image, Download, GraduationCap } from 'lucide-react';
 import { auth, db, storage } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, getDoc, setDoc, getDocs, documentId } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -17,6 +17,14 @@ interface LearningMaterial {
   fileUrl: string;
   uploadedAt: string;
   courseId?: string;
+}
+
+interface AttendanceRecord {
+  id?: string;
+  studentUid: string;
+  date: string; // YYYY-MM-DD format
+  status: 'Present' | 'Absent' | 'Late';
+  reason?: string;
 }
 
 interface Tutorial {
@@ -65,6 +73,7 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
   const [learningMaterials, setLearningMaterials] = useState<LearningMaterial[]>([]);
   const [tutorials, setTutorials] = useState<Tutorial[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [todaysAttendance, setTodaysAttendance] = useState<AttendanceRecord | null>(null);
   const [enrolledCoursesData, setEnrolledCoursesData] = useState<(Course & { enrollmentId: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [initialDataLoading, setInitialDataLoading] = useState(true);
@@ -164,12 +173,25 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
           console.error("Error fetching certificates:", error);
         });
 
+        // Set up attendance listener
+        const todayStr = new Date().toISOString().split('T')[0];
+        const attendanceDocId = `${userUid}_${todayStr}`;
+        const attendanceDocRef = doc(db, 'attendance', attendanceDocId);
+        const attendanceUnsub = onSnapshot(attendanceDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setTodaysAttendance(docSnap.data() as AttendanceRecord);
+          } else {
+            setTodaysAttendance(null);
+          }
+        });
+
         setInitialDataLoading(false);
         setLoading(false);
 
         return () => {
           unsubscribeTutorials();
           unsubscribeCerts();
+          attendanceUnsub();
         };
 
       } catch (err: any) {
@@ -181,7 +203,7 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
     };
 
     fetchStudentData();
-  }, [user]);
+  }, [user, userUid]);
 
   const handleSignOut = async () => {
     try {
@@ -384,7 +406,27 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
                     </button>
                   </div>
                 </div>
-
+            <div className="bg-yellow-50 p-6 rounded-lg shadow-sm flex items-start">
+                  <GraduationCap className="w-8 h-8 text-yellow-600 mr-4 mt-1" />
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">Today's Attendance</h3>
+                    {todaysAttendance ? (
+                        <div className="flex items-center">
+                            {todaysAttendance.status === 'Present' && <CheckCircle className="w-6 h-6 text-green-500 mr-2"/>}
+                            {todaysAttendance.status === 'Absent' && <XCircle className="w-6 h-6 text-red-500 mr-2"/>}
+                            {todaysAttendance.status === 'Late' && <Clock className="w-6 h-6 text-yellow-500 mr-2"/>}
+                            <p className={`text-lg font-bold ${
+                                todaysAttendance.status === 'Present' ? 'text-green-600' :
+                                todaysAttendance.status === 'Absent' ? 'text-red-600' : 'text-yellow-600'
+                            }`}>
+                                {todaysAttendance.status}
+                            </p>
+                        </div>
+                    ) : (
+                        <p className="text-gray-600">Your attendance has not been marked for today.</p>
+                    )}
+                  </div>
+                </div>
                 <div className="bg-green-50 p-6 rounded-lg shadow-sm flex items-start">
                   <GraduationCap className="w-8 h-8 text-green-600 mr-4 mt-1" />
                   <div>

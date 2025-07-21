@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, UploadCloud, Search, BookOpen, FileText, Video, Users, ClipboardList, BarChart2, FileBarChart2, Award, Mail, UserCheck } from 'lucide-react';
+import { LogOut, UploadCloud, Search, BookOpen, FileText, Video, Users, ClipboardList, BarChart2, FileBarChart2, Award, Mail, UserCheck, CalendarDays, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { auth, db, storage } from '@/lib/firebase';
-import { collection, query,arrayUnion, where, getDocs, doc, setDoc, onSnapshot, orderBy, updateDoc, serverTimestamp, documentId } from 'firebase/firestore'; // Added serverTimestamp, documentId
+import { collection, query, arrayUnion, where, getDocs, doc, setDoc, onSnapshot, orderBy, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
 
@@ -33,7 +33,7 @@ interface LearningMaterial {
   type: 'video' | 'pdf' | 'image' | 'other';
   fileUrl: string;
   uploadedAt: string;
-  courseId?: string; // NO LONGER accessibleStudentUids
+  courseId?: string;
 }
 
 interface Certificate {
@@ -56,22 +56,31 @@ interface Course {
   createdDate: string;
 }
 
+interface AttendanceRecord {
+  id?: string;
+  studentUid: string;
+  studentName: string;
+  companyUid: string;
+  date: string;
+  status: 'Present' | 'Absent' | 'Late';
+  reason?: string;
+}
+
 interface Student {
   id: string;
   name: string;
   email: string;
   profileVisibility: 'public' | 'private';
-  companyUid?: string; // Add companyUid to Student interface for filtering
-  profileCompleted: boolean; // Add profileCompleted to Student interface for filtering
+  companyUid?: string;
+  profileCompleted: boolean;
 }
 
-// New interface for Enrollment
 interface Enrollment {
-  id: string; // Document ID (e.g., studentUid_courseId)
+  id: string;
   studentUid: string;
   courseId: string;
   companyUid: string;
-  enrolledAt: string; // Use ISO string or Date for type consistency
+  enrolledAt: string;
   status: 'active' | 'completed' | 'dropped';
 }
 
@@ -81,9 +90,9 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
   const [enrollmentReports, setEnrollmentReports] = useState<EnrollmentReport[]>([]);
   const [learningMaterials, setLearningMaterials] = useState<LearningMaterial[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [students, setStudents] = useState<Student[]>([]); // This will now hold all eligible students
+  const [students, setStudents] = useState<Student[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([]); // New state for enrollments
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [enrollmentReportSearchTerm, setEnrollmentReportSearchTerm] = useState('');
   const [loading, setLoading] = useState({
     reports: true,
@@ -91,22 +100,20 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     courses: true,
     students: true,
     certificates: true,
-    enrollments: true // New loading state
+    enrollments: true,
+    attendance: true
   });
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
-
-  // New state for enrolling students
   const [studentToEnrollId, setStudentToEnrollId] = useState<string>('');
   const [courseToEnrollId, setCourseToEnrollId] = useState<string>('');
-  const [enrollingStudent, setEnrollingStudent] = useState(false); // Specific loading for enrollment
-
+  const [enrollingStudent, setEnrollingStudent] = useState(false);
   const [newContent, setNewContent] = useState<Partial<LearningMaterial>>({
     title: '',
     description: '',
     type: 'pdf',
-    courseId: '' // Initialize courseId
+    courseId: ''
   });
   const [newCertificate, setNewCertificate] = useState<Partial<Certificate>>({
     studentUid: '',
@@ -119,8 +126,87 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [currentDateTime, setCurrentDateTime] = useState<string>('');
   const [weather, setWeather] = useState<{temp: number, description: string} | null>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [attendanceRecords, setAttendanceRecords] = useState<Record<string, AttendanceRecord>>({});
+  const [attendanceSearchTerm, setAttendanceSearchTerm] = useState('');
+  const [savingAttendance, setSavingAttendance] = useState(false);
 
-  // Fetch all necessary data
+  useEffect(() => {
+    if (!userUid) return;
+
+    setLoading(prev => ({ ...prev, attendance: true }));
+    const attendanceQuery = query(
+      collection(db, 'attendance'),
+      where('companyUid', '==', userUid),
+      where('date', '==', selectedDate)
+    );
+
+    const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
+      const records: Record<string, AttendanceRecord> = {};
+      snapshot.forEach(doc => {
+        const data = doc.data() as AttendanceRecord;
+        records[data.studentUid] = { id: doc.id, ...data };
+      });
+      setAttendanceRecords(records);
+      setLoading(prev => ({ ...prev, attendance: false }));
+    }, (error) => {
+      console.error("Error fetching attendance:", error);
+      setUploadError("Failed to load attendance records.");
+      setLoading(prev => ({ ...prev, attendance: false }));
+    });
+
+    return () => unsubscribe();
+  }, [userUid, selectedDate]);
+
+  const handleAttendanceChange = (studentId: string, studentName: string, status: 'Present' | 'Absent' | 'Late') => {
+    setAttendanceRecords(prev => ({
+      ...prev,
+      [studentId]: {
+        ...prev[studentId],
+        studentUid: studentId,
+        studentName: studentName,
+        companyUid: userUid,
+        date: selectedDate,
+        status: status,
+        reason: status !== 'Absent' ? '' : prev[studentId]?.reason || ''
+      }
+    }));
+  };
+
+  const handleReasonChange = (studentId: string, reason: string) => {
+    setAttendanceRecords(prev => ({
+      ...prev,
+      [studentId]: {
+        ...prev[studentId],
+        reason: reason
+      }
+    }));
+  };
+
+  const handleSaveAttendance = async () => {
+    setSavingAttendance(true);
+    setUploadSuccess(null);
+    setUploadError(null);
+    try {
+      const batch = writeBatch(db);
+      Object.values(attendanceRecords).forEach(record => {
+        if (record.studentUid && record.date) {
+          const docId = `${record.studentUid}_${record.date}`;
+          const docRef = doc(db, 'attendance', docId);
+          const { id, ...dataToSave } = record; 
+          batch.set(docRef, dataToSave, { merge: true });
+        }
+      });
+      await batch.commit();
+      setUploadSuccess("Attendance saved successfully!");
+    } catch (err: any) {
+      console.error("Error saving attendance:", err);
+      setUploadError(`Failed to save attendance: ${err.message}`);
+    } finally {
+      setSavingAttendance(false);
+    }
+  };
+
   useEffect(() => {
     if (!userUid) return;
 
@@ -158,21 +244,17 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
       setLoading(prev => ({ ...prev, courses: false }));
     });
 
-    // --- MODIFIED: Fetch all students who completed AI interview for enrollment dropdown ---
+    // Fetch all eligible students
     const allEligibleStudentsQuery = query(
       collection(db, 'users'),
       where('role', '==', 'student'),
-      where('profileCompleted', '==', true) // Filter for only those who completed the AI interview
-      // Optional: where('profileVisibility', '==', 'public') if company only enrolls public students
-      // Removed: where('companyUid', '==', userUid) to show all eligible students
+      where('profileCompleted', '==', true)
     );
     const studentsUnsub = onSnapshot(allEligibleStudentsQuery, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
-      setStudents(data); // This now populates the dropdown with ALL eligible students
+      setStudents(data);
       setLoading(prev => ({ ...prev, students: false }));
     });
-    // --- END MODIFIED STUDENTS FETCH ---
-
 
     // Fetch Certificates
     const certsQuery = query(
@@ -185,7 +267,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
       setLoading(prev => ({ ...prev, certificates: false }));
     });
 
-    // NEW: Fetch Enrollments
+    // Fetch Enrollments
     const enrollmentsQuery = query(
       collection(db, 'enrollments'),
       where('companyUid', '==', userUid)
@@ -196,22 +278,48 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
       setLoading(prev => ({ ...prev, enrollments: false }));
     });
 
-    // Update current time every second
+    // Update current time
     const timeInterval = setInterval(() => {
       setCurrentDateTime(new Date().toLocaleString());
     }, 1000);
 
-    // Simulate weather data fetch (existing)
-    const fetchWeather = async () => { /* ... */ };
+    // Simulate weather data fetch
+    const fetchWeather = async () => {
+      // Use the environment variable for the API key
+      const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+      if (!apiKey) {
+        console.warn("OpenWeather API key is missing. Weather widget will be disabled.");
+        setWeather(null); // Set to null to show 'unavailable' message
+        return;
+      }
+      try {
+        const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Harare&units=imperial&appid=${apiKey}`);
+        if (!response.ok) {
+            throw new Error('Weather data not available');
+        }
+        const data = await response.json();
+        // Safely access the data to prevent crashes
+        if (data && data.main && data.weather && data.weather[0]) {
+            setWeather({
+                temp: Math.round(data.main.temp),
+                description: data.weather[0].description
+            });
+        }
+      } catch (err) {
+        console.error("Error fetching weather:", err);
+        setWeather(null); // Set to null on error
+      }
+    };
+
     fetchWeather();
 
     return () => {
       reportsUnsub();
       materialsUnsub();
       coursesUnsub();
-      studentsUnsub(); // Cleanup for students listener
+      studentsUnsub();
       certsUnsub();
-      enrollmentsUnsub(); // Cleanup for new enrollments listener
+      enrollmentsUnsub();
       clearInterval(timeInterval);
     };
   }, [userUid]);
@@ -228,7 +336,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
 
   const handleContentUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile || !newContent.title || !newContent.courseId) { // CourseId is now required
+    if (!selectedFile || !newContent.title || !newContent.courseId) {
       setUploadError("Please provide a title, select a file, and choose a course.");
       return;
     }
@@ -238,12 +346,10 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     setUploadSuccess(null);
 
     try {
-      // Upload file to storage
       const fileRef = ref(storage, `learning_materials/${userUid}/${Date.now()}_${selectedFile.name}`);
       await uploadBytes(fileRef, selectedFile);
       const fileUrl = await getDownloadURL(fileRef);
 
-      // Save to Firestore
       await setDoc(doc(collection(db, 'learningContent')), {
         companyUid: userUid,
         title: newContent.title,
@@ -251,8 +357,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
         type: newContent.type,
         fileUrl,
         uploadedAt: new Date().toISOString(),
-        courseId: newContent.courseId // Use the selected courseId
-        // Removed: accessibleStudentUids
+        courseId: newContent.courseId
       });
 
       setUploadSuccess("Material uploaded successfully!");
@@ -260,7 +365,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
         title: '',
         description: '',
         type: 'pdf',
-        courseId: '' // Reset courseId
+        courseId: ''
       });
       setSelectedFile(null);
     } catch (err: any) {
@@ -285,7 +390,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
       const student = students.find(s => s.id === newCertificate.studentUid);
       if (!student) throw new Error("Student not found");
 
-      const certData: Omit<Certificate, 'id'> = { // Exclude 'id' for setDoc
+      const certData: Omit<Certificate, 'id'> = {
         studentUid: newCertificate.studentUid,
         studentName: student.name,
         studentEmail: student.email,
@@ -295,7 +400,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
         companyUid: userUid
       };
 
-      await setDoc(doc(collection(db, 'certificates')), certData); // Firestore auto-generates ID
+      await setDoc(doc(collection(db, 'certificates')), certData);
 
       setUploadSuccess("Certificate generated successfully!");
       setNewCertificate({
@@ -342,52 +447,45 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
   };
 
   const handleEnrollStudent = async (studentToEnrollUid: string, courseToEnrollId: string) => {
-  if (!studentToEnrollUid || !courseToEnrollId || !userUid) {
-    alert("Please select a student and a course to enroll.");
-    return;
-  }
+    if (!studentToEnrollUid || !courseToEnrollId || !userUid) {
+      alert("Please select a student and a course to enroll.");
+      return;
+    }
 
-  setEnrollingStudent(true);
-  setUploadError(null);
-  setUploadSuccess(null);
+    setEnrollingStudent(true);
+    setUploadError(null);
+    setUploadSuccess(null);
 
-  try {
-    const student = students.find(s => s.id === studentToEnrollUid);
-    const course = courses.find(c => c.id === courseToEnrollId);
+    try {
+      const student = students.find(s => s.id === studentToEnrollUid);
+      const course = courses.find(c => c.id === courseToEnrollId);
 
-    // 1. Create the enrollment document (No Change)
-    const enrollmentDocId = `${studentToEnrollUid}_${courseToEnrollId}`;
-    const enrollmentRef = doc(collection(db, 'enrollments'), enrollmentDocId);
-    await setDoc(enrollmentRef, {
-      studentUid: studentToEnrollUid,
-      courseId: courseToEnrollId,
-      companyUid: userUid,
-      enrolledAt: serverTimestamp(),
-      status: 'active'
-    });
+      const enrollmentDocId = `${studentToEnrollUid}_${courseToEnrollId}`;
+      const enrollmentRef = doc(collection(db, 'enrollments'), enrollmentDocId);
+      await setDoc(enrollmentRef, {
+        studentUid: studentToEnrollUid,
+        courseId: courseToEnrollId,
+        companyUid: userUid,
+        enrolledAt: serverTimestamp(),
+        status: 'active'
+      });
 
-    // 2. Update the student's user document (No Change)
-    const studentDocRef = doc(db, 'users', studentToEnrollId);
-    await updateDoc(studentDocRef, {
-      companyUid: userUid,
-    });
-    
-    // 3. *** ADD THIS LINE ***
-    // Add the courseId to an array on the student's user document.
-    await updateDoc(studentDocRef, {
+      const studentDocRef = doc(db, 'users', studentToEnrollId);
+      await updateDoc(studentDocRef, {
+        companyUid: userUid,
         enrolledCourseIds: arrayUnion(courseToEnrollId)
-    });
-
-    setUploadSuccess(`Successfully enrolled ${student?.name || 'student'} in ${course?.name || 'course'}!`);
-    setStudentToEnrollId('');
-    setCourseToEnrollId('');
-  } catch (err: any) {
-    console.error("Error enrolling student:", err);
-    setUploadError(`Failed to enroll student: ${err.message || 'An unexpected error occurred.'}`);
-  } finally {
-    setEnrollingStudent(false);
-  }
-};
+      });
+      
+      setUploadSuccess(`Successfully enrolled ${student?.name || 'student'} in ${course?.name || 'course'}!`);
+      setStudentToEnrollId('');
+      setCourseToEnrollId('');
+    } catch (err: any) {
+      console.error("Error enrolling student:", err);
+      setUploadError(`Failed to enroll student: ${err.message || 'An unexpected error occurred.'}`);
+    } finally {
+      setEnrollingStudent(false);
+    }
+  };
 
   const recommendCandidate = async (studentUid: string) => {
     try {
@@ -407,17 +505,18 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     }
   };
 
-  // --- MODIFIED: Filtered students for the table (show students linked to THIS company) ---
-  // This uses the 'students' state which now contains ALL eligible students.
-  // We filter client-side for students who have this company's UID.
+  // Filter students for the attendance list
   const studentsLinkedToThisCompany = students.filter(student => student.companyUid === userUid);
-  // --- END MODIFIED ---
+  const filteredAttendanceStudents = studentsLinkedToThisCompany.filter(student => 
+    student.name.toLowerCase().includes(attendanceSearchTerm.toLowerCase()) ||
+    student.email.toLowerCase().includes(attendanceSearchTerm.toLowerCase())
+  );
 
   const filteredEnrollmentReports = enrollmentReports.filter(report => {
     const lowerSearchTerm = enrollmentReportSearchTerm.toLowerCase();
     return report.studentName.toLowerCase().includes(lowerSearchTerm) ||
-             report.studentEmail.toLowerCase().includes(lowerSearchTerm) ||
-             report.reportSummary?.toLowerCase().includes(lowerSearchTerm);
+           report.studentEmail.toLowerCase().includes(lowerSearchTerm) ||
+           report.reportSummary?.toLowerCase().includes(lowerSearchTerm);
   });
 
   // Group learning materials by course
@@ -460,7 +559,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
         {/* Tab Navigation */}
         <div className="border-b border-gray-200 bg-gray-50 overflow-x-auto">
           <nav className="flex space-x-8 px-6">
-            {['overview', 'content', 'reports', 'students', 'certificates', 'courses'].map((tab) => (
+            {['overview', 'content', 'reports', 'students', 'attendance', 'certificates', 'courses'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -550,7 +649,6 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
 
           {activeTab === 'content' && (
             <div className="space-y-8">
-              {/* Learning materials upload form */}
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <h3 className="text-xl font-semibold text-gray-800 mb-4">Upload Learning Material</h3>
                 <form onSubmit={handleContentUpload} className="space-y-4">
@@ -581,7 +679,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
                           value={newContent.courseId || ''}
                           onChange={(e) => setNewContent({...newContent, courseId: e.target.value})}
                           className="w-full p-2 border border-gray-300 rounded-lg"
-                          required // Course is now required
+                          required
                         >
                           <option value="">Select a course</option>
                           {courses.map(course => (
@@ -613,7 +711,6 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
                           <option value="other">Other</option>
                         </select>
                       </div>
-                      {/* Removed: Accessible Students input as materials are linked to courses now */}
                     </div>
                   </div>
                   <button
@@ -626,7 +723,6 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
                 </form>
               </div>
 
-              {/* Enhanced learning materials list grouped by course */}
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <h3 className="text-xl font-semibold text-gray-800 mb-4">Learning Materials by Course</h3>
                 {loading.materials ? (
@@ -776,8 +872,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
           {activeTab === 'students' && (
             <div className="space-y-6">
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">Student Management</h3> {/* Changed title */}
-                {/* NEW: Enroll Student Section */}
+                <h3 className="text-xl font-semibold text-gray-800 mb-4">Student Management</h3>
                 <div className="mb-6 border-b pb-4">
                   <h4 className="text-lg font-semibold text-gray-700 mb-3">Enroll Student in Course</h4>
                   <p className="text-sm text-gray-600 mb-4">Select a student who has completed the AI interview and enroll them into one of your courses. This will link them to your company.</p>
@@ -790,7 +885,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
                         className="w-full p-2 border border-gray-300 rounded-lg"
                       >
                         <option value="">Choose Student</option>
-                        {students.map(student => ( // This 'students' state now includes ALL eligible students
+                        {students.map(student => (
                           <option key={student.id} value={student.id}>{student.name} ({student.email})</option>
                         ))}
                       </select>
@@ -817,11 +912,9 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
                     {enrollingStudent ? 'Enrolling...' : 'Enroll Student'}
                   </button>
                 </div>
-                {/* End Enroll Student Section */}
 
-                {/* --- MODIFIED: Display Students linked to THIS Company --- */}
                 <h3 className="text-xl font-semibold text-gray-800 mb-4">Students Enrolled with Your Company</h3>
-                {loading.students ? ( // This loading refers to the initial fetch of ALL eligible students
+                {loading.students ? (
                   <div>Loading students...</div>
                 ) : studentsLinkedToThisCompany.length === 0 ? (
                   <div className="text-center py-8 text-gray-600">
@@ -836,12 +929,12 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profile</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enrolled Courses</th> 
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enrolled Courses</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {studentsLinkedToThisCompany.map(student => ( 
+                        {studentsLinkedToThisCompany.map(student => (
                           <tr key={student.id}>
                             <td className="px-6 py-4 whitespace-nowrap">{student.name}</td>
                             <td className="px-6 py-4 whitespace-nowrap">{student.email}</td>
@@ -876,6 +969,79 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
                     </table>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'attendance' && (
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <h3 className="text-xl font-semibold text-gray-800 flex items-center">
+                        <CalendarDays className="w-6 h-6 mr-2 text-blue-600"/>
+                        Record Attendance
+                    </h3>
+                    <div className="flex items-center gap-4">
+                        <input
+                            type="date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            className="p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Search students..."
+                                value={attendanceSearchTerm}
+                                onChange={(e) => setAttendanceSearchTerm(e.target.value)}
+                                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {loading.attendance ? (
+                    <div>Loading attendance...</div>
+                ) : (
+                    <div className="space-y-4">
+                        {filteredAttendanceStudents.map(student => {
+                            const record = attendanceRecords[student.id];
+                            return (
+                                <div key={student.id} className="p-4 border rounded-lg flex flex-col md:flex-row items-center justify-between gap-4">
+                                    <div>
+                                        <p className="font-medium text-gray-800">{student.name}</p>
+                                        <p className="text-sm text-gray-500">{student.email}</p>
+                                    </div>
+                                    <div className="flex flex-col md:flex-row items-center gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => handleAttendanceChange(student.id, student.name, 'Present')} className={`px-3 py-1 text-sm rounded-full flex items-center ${record?.status === 'Present' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}`}><CheckCircle className="w-4 h-4 mr-1"/>Present</button>
+                                            <button onClick={() => handleAttendanceChange(student.id, student.name, 'Absent')} className={`px-3 py-1 text-sm rounded-full flex items-center ${record?.status === 'Absent' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}`}><XCircle className="w-4 h-4 mr-1"/>Absent</button>
+                                            <button onClick={() => handleAttendanceChange(student.id, student.name, 'Late')} className={`px-3 py-1 text-sm rounded-full flex items-center ${record?.status === 'Late' ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-700'}`}><Clock className="w-4 h-4 mr-1"/>Late</button>
+                                        </div>
+                                        {record?.status === 'Absent' && (
+                                            <input
+                                                type="text"
+                                                placeholder="Reason for absence..."
+                                                value={record.reason || ''}
+                                                onChange={(e) => handleReasonChange(student.id, e.target.value)}
+                                                className="p-1 border border-gray-300 rounded-md text-sm w-full md:w-48"
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {filteredAttendanceStudents.length === 0 && (
+                            <p className="text-center text-gray-500 py-4">No students found.</p>
+                        )}
+                    </div>
+                )}
+                <div className="mt-6 flex justify-end">
+                    <button onClick={handleSaveAttendance} disabled={savingAttendance} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                        {savingAttendance ? 'Saving...' : 'Save Attendance'}
+                    </button>
+                </div>
               </div>
             </div>
           )}

@@ -91,5 +91,16 @@ service cloud.firestore {
       );
       allow create, update, delete: if request.auth != null && request.resource.data.companyUid == request.auth.uid;
     }
+
+    // --- NEW: Attendance Collection ---
+    match /attendance/{attendanceId} {
+        // A company can read/write attendance for its students. A student can only read their own.
+        allow read: if request.auth != null && (
+            request.auth.uid == resource.data.studentUid ||
+            request.auth.uid == resource.data.companyUid
+        );
+        // Only the company can create, update, or delete attendance records.
+        allow write: if request.auth != null && request.auth.uid == request.resource.data.companyUid;
+    }
   }
 }
