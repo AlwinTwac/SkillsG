@@ -5,7 +5,6 @@ import { onAuthStateChanged, User as FirebaseAuthUser, signOut } from 'firebase/
 import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { User, Building2, Briefcase } from 'lucide-react';
-
 import AuthComponent from '@/components/login';
 import AIInterviewer from '@/components/interviewerai';
 import StudentDashboard from '@/components/studentdash';

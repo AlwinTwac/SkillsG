@@ -66,6 +66,14 @@ interface AttendanceRecord {
   reason?: string;
 }
 
+interface AttendanceSummary {
+  totalStudents: number;
+  present: number;
+  absent: number;
+  late: number;
+  absentStudents: { name: string; reason?: string }[];
+}
+
 interface Student {
   id: string;
   name: string;
@@ -130,18 +138,83 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
   const [attendanceRecords, setAttendanceRecords] = useState<Record<string, AttendanceRecord>>({});
   const [attendanceSearchTerm, setAttendanceSearchTerm] = useState('');
   const [savingAttendance, setSavingAttendance] = useState(false);
+  const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userUid) return;
 
+    const reportsQuery = query(collection(db, 'interviewReports'), where('companyUid', '==', userUid), orderBy('interviewDate', 'desc'));
+    const reportsUnsub = onSnapshot(reportsQuery, (snapshot) => {
+      setEnrollmentReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EnrollmentReport)));
+      setLoading(prev => ({ ...prev, reports: false }));
+    });
+
+    const materialsQuery = query(collection(db, 'learningContent'), where('companyUid', '==', userUid));
+    const materialsUnsub = onSnapshot(materialsQuery, (snapshot) => {
+      setLearningMaterials(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LearningMaterial)));
+      setLoading(prev => ({ ...prev, materials: false }));
+    });
+
+    const coursesQuery = query(collection(db, 'courses'), where('companyUid', '==', userUid));
+    const coursesUnsub = onSnapshot(coursesQuery, (snapshot) => {
+      setCourses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course)));
+      setLoading(prev => ({ ...prev, courses: false }));
+    });
+
+    const allEligibleStudentsQuery = query(collection(db, 'users'), where('role', '==', 'student'), where('profileCompleted', '==', true));
+    const studentsUnsub = onSnapshot(allEligibleStudentsQuery, (snapshot) => {
+      setStudents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student)));
+      setLoading(prev => ({ ...prev, students: false }));
+    });
+
+    const certsQuery = query(collection(db, 'certificates'), where('companyUid', '==', userUid));
+    const certsUnsub = onSnapshot(certsQuery, (snapshot) => {
+      setCertificates(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Certificate)));
+      setLoading(prev => ({ ...prev, certificates: false }));
+    });
+
+    const enrollmentsQuery = query(collection(db, 'enrollments'), where('companyUid', '==', userUid));
+    const enrollmentsUnsub = onSnapshot(enrollmentsQuery, (snapshot) => {
+      setEnrollments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Enrollment)));
+      setLoading(prev => ({ ...prev, enrollments: false }));
+    });
+
+    const timeInterval = setInterval(() => {
+      setCurrentDateTime(new Date().toLocaleString());
+    }, 1000);
+
+    const fetchWeather = async () => {
+      const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+      if (!apiKey) {
+        setWeather(null);
+        return;
+      }
+      try {
+        const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Harare&units=imperial&appid=${apiKey}`);
+        if (!response.ok) throw new Error('Weather data not available');
+        const data = await response.json();
+        if (data?.main?.temp && data?.weather?.[0]) {
+          setWeather({
+            temp: Math.round(data.main.temp),
+            description: data.weather[0].description
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching weather:", err);
+        setWeather(null);
+      }
+    };
+    fetchWeather();
+
+    setAttendanceSummary(null);
     setLoading(prev => ({ ...prev, attendance: true }));
     const attendanceQuery = query(
       collection(db, 'attendance'),
       where('companyUid', '==', userUid),
       where('date', '==', selectedDate)
     );
-
-    const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
+    const attendanceUnsub = onSnapshot(attendanceQuery, (snapshot) => {
       const records: Record<string, AttendanceRecord> = {};
       snapshot.forEach(doc => {
         const data = doc.data() as AttendanceRecord;
@@ -155,7 +228,16 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
       setLoading(prev => ({ ...prev, attendance: false }));
     });
 
-    return () => unsubscribe();
+    return () => {
+      reportsUnsub();
+      materialsUnsub();
+      coursesUnsub();
+      studentsUnsub();
+      certsUnsub();
+      enrollmentsUnsub();
+      attendanceUnsub();
+      clearInterval(timeInterval);
+    };
   }, [userUid, selectedDate]);
 
   const handleAttendanceChange = (studentId: string, studentName: string, status: 'Present' | 'Absent' | 'Late') => {
@@ -173,23 +255,15 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     }));
   };
 
-  const handleReasonChange = (studentId: string, reason: string) => {
-    setAttendanceRecords(prev => ({
-      ...prev,
-      [studentId]: {
-        ...prev[studentId],
-        reason: reason
-      }
-    }));
-  };
-
   const handleSaveAttendance = async () => {
     setSavingAttendance(true);
     setUploadSuccess(null);
-    setUploadError(null);
+    setError(null);
     try {
       const batch = writeBatch(db);
-      Object.values(attendanceRecords).forEach(record => {
+      const recordsToSave = Object.values(attendanceRecords);
+
+      recordsToSave.forEach(record => {
         if (record.studentUid && record.date) {
           const docId = `${record.studentUid}_${record.date}`;
           const docRef = doc(db, 'attendance', docId);
@@ -199,130 +273,55 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
       });
       await batch.commit();
       setUploadSuccess("Attendance saved successfully!");
+
+      let present = 0;
+      let absent = 0;
+      let late = 0;
+      const absentStudents: { name: string; reason?: string }[] = [];
+
+      studentsLinkedToThisCompany.forEach(student => {
+        const record = attendanceRecords[student.id];
+        if (record) {
+          switch (record.status) {
+            case 'Present':
+              present++;
+              break;
+            case 'Absent':
+              absent++;
+              absentStudents.push({ name: student.name, reason: record.reason });
+              break;
+            case 'Late':
+              late++;
+              break;
+          }
+        }
+      });
+      
+      setAttendanceSummary({
+        totalStudents: studentsLinkedToThisCompany.length,
+        present,
+        absent,
+        late,
+        absentStudents
+      });
+
     } catch (err: any) {
       console.error("Error saving attendance:", err);
-      setUploadError(`Failed to save attendance: ${err.message}`);
+      setError(`Failed to save attendance: ${err.message}`);
     } finally {
       setSavingAttendance(false);
     }
   };
 
-  useEffect(() => {
-    if (!userUid) return;
-
-    // Fetch Enrollment Reports
-    const reportsQuery = query(
-      collection(db, 'interviewReports'),
-      where('companyUid', '==', userUid),
-      orderBy('interviewDate', 'desc')
-    );
-    const reportsUnsub = onSnapshot(reportsQuery, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EnrollmentReport));
-      setEnrollmentReports(data);
-      setLoading(prev => ({ ...prev, reports: false }));
-    });
-
-    // Fetch Learning Materials
-    const materialsQuery = query(
-      collection(db, 'learningContent'),
-      where('companyUid', '==', userUid)
-    );
-    const materialsUnsub = onSnapshot(materialsQuery, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LearningMaterial));
-      setLearningMaterials(data);
-      setLoading(prev => ({ ...prev, materials: false }));
-    });
-
-    // Fetch Courses
-    const coursesQuery = query(
-      collection(db, 'courses'),
-      where('companyUid', '==', userUid)
-    );
-    const coursesUnsub = onSnapshot(coursesQuery, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course));
-      setCourses(data);
-      setLoading(prev => ({ ...prev, courses: false }));
-    });
-
-    // Fetch all eligible students
-    const allEligibleStudentsQuery = query(
-      collection(db, 'users'),
-      where('role', '==', 'student'),
-      where('profileCompleted', '==', true)
-    );
-    const studentsUnsub = onSnapshot(allEligibleStudentsQuery, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
-      setStudents(data);
-      setLoading(prev => ({ ...prev, students: false }));
-    });
-
-    // Fetch Certificates
-    const certsQuery = query(
-      collection(db, 'certificates'),
-      where('companyUid', '==', userUid)
-    );
-    const certsUnsub = onSnapshot(certsQuery, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Certificate));
-      setCertificates(data);
-      setLoading(prev => ({ ...prev, certificates: false }));
-    });
-
-    // Fetch Enrollments
-    const enrollmentsQuery = query(
-      collection(db, 'enrollments'),
-      where('companyUid', '==', userUid)
-    );
-    const enrollmentsUnsub = onSnapshot(enrollmentsQuery, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Enrollment));
-      setEnrollments(data);
-      setLoading(prev => ({ ...prev, enrollments: false }));
-    });
-
-    // Update current time
-    const timeInterval = setInterval(() => {
-      setCurrentDateTime(new Date().toLocaleString());
-    }, 1000);
-
-    // Simulate weather data fetch
-    const fetchWeather = async () => {
-      // Use the environment variable for the API key
-      const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
-      if (!apiKey) {
-        console.warn("OpenWeather API key is missing. Weather widget will be disabled.");
-        setWeather(null); // Set to null to show 'unavailable' message
-        return;
+  const handleReasonChange = (studentId: string, reason: string) => {
+    setAttendanceRecords(prev => ({
+      ...prev,
+      [studentId]: {
+        ...prev[studentId],
+        reason: reason
       }
-      try {
-        const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Harare&units=imperial&appid=${apiKey}`);
-        if (!response.ok) {
-            throw new Error('Weather data not available');
-        }
-        const data = await response.json();
-        // Safely access the data to prevent crashes
-        if (data && data.main && data.weather && data.weather[0]) {
-            setWeather({
-                temp: Math.round(data.main.temp),
-                description: data.weather[0].description
-            });
-        }
-      } catch (err) {
-        console.error("Error fetching weather:", err);
-        setWeather(null); // Set to null on error
-      }
-    };
-
-    fetchWeather();
-
-    return () => {
-      reportsUnsub();
-      materialsUnsub();
-      coursesUnsub();
-      studentsUnsub();
-      certsUnsub();
-      enrollmentsUnsub();
-      clearInterval(timeInterval);
-    };
-  }, [userUid]);
+    }));
+  };
 
   const handleSignOut = async () => {
     try {
@@ -505,7 +504,6 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     }
   };
 
-  // Filter students for the attendance list
   const studentsLinkedToThisCompany = students.filter(student => student.companyUid === userUid);
   const filteredAttendanceStudents = studentsLinkedToThisCompany.filter(student => 
     student.name.toLowerCase().includes(attendanceSearchTerm.toLowerCase()) ||
@@ -519,7 +517,6 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
            report.reportSummary?.toLowerCase().includes(lowerSearchTerm);
   });
 
-  // Group learning materials by course
   const materialsByCourse = learningMaterials.reduce((acc, material) => {
     const courseId = material.courseId || 'uncategorized';
     if (!acc[courseId]) {
@@ -1042,10 +1039,47 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
                         {savingAttendance ? 'Saving...' : 'Save Attendance'}
                     </button>
                 </div>
+                {attendanceSummary && (
+        <div className="mt-8 bg-gray-50 p-6 rounded-lg">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Attendance Report</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+              <p className="text-sm text-gray-500">Total Students</p>
+              <p className="text-2xl font-bold">{attendanceSummary.totalStudents}</p>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg shadow-sm border border-green-200">
+              <p className="text-sm text-green-600">Present</p>
+              <p className="text-2xl font-bold text-green-700">{attendanceSummary.present}</p>
+            </div>
+            <div className="bg-red-50 p-4 rounded-lg shadow-sm border border-red-200">
+              <p className="text-sm text-red-600">Absent</p>
+              <p className="text-2xl font-bold text-red-700">{attendanceSummary.absent}</p>
+            </div>
+            <div className="bg-yellow-50 p-4 rounded-lg shadow-sm border border-yellow-200">
+              <p className="text-sm text-yellow-600">Late</p>
+              <p className="text-2xl font-bold text-yellow-700">{attendanceSummary.late}</p>
+            </div>
+          </div>
+
+          {attendanceSummary.absentStudents.length > 0 && (
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+              <h4 className="font-medium text-gray-700 mb-2">Absent Students</h4>
+              <div className="space-y-2">
+                {attendanceSummary.absentStudents.map((student, index) => (
+                  <div key={index} className="flex justify-between items-center border-b pb-2 last:border-b-0">
+                    <p className="text-sm font-medium">{student.name}</p>
+                    <p className="text-xs text-gray-500">{student.reason || "No reason provided"}</p>
+                  </div>
+                ))}
               </div>
             </div>
           )}
-
+        </div>
+      )}
+    </div>
+  </div>
+)}
+             
           {activeTab === 'certificates' && (
             <div className="space-y-6">
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
