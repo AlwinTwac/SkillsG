@@ -258,32 +258,34 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
       }
     }));
   };  
-   const handleDeleteMaterial = async (materialId: string, fileUrl: string): Promise<void> => {
-    // Use a simple confirmation before deleting
-    if (!window.confirm("Are you sure you want to delete this learning material? This action cannot be undone.")) {
-      return;
-    }
+  const handleDeleteMaterial = async (materialId: string, fileUrl: string): Promise<void> => {
+  if (!window.confirm("Are you sure you want to delete this learning material? This action cannot be undone.")) {
+    return;
+  }
 
-    try {
-      // 1. Create a reference to the file in Cloud Storage from its URL
-      const fileRef = ref(storage, fileUrl);
-      
-      // 2. Delete the file from Cloud Storage
-      await deleteObject(fileRef);
+  try {
+    // Optimistically update the UI by removing the material from local state
+    setLearningMaterials(prevMaterials => prevMaterials.filter(material => material.id !== materialId));
+    
+    // Delete the file from Cloud Storage
+    const fileRef = ref(storage, fileUrl);
+    await deleteObject(fileRef);
 
-      // 3. Delete the document from Firestore
-      await deleteDoc(doc(db, 'learningContent', materialId));
+    // Delete the document from Firestore
+    await deleteDoc(doc(db, 'learningContent', materialId));
 
-      // The onSnapshot listener will now automatically detect this change and update the UI.
-      setUploadSuccess("Material deleted successfully!");
-
-    } catch (err: any) {
-      console.error("Error deleting material:", err);
-      // Use setError to display the error message to the user
-      setError(`Failed to delete material: ${err.message}`);
-    }
-  };
-
+    setUploadSuccess("Material deleted successfully!");
+  } catch (err: any) {
+    console.error("Error deleting material:", err);
+    // If there's an error, revert the optimistic update
+    // You might want to fetch the materials again here to ensure consistency
+    const materialsQuery = query(collection(db, 'learningContent'), where('companyUid', '==', userUid));
+    const snapshot = await getDocs(materialsQuery);
+    setLearningMaterials(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LearningMaterial)));
+    
+    setError(`Failed to delete material: ${err.message}`);
+  }
+};
   const handleSaveAttendance = async () => {
     setSavingAttendance(true);
     setUploadSuccess(null);
