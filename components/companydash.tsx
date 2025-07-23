@@ -141,6 +141,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
   const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  
   useEffect(() => {
     if (!userUid) return;
     
@@ -244,6 +245,38 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     clearInterval(timeInterval);
   };
 }, [userUid, selectedDate]);
+
+useEffect(() => {
+  if (activeTab === 'content') {
+    const verifyMaterials = async () => {
+      const verificationResults = await Promise.all(
+        learningMaterials.map(async material => {
+          try {
+            const fileRef = ref(storage, material.fileUrl);
+            await getDownloadURL(fileRef);
+            return { valid: true, material };
+          } catch {
+            return { valid: false, material };
+          }
+        })
+      );
+
+      // Filter out invalid materials and extract just the material objects
+      const validMaterials = verificationResults
+        .filter(result => result.valid)
+        .map(result => result.material);
+
+      // Only update state if some materials were invalid
+      if (validMaterials.length !== learningMaterials.length) {
+        setLearningMaterials(validMaterials);
+      }
+    };
+
+    if (learningMaterials.length > 0) {
+      verifyMaterials();
+    }
+  }
+}, [activeTab, learningMaterials]);
   const handleAttendanceChange = (studentId: string, studentName: string, status: 'Present' | 'Absent' | 'Late') => {
     setAttendanceRecords(prev => ({
       ...prev,
@@ -264,21 +297,21 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
   }
 
   try {
-    // Optimistically update the UI by removing the material from local state
-    setLearningMaterials(prevMaterials => prevMaterials.filter(material => material.id !== materialId));
+    // Optimistically remove from UI
+    setLearningMaterials(prev => prev.filter(material => material.id !== materialId));
     
-    // Delete the file from Cloud Storage
+    // Delete from Firestore first
+    await deleteDoc(doc(db, 'learningContent', materialId));
+    
+    // Then delete from Storage
     const fileRef = ref(storage, fileUrl);
     await deleteObject(fileRef);
-
-    // Delete the document from Firestore
-    await deleteDoc(doc(db, 'learningContent', materialId));
 
     setUploadSuccess("Material deleted successfully!");
   } catch (err: any) {
     console.error("Error deleting material:", err);
-    // If there's an error, revert the optimistic update
-    // You might want to fetch the materials again here to ensure consistency
+    
+    // Re-fetch materials if error occurs
     const materialsQuery = query(collection(db, 'learningContent'), where('companyUid', '==', userUid));
     const snapshot = await getDocs(materialsQuery);
     setLearningMaterials(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LearningMaterial)));
@@ -593,694 +626,707 @@ const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, s
   }, {} as Record<string, { course?: Course; materials: LearningMaterial[] }>);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-teal-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-teal-600 p-6 text-white">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              <ClipboardList className="w-8 h-8 mr-3" />
-              <div>
-                <h2 className="text-2xl font-bold">Kimtronix Global</h2>
-                <p className="text-blue-100">
-                  Welcome back, {userDisplayName || userEmail?.split('@')[0] || 'Admin'}!
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleSignOut}
-              className="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-black rounded-lg flex items-center transition-all duration-300"
-            >
-              <LogOut className="w-4 h-4 mr-2" /> Sign Out
-            </button>
-          </div>
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="border-b border-gray-200 bg-gray-50 overflow-x-auto">
-          <nav className="flex space-x-8 px-6">
-            {['overview', 'content', 'reports', 'students', 'attendance', 'certificates', 'courses'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {/* Tab Content */}
-        <div className="p-6">
-          {uploadError && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4">
-              {uploadError}
-            </div>
-          )}
-          {uploadSuccess && (
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-md mb-4">
-              {uploadSuccess}
-            </div>
-          )}
-
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h1 className="text-2xl font-bold text-gray-800 mb-2">Hello, Admin!</h1>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h3 className="font-medium text-blue-800">Date & Time</h3>
-                    <p className="text-gray-700">{currentDateTime || 'Loading...'}</p>
-                  </div>
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <h3 className="font-medium text-green-800">Weather</h3>
-                    {weather ? (
-                      <p className="text-gray-700">
-                        {weather.description}, {weather.temp}°F
-                      </p>
-                    ) : (
-                      <p className="text-gray-700">Loading weather...</p>
-                    )}
-                  </div>
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <h3 className="font-medium text-purple-800">Quick Stats</h3>
-                    <p className="text-gray-700">
-                      {studentsLinkedToThisCompany.length} Students | {courses.length} Courses | {enrollments.length} Enrollments
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <h3 className="font-medium text-lg mb-3">Recent Reports</h3>
-                    {enrollmentReports.slice(0, 3).map(report => (
-                      <div key={report.id} className="mb-3 pb-3 border-b border-gray-100">
-                        <p className="font-medium">{report.studentName}</p>
-                        <p className="text-sm text-gray-600">{report.interviewDate}</p>
-                      </div>
-                    ))}
-                    {enrollmentReports.length === 0 && (
-                      <p className="text-gray-500">No recent reports</p>
-                    )}
-                  </div>
-                  <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <h3 className="font-medium text-lg mb-3">Recent Learning Materials</h3>
-                    {learningMaterials.slice(0, 3).map(material => (
-                      <div key={material.id} className="mb-3 pb-3 border-b border-gray-100">
-                        <p className="font-medium">{material.title}</p>
-                        <p className="text-sm text-gray-600">
-                          {new Date(material.uploadedAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
-                    {learningMaterials.length === 0 && (
-                      <p className="text-gray-500">No recent materials</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'content' && (
-    <div className="space-y-8">
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">Upload Learning Material</h3>
-        <form onSubmit={handleContentUpload} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                <input
-                  type="text"
-                  value={newContent.title || ''}
-                  onChange={(e) => setNewContent({...newContent, title: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded-lg"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  value={newContent.description || ''}
-                  onChange={(e) => setNewContent({...newContent, description: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded-lg"
-                  rows={3}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Course (Required)</label>
-                <select
-                  value={newContent.courseId || ''}
-                  onChange={(e) => setNewContent({...newContent, courseId: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded-lg"
-                  required
-                >
-                  <option value="">Select a course</option>
-                  {courses.map(course => (
-                    <option key={course.id} value={course.id}>{course.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
-                <input
-                  type="file"
-                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                  className="w-full p-2 border border-gray-300 rounded-lg"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                <select
-                  value={newContent.type || 'pdf'}
-                  onChange={(e) => setNewContent({...newContent, type: e.target.value as any})}
-                  className="w-full p-2 border border-gray-300 rounded-lg"
-                >
-                  <option value="pdf">PDF</option>
-                  <option value="video">Video</option>
-                  <option value="image">Image</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
+  <div className="min-h-screen bg-gradient-to-br from-blue-50 to-teal-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="max-w-7xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-teal-600 p-6 text-white">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center">
+            <ClipboardList className="w-8 h-8 mr-3" />
+            <div>
+              <h2 className="text-2xl font-bold">Kimtronix Global</h2>
+              <p className="text-blue-100">
+                Welcome back, {userDisplayName || userEmail?.split('@')[0] || 'Admin'}!
+              </p>
             </div>
           </div>
           <button
-            type="submit"
-            disabled={uploading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            onClick={handleSignOut}
+            className="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-black rounded-lg flex items-center transition-all duration-300"
           >
-            {uploading ? 'Uploading...' : 'Upload Material'}
+            <LogOut className="w-4 h-4 mr-2" /> Sign Out
           </button>
-        </form>
+        </div>
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">Learning Materials</h3>
-        {loading.materials ? (
-          <div>Loading...</div>
-        ) : (
-          <div className="space-y-8">
-            {Object.entries(materialsByCourse).map(([courseId, { course, materials }]) => (
-              <div key={courseId} className="border rounded-lg p-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-lg font-semibold">
-                    {course?.name || 'Uncategorized Materials'}
-                  </h4>
-                  {course?.description && (
-                    <p className="text-sm text-gray-600">{course.description}</p>
-                  )}
-                </div>
-                
-                {materials.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4">No materials for this course</p>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {materials.map(material => (
-                      <div key={material.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <div className="flex items-center mb-2">
-                          {material.type === 'pdf' && <FileText className="text-red-500 mr-2" />}
-                          {material.type === 'video' && <Video className="text-blue-500 mr-2" />}
-                          {material.type === 'image' && <img src={material.fileUrl} className="w-6 h-6 mr-2" alt="Thumbnail" />}
-                          {material.type === 'other' && <BookOpen className="text-gray-500 mr-2" />}
-                          <h4 className="font-medium">{material.title}</h4>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-2">{material.description}</p>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-500">
-                            Uploaded: {new Date(material.uploadedAt).toLocaleDateString()}
-                          </span>
-                          <div className="flex items-center space-x-4">
-                            <a
-                              href={material.fileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 text-sm hover:underline"
-                            >
-                              View Material
-                            </a>
-                            {/* --- THIS IS THE NEW DELETE BUTTON --- */}
-                            <button
-                              onClick={() => handleDeleteMaterial(material.id!, material.fileUrl)}
-                              className="text-red-600 hover:text-red-800 text-sm font-medium"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200 bg-gray-50 overflow-x-auto">
+        <nav className="flex space-x-8 px-6">
+          {['overview', 'content', 'reports', 'students', 'attendance', 'certificates', 'courses'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === tab
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      <div className="p-6">
+        {uploadError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4">
+            {uploadError}
           </div>
         )}
-      </div>
-    </div>
-  )}
+        {uploadSuccess && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-md mb-4">
+            {uploadSuccess}
+          </div>
+        )}
 
-          {activeTab === 'reports' && (
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-semibold text-gray-800">Enrollment Reports</h3>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search reports..."
-                      value={enrollmentReportSearchTerm}
-                      onChange={(e) => setEnrollmentReportSearchTerm(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h1 className="text-2xl font-bold text-gray-800 mb-2">Hello, Admin!</h1>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h3 className="font-medium text-blue-800">Date & Time</h3>
+                  <p className="text-gray-700">{currentDateTime || 'Loading...'}</p>
                 </div>
-                
-                {loading.reports ? (
-                  <div>Loading reports...</div>
-                ) : filteredEnrollmentReports.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interview Date</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Summary</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredEnrollmentReports.map(report => (
-                          <tr key={report.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="font-medium">{report.studentName}</div>
-                              <div className="text-sm text-gray-500">{report.studentEmail}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              {new Date(report.interviewDate).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              {report.interviewScore ? (
-                                <span className={`px-2 py-1 rounded-full text-xs ${
-                                  report.interviewScore >= 80 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : report.interviewScore >= 60 
-                                      ? 'bg-yellow-100 text-yellow-800' 
-                                      : 'bg-red-100 text-red-800'
-                                }`}>
-                                  {report.interviewScore}/100
-                                </span>
-                              ) : (
-                                <span className="text-gray-500">N/A</span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="text-sm text-gray-900 line-clamp-2">{report.reportSummary}</div>
-                              {report.recommendedLearningPath && (
-                                <div className="mt-2">
-                                  <span className="text-xs font-medium">Recommended Path:</span>
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    {report.recommendedLearningPath.map(path => (
-                                      <span key={path} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                        {path}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-lg font-medium text-gray-900">No reports found</h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {enrollmentReportSearchTerm 
-                        ? "Try a different search term" 
-                        : "There are currently no enrollment reports to display"}
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <h3 className="font-medium text-green-800">Weather</h3>
+                  {weather ? (
+                    <p className="text-gray-700">
+                      {weather.description}, {weather.temp}°F
                     </p>
-                  </div>
-                )}
+                  ) : (
+                    <p className="text-gray-700">Loading weather...</p>
+                  )}
+                </div>
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <h3 className="font-medium text-purple-800">Quick Stats</h3>
+                  <p className="text-gray-700">
+                    {studentsLinkedToThisCompany.length} Students | {courses.length} Courses | {enrollments.length} Enrollments
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-4 rounded-lg border border-gray-200">
+                  <h3 className="font-medium text-lg mb-3">Recent Reports</h3>
+                  {enrollmentReports.slice(0, 3).map(report => (
+                    <div key={report.id} className="mb-3 pb-3 border-b border-gray-100">
+                      <p className="font-medium">{report.studentName}</p>
+                      <p className="text-sm text-gray-600">{report.interviewDate}</p>
+                    </div>
+                  ))}
+                  {enrollmentReports.length === 0 && (
+                    <p className="text-gray-500">No recent reports</p>
+                  )}
+                </div>
+                <div className="bg-white p-4 rounded-lg border border-gray-200">
+                  <h3 className="font-medium text-lg mb-3">Recent Learning Materials</h3>
+                  {learningMaterials.slice(0, 3).map(material => (
+                    <div key={material.id} className="mb-3 pb-3 border-b border-gray-100">
+                      <p className="font-medium">{material.title}</p>
+                      <p className="text-sm text-gray-600">
+                        {new Date(material.uploadedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))}
+                  {learningMaterials.length === 0 && (
+                    <p className="text-gray-500">No recent materials</p>
+                  )}
+                </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {activeTab === 'students' && (
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">Student Management</h3>
-                <div className="mb-6 border-b pb-4">
-                  <h4 className="text-lg font-semibold text-gray-700 mb-3">Enroll Student in Course</h4>
-                  <p className="text-sm text-gray-600 mb-4">Select a student who has completed the AI interview and enroll them into one of your courses. This will link them to your company.</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {activeTab === 'content' && (
+          <div className="space-y-8">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">Upload Learning Material</h3>
+              <form onSubmit={handleContentUpload} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Select Student (AI Interview Completed)</label>
-                      <select
-                        value={studentToEnrollId}
-                        onChange={(e) => setStudentToEnrollId(e.target.value)}
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                      <input
+                        type="text"
+                        value={newContent.title || ''}
+                        onChange={(e) => setNewContent({...newContent, title: e.target.value})}
                         className="w-full p-2 border border-gray-300 rounded-lg"
-                      >
-                        <option value="">Choose Student</option>
-                        {students.map(student => (
-                          <option key={student.id} value={student.id}>{student.name} ({student.email})</option>
-                        ))}
-                      </select>
+                        required
+                      />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Select Course</label>
-                      <select
-                        value={courseToEnrollId}
-                        onChange={(e) => setCourseToEnrollId(e.target.value)}
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                      <textarea
+                        value={newContent.description || ''}
+                        onChange={(e) => setNewContent({...newContent, description: e.target.value})}
                         className="w-full p-2 border border-gray-300 rounded-lg"
+                        rows={3}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Course (Required)</label>
+                      <select
+                        value={newContent.courseId || ''}
+                        onChange={(e) => setNewContent({...newContent, courseId: e.target.value})}
+                        className="w-full p-2 border border-gray-300 rounded-lg"
+                        required
                       >
-                        <option value="">Choose Course</option>
+                        <option value="">Select a course</option>
                         {courses.map(course => (
                           <option key={course.id} value={course.id}>{course.name}</option>
                         ))}
                       </select>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleEnrollStudent(studentToEnrollId, courseToEnrollId)}
-                    disabled={enrollingStudent || !studentToEnrollId || !courseToEnrollId}
-                    className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                  >
-                    {enrollingStudent ? 'Enrolling...' : 'Enroll Student'}
-                  </button>
-                </div>
-
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">Students Enrolled with Your Company</h3>
-                {loading.students ? (
-                  <div>Loading students...</div>
-                ) : studentsLinkedToThisCompany.length === 0 ? (
-                  <div className="text-center py-8 text-gray-600">
-                    <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                    <p>No students are currently linked to your company. Enroll students above to see them here.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profile</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enrolled Courses</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {studentsLinkedToThisCompany.map(student => (
-                          <tr key={student.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">{student.name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">{student.email}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 py-1 text-xs rounded-full ${
-                                student.profileVisibility === 'public' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}>
-                                {student.profileVisibility}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                                {enrollments.filter(e => e.studentUid === student.id).map(e => (
-                                    <span key={e.id} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1 mb-1">
-                                        {courses.find(c => c.id === e.courseId)?.name || 'N/A'}
-                                    </span>
-                                ))}
-                                {enrollments.filter(e => e.studentUid === student.id).length === 0 && 'None'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <button
-                                onClick={() => recommendCandidate(student.id)}
-                                className="text-blue-600 hover:text-blue-900 mr-3"
-                              >
-                                <UserCheck className="inline mr-1" /> Recommend
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'attendance' && (
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                    <h3 className="text-xl font-semibold text-gray-800 flex items-center">
-                        <CalendarDays className="w-6 h-6 mr-2 text-blue-600"/>
-                        Record Attendance
-                    </h3>
-                    <div className="flex items-center gap-4">
-                        <input
-                            type="date"
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                            className="p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Search students..."
-                                value={attendanceSearchTerm}
-                                onChange={(e) => setAttendanceSearchTerm(e.target.value)}
-                                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {loading.attendance ? (
-                    <div>Loading attendance...</div>
-                ) : (
-                    <div className="space-y-4">
-                        {filteredAttendanceStudents.map(student => {
-                            const record = attendanceRecords[student.id];
-                            return (
-                                <div key={student.id} className="p-4 border rounded-lg flex flex-col md:flex-row items-center justify-between gap-4">
-                                    <div>
-                                        <p className="font-medium text-gray-800">{student.name}</p>
-                                        <p className="text-sm text-gray-500">{student.email}</p>
-                                    </div>
-                                    <div className="flex flex-col md:flex-row items-center gap-2">
-                                        <div className="flex items-center gap-2">
-                                            <button onClick={() => handleAttendanceChange(student.id, student.name, 'Present')} className={`px-3 py-1 text-sm rounded-full flex items-center ${record?.status === 'Present' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}`}><CheckCircle className="w-4 h-4 mr-1"/>Present</button>
-                                            <button onClick={() => handleAttendanceChange(student.id, student.name, 'Absent')} className={`px-3 py-1 text-sm rounded-full flex items-center ${record?.status === 'Absent' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}`}><XCircle className="w-4 h-4 mr-1"/>Absent</button>
-                                            <button onClick={() => handleAttendanceChange(student.id, student.name, 'Late')} className={`px-3 py-1 text-sm rounded-full flex items-center ${record?.status === 'Late' ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-700'}`}><Clock className="w-4 h-4 mr-1"/>Late</button>
-                                        </div>
-                                        {record?.status === 'Absent' && (
-                                            <input
-                                                type="text"
-                                                placeholder="Reason for absence..."
-                                                value={record.reason || ''}
-                                                onChange={(e) => handleReasonChange(student.id, e.target.value)}
-                                                className="p-1 border border-gray-300 rounded-md text-sm w-full md:w-48"
-                                            />
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                        {filteredAttendanceStudents.length === 0 && (
-                            <p className="text-center text-gray-500 py-4">No students found.</p>
-                        )}
-                    </div>
-                )}
-                <div className="mt-6 flex justify-end">
-                    <button onClick={handleSaveAttendance} disabled={savingAttendance} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                        {savingAttendance ? 'Saving...' : 'Save Attendance'}
-                    </button>
-                </div>
-                {attendanceSummary && (
-        <div className="mt-8 bg-gray-50 p-6 rounded-lg">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Attendance Report</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <p className="text-sm text-gray-500">Total Students</p>
-              <p className="text-2xl font-bold">{attendanceSummary.totalStudents}</p>
-            </div>
-            <div className="bg-green-50 p-4 rounded-lg shadow-sm border border-green-200">
-              <p className="text-sm text-green-600">Present</p>
-              <p className="text-2xl font-bold text-green-700">{attendanceSummary.present}</p>
-            </div>
-            <div className="bg-red-50 p-4 rounded-lg shadow-sm border border-red-200">
-              <p className="text-sm text-red-600">Absent</p>
-              <p className="text-2xl font-bold text-red-700">{attendanceSummary.absent}</p>
-            </div>
-            <div className="bg-yellow-50 p-4 rounded-lg shadow-sm border border-yellow-200">
-              <p className="text-sm text-yellow-600">Late</p>
-              <p className="text-2xl font-bold text-yellow-700">{attendanceSummary.late}</p>
-            </div>
-          </div>
-
-          {attendanceSummary.absentStudents.length > 0 && (
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <h4 className="font-medium text-gray-700 mb-2">Absent Students</h4>
-              <div className="space-y-2">
-                {attendanceSummary.absentStudents.map((student, index) => (
-                  <div key={index} className="flex justify-between items-center border-b pb-2 last:border-b-0">
-                    <p className="text-sm font-medium">{student.name}</p>
-                    <p className="text-xs text-gray-500">{student.reason || "No reason provided"}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  </div>
-)}
-             
-          {activeTab === 'certificates' && (
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">Generate Certificate</h3>
-                <form onSubmit={handleCreateCertificate} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Student</label>
-                      <select
-                        value={newCertificate.studentUid || ''}
-                        onChange={(e) => setNewCertificate({...newCertificate, studentUid: e.target.value})}
-                        className="w-full p-2 border border-gray-300 rounded-lg"
-                        required
-                      >
-                        <option value="">Select a student</option>
-                        {students.map(student => (
-                          <option key={student.id} value={student.id}>{student.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
                       <input
-                        type="text"
-                        value={newCertificate.courseName || ''}
-                        onChange={(e) => setNewCertificate({...newCertificate, courseName: e.target.value})}
+                        type="file"
+                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                         className="w-full p-2 border border-gray-300 rounded-lg"
                         required
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                      <select
+                        value={newContent.type || 'pdf'}
+                        onChange={(e) => setNewContent({...newContent, type: e.target.value as any})}
+                        className="w-full p-2 border border-gray-300 rounded-lg"
+                      >
+                        <option value="pdf">PDF</option>
+                        <option value="video">Video</option>
+                        <option value="image">Image</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
                   </div>
-                  <button
-                    type="submit"
-                    disabled={uploading}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                  >
-                    {uploading ? 'Generating...' : 'Generate Certificate'}
-                  </button>
-                </form>
-              </div>
-
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">Issued Certificates</h3>
-                {loading.certificates ? (
-                  <div>Loading...</div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {certificates.map(cert => (
-                          <tr key={cert.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">{cert.studentName}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">{cert.courseName}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              {new Date(cert.completionDate).toLocaleDateString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={uploading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {uploading ? 'Uploading...' : 'Upload Material'}
+                </button>
+              </form>
             </div>
-          )}
 
-          {activeTab === 'courses' && (
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">Create New Course</h3>
-                <form onSubmit={handleCreateCourse} className="space-y-4">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">Learning Materials</h3>
+              {loading.materials ? (
+                <div>Loading...</div>
+              ) : (
+                <div className="space-y-8">
+                  {Object.entries(materialsByCourse).map(([courseId, { course, materials }]) => (
+                    <div key={courseId} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-lg font-semibold">
+                          {course?.name || 'Uncategorized Materials'}
+                        </h4>
+                        {course?.description && (
+                          <p className="text-sm text-gray-600">{course.description}</p>
+                        )}
+                      </div>
+                      
+                      {materials.length === 0 ? (
+                        <p className="text-gray-500 text-center py-4">No materials for this course</p>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {materials.map(material => {
+                            if (!material?.id || !material.fileUrl) return null;
+
+                            return (
+                              <div key={material.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                                <div className="flex items-center mb-2">
+                                  {material.type === 'pdf' && <FileText className="text-red-500 mr-2" />}
+                                  {material.type === 'video' && <Video className="text-blue-500 mr-2" />}
+                                  {material.type === 'image' && <img src={material.fileUrl} className="w-6 h-6 mr-2" alt="Thumbnail" />}
+                                  {material.type === 'other' && <BookOpen className="text-gray-500 mr-2" />}
+                                  <h4 className="font-medium">{material.title}</h4>
+                                </div>
+                                <p className="text-sm text-gray-600 mb-2">{material.description}</p>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs text-gray-500">
+                                    Uploaded: {new Date(material.uploadedAt).toLocaleDateString()}
+                                  </span>
+                                  <div className="flex items-center space-x-4">
+                                    <a
+                                      href={material.fileUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 text-sm hover:underline"
+                                      onClick={async (e) => {
+                                        e.preventDefault();
+                                        try {
+                                          const fileRef = ref(storage, material.fileUrl);
+                                          await getDownloadURL(fileRef);
+                                          window.open(material.fileUrl, '_blank');
+                                        } catch (error) {
+                                          setError('This material is no longer available');
+                                          setLearningMaterials(prev => prev.filter(m => m.id !== material.id));
+                                        }
+                                      }}
+                                    >
+                                      View Material
+                                    </a>
+                                    <button
+                                      onClick={() => material.id && handleDeleteMaterial(material.id, material.fileUrl)}
+                                      className="text-red-600 hover:text-red-800 text-sm font-medium"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'reports' && (
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-gray-800">Enrollment Reports</h3>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search reports..."
+                    value={enrollmentReportSearchTerm}
+                    onChange={(e) => setEnrollmentReportSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+              
+              {loading.reports ? (
+                <div>Loading reports...</div>
+              ) : filteredEnrollmentReports.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interview Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Summary</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredEnrollmentReports.map(report => (
+                        <tr key={report.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="font-medium">{report.studentName}</div>
+                            <div className="text-sm text-gray-500">{report.studentEmail}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {new Date(report.interviewDate).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {report.interviewScore ? (
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                report.interviewScore >= 80 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : report.interviewScore >= 60 
+                                    ? 'bg-yellow-100 text-yellow-800' 
+                                    : 'bg-red-100 text-red-800'
+                              }`}>
+                                {report.interviewScore}/100
+                              </span>
+                            ) : (
+                              <span className="text-gray-500">N/A</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm text-gray-900 line-clamp-2">{report.reportSummary}</div>
+                            {report.recommendedLearningPath && (
+                              <div className="mt-2">
+                                <span className="text-xs font-medium">Recommended Path:</span>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {report.recommendedLearningPath.map(path => (
+                                    <span key={path} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                      {path}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-lg font-medium text-gray-900">No reports found</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {enrollmentReportSearchTerm 
+                      ? "Try a different search term" 
+                      : "There are currently no enrollment reports to display"}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'students' && (
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">Student Management</h3>
+              <div className="mb-6 border-b pb-4">
+                <h4 className="text-lg font-semibold text-gray-700 mb-3">Enroll Student in Course</h4>
+                <p className="text-sm text-gray-600 mb-4">Select a student who has completed the AI interview and enroll them into one of your courses. This will link them to your company.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Course Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Student (AI Interview Completed)</label>
+                    <select
+                      value={studentToEnrollId}
+                      onChange={(e) => setStudentToEnrollId(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="">Choose Student</option>
+                      {students.map(student => (
+                        <option key={student.id} value={student.id}>{student.name} ({student.email})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Course</label>
+                    <select
+                      value={courseToEnrollId}
+                      onChange={(e) => setCourseToEnrollId(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="">Choose Course</option>
+                      {courses.map(course => (
+                        <option key={course.id} value={course.id}>{course.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleEnrollStudent(studentToEnrollId, courseToEnrollId)}
+                  disabled={enrollingStudent || !studentToEnrollId || !courseToEnrollId}
+                  className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {enrollingStudent ? 'Enrolling...' : 'Enroll Student'}
+                </button>
+              </div>
+
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">Students Enrolled with Your Company</h3>
+              {loading.students ? (
+                <div>Loading students...</div>
+              ) : studentsLinkedToThisCompany.length === 0 ? (
+                <div className="text-center py-8 text-gray-600">
+                  <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <p>No students are currently linked to your company. Enroll students above to see them here.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profile</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enrolled Courses</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {studentsLinkedToThisCompany.map(student => (
+                        <tr key={student.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">{student.name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{student.email}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              student.profileVisibility === 'public' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {student.profileVisibility}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                              {enrollments.filter(e => e.studentUid === student.id).map(e => (
+                                  <span key={e.id} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1 mb-1">
+                                      {courses.find(c => c.id === e.courseId)?.name || 'N/A'}
+                                  </span>
+                              ))}
+                              {enrollments.filter(e => e.studentUid === student.id).length === 0 && 'None'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <button
+                              onClick={() => recommendCandidate(student.id)}
+                              className="text-blue-600 hover:text-blue-900 mr-3"
+                            >
+                              <UserCheck className="inline mr-1" /> Recommend
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'attendance' && (
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                  <h3 className="text-xl font-semibold text-gray-800 flex items-center">
+                      <CalendarDays className="w-6 h-6 mr-2 text-blue-600"/>
+                      Record Attendance
+                  </h3>
+                  <div className="flex items-center gap-4">
+                      <input
+                          type="date"
+                          value={selectedDate}
+                          onChange={(e) => setSelectedDate(e.target.value)}
+                          className="p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <input
+                              type="text"
+                              placeholder="Search students..."
+                              value={attendanceSearchTerm}
+                              onChange={(e) => setAttendanceSearchTerm(e.target.value)}
+                              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                          />
+                      </div>
+                  </div>
+              </div>
+
+              {loading.attendance ? (
+                  <div>Loading attendance...</div>
+              ) : (
+                  <div className="space-y-4">
+                      {filteredAttendanceStudents.map(student => {
+                          const record = attendanceRecords[student.id];
+                          return (
+                              <div key={student.id} className="p-4 border rounded-lg flex flex-col md:flex-row items-center justify-between gap-4">
+                                  <div>
+                                      <p className="font-medium text-gray-800">{student.name}</p>
+                                      <p className="text-sm text-gray-500">{student.email}</p>
+                                  </div>
+                                  <div className="flex flex-col md:flex-row items-center gap-2">
+                                      <div className="flex items-center gap-2">
+                                          <button onClick={() => handleAttendanceChange(student.id, student.name, 'Present')} className={`px-3 py-1 text-sm rounded-full flex items-center ${record?.status === 'Present' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}`}><CheckCircle className="w-4 h-4 mr-1"/>Present</button>
+                                          <button onClick={() => handleAttendanceChange(student.id, student.name, 'Absent')} className={`px-3 py-1 text-sm rounded-full flex items-center ${record?.status === 'Absent' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}`}><XCircle className="w-4 h-4 mr-1"/>Absent</button>
+                                          <button onClick={() => handleAttendanceChange(student.id, student.name, 'Late')} className={`px-3 py-1 text-sm rounded-full flex items-center ${record?.status === 'Late' ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-700'}`}><Clock className="w-4 h-4 mr-1"/>Late</button>
+                                      </div>
+                                      {record?.status === 'Absent' && (
+                                          <input
+                                              type="text"
+                                              placeholder="Reason for absence..."
+                                              value={record.reason || ''}
+                                              onChange={(e) => handleReasonChange(student.id, e.target.value)}
+                                              className="p-1 border border-gray-300 rounded-md text-sm w-full md:w-48"
+                                          />
+                                      )}
+                                  </div>
+                              </div>
+                          );
+                      })}
+                      {filteredAttendanceStudents.length === 0 && (
+                          <p className="text-center text-gray-500 py-4">No students found.</p>
+                      )}
+                  </div>
+              )}
+              <div className="mt-6 flex justify-end">
+                  <button onClick={handleSaveAttendance} disabled={savingAttendance} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                      {savingAttendance ? 'Saving...' : 'Save Attendance'}
+                  </button>
+              </div>
+              {attendanceSummary && (
+                <div className="mt-8 bg-gray-50 p-6 rounded-lg">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Attendance Report</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                      <p className="text-sm text-gray-500">Total Students</p>
+                      <p className="text-2xl font-bold">{attendanceSummary.totalStudents}</p>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-lg shadow-sm border border-green-200">
+                      <p className="text-sm text-green-600">Present</p>
+                      <p className="text-2xl font-bold text-green-700">{attendanceSummary.present}</p>
+                    </div>
+                    <div className="bg-red-50 p-4 rounded-lg shadow-sm border border-red-200">
+                      <p className="text-sm text-red-600">Absent</p>
+                      <p className="text-2xl font-bold text-red-700">{attendanceSummary.absent}</p>
+                    </div>
+                    <div className="bg-yellow-50 p-4 rounded-lg shadow-sm border border-yellow-200">
+                      <p className="text-sm text-yellow-600">Late</p>
+                      <p className="text-2xl font-bold text-yellow-700">{attendanceSummary.late}</p>
+                    </div>
+                  </div>
+
+                  {attendanceSummary.absentStudents.length > 0 && (
+                    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                      <h4 className="font-medium text-gray-700 mb-2">Absent Students</h4>
+                      <div className="space-y-2">
+                        {attendanceSummary.absentStudents.map((student, index) => (
+                          <div key={index} className="flex justify-between items-center border-b pb-2 last:border-b-0">
+                            <p className="text-sm font-medium">{student.name}</p>
+                            <p className="text-xs text-gray-500">{student.reason || "No reason provided"}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+             
+        {activeTab === 'certificates' && (
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">Generate Certificate</h3>
+              <form onSubmit={handleCreateCertificate} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Student</label>
+                    <select
+                      value={newCertificate.studentUid || ''}
+                      onChange={(e) => setNewCertificate({...newCertificate, studentUid: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded-lg"
+                      required
+                    >
+                      <option value="">Select a student</option>
+                      {students.map(student => (
+                        <option key={student.id} value={student.id}>{student.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
                     <input
                       type="text"
-                      value={newCourse.name || ''}
-                      onChange={(e) => setNewCourse({...newCourse, name: e.target.value})}
+                      value={newCertificate.courseName || ''}
+                      onChange={(e) => setNewCertificate({...newCertificate, courseName: e.target.value})}
                       className="w-full p-2 border border-gray-300 rounded-lg"
                       required
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea
-                      value={newCourse.description || ''}
-                      onChange={(e) => setNewCourse({...newCourse, description: e.target.value})}
-                      className="w-full p-2 border border-gray-300 rounded-lg"
-                      rows={3}
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={uploading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {uploading ? 'Creating...' : 'Create Course'}
-                  </button>
-                </form>
-              </div>
-
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">Available Courses</h3>
-                {loading.courses ? (
-                  <div>Loading...</div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {courses.map(course => (
-                      <div key={course.id} className="border rounded-lg p-4">
-                        <h4 className="font-medium text-lg mb-2">{course.name}</h4>
-                        <p className="text-sm text-gray-600 mb-3">{course.description}</p>
-                        <div className="flex justify-between items-center text-xs text-gray-500">
-                          <span>Created: {new Date(course.createdDate).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={uploading}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                >
+                  {uploading ? 'Generating...' : 'Generate Certificate'}
+                </button>
+              </form>
             </div>
-          )}
-        </div>
+
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">Issued Certificates</h3>
+              {loading.certificates ? (
+                <div>Loading...</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {certificates.map(cert => (
+                        <tr key={cert.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">{cert.studentName}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{cert.courseName}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {new Date(cert.completionDate).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'courses' && (
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">Create New Course</h3>
+              <form onSubmit={handleCreateCourse} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Course Name</label>
+                  <input
+                    type="text"
+                    value={newCourse.name || ''}
+                    onChange={(e) => setNewCourse({...newCourse, name: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-lg"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea
+                    value={newCourse.description || ''}
+                    onChange={(e) => setNewCourse({...newCourse, description: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-lg"
+                    rows={3}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={uploading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {uploading ? 'Creating...' : 'Create Course'}
+                </button>
+              </form>
+            </div>
+
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">Available Courses</h3>
+              {loading.courses ? (
+                <div>Loading...</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {courses.map(course => (
+                    <div key={course.id} className="border rounded-lg p-4">
+                      <h4 className="font-medium text-lg mb-2">{course.name}</h4>
+                      <p className="text-sm text-gray-600 mb-3">{course.description}</p>
+                      <div className="flex justify-between items-center text-xs text-gray-500">
+                        <span>Created: {new Date(course.createdDate).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
-  );
-}
+  </div>
+)};
