@@ -143,7 +143,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
 
   useEffect(() => {
     if (!userUid) return;
-
+    
     const reportsQuery = query(collection(db, 'interviewReports'), where('companyUid', '==', userUid), orderBy('interviewDate', 'desc'));
     const reportsUnsub = onSnapshot(reportsQuery, (snapshot) => {
       setEnrollmentReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EnrollmentReport)));
@@ -215,31 +215,35 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
       where('date', '==', selectedDate)
     );
     const attendanceUnsub = onSnapshot(attendanceQuery, (snapshot) => {
-      const records: Record<string, AttendanceRecord> = {};
-      snapshot.forEach(doc => {
-        const data = doc.data() as AttendanceRecord;
-        records[data.studentUid] = { id: doc.id, ...data };
-      });
-      setAttendanceRecords(records);
-      setLoading(prev => ({ ...prev, attendance: false }));
-    }, (error) => {
-      console.error("Error fetching attendance:", error);
-      setUploadError("Failed to load attendance records.");
-      setLoading(prev => ({ ...prev, attendance: false }));
+    const records: Record<string, AttendanceRecord> = {};
+    snapshot.forEach(doc => {
+      const data = doc.data() as AttendanceRecord;
+      records[data.studentUid] = { id: doc.id, ...data };
     });
+    setAttendanceRecords(records);
+    
+    // Add this calculation whenever records load
+    const summary = calculateAttendanceSummary(records, studentsLinkedToThisCompany);
+    setAttendanceSummary(summary);
+    
+    setLoading(prev => ({ ...prev, attendance: false }));
+  }, (error) => {
+    console.error("Error fetching attendance:", error);
+    setUploadError("Failed to load attendance records.");
+    setLoading(prev => ({ ...prev, attendance: false }));
+  });
 
-    return () => {
-      reportsUnsub();
-      materialsUnsub();
-      coursesUnsub();
-      studentsUnsub();
-      certsUnsub();
-      enrollmentsUnsub();
-      attendanceUnsub();
-      clearInterval(timeInterval);
-    };
-  }, [userUid, selectedDate]);
-
+  return () => {
+    reportsUnsub();
+    materialsUnsub();
+    coursesUnsub();
+    studentsUnsub();
+    certsUnsub();
+    enrollmentsUnsub();
+    attendanceUnsub();
+    clearInterval(timeInterval);
+  };
+}, [userUid, selectedDate]);
   const handleAttendanceChange = (studentId: string, studentName: string, status: 'Present' | 'Absent' | 'Late') => {
     setAttendanceRecords(prev => ({
       ...prev,
@@ -322,7 +326,38 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
       }
     }));
   };
+const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, students: Student[]) => {
+  let present = 0;
+  let absent = 0;
+  let late = 0;
+  const absentStudents: { name: string; reason?: string }[] = [];
 
+  students.forEach(student => {
+    const record = records[student.id];
+    if (record) {
+      switch (record.status) {
+        case 'Present':
+          present++;
+          break;
+        case 'Absent':
+          absent++;
+          absentStudents.push({ name: student.name, reason: record.reason });
+          break;
+        case 'Late':
+          late++;
+          break;
+      }
+    }
+  });
+
+  return {
+    totalStudents: students.length,
+    present,
+    absent,
+    late,
+    absentStudents
+  };
+};
   const handleSignOut = async () => {
     try {
       await auth.signOut();
