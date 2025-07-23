@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, User as FirebaseAuthUser } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, User as FirebaseAuthUser, signOut } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { User, Mail, Lock, Eye, EyeOff, Briefcase } from 'lucide-react';
@@ -20,27 +20,18 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [companyAccountExists, setCompanyAccountExists] = useState(false);
+
   useEffect(() => {
     const checkCompanyAccount = async () => {
       if (defaultRole === 'company') {
-        setLoading(true);
-        try {
-          const configDocRef = doc(db, 'platformConfig', 'singleton');
-          const configDocSnap = await getDoc(configDocRef);
-          
-          if (configDocSnap.exists()) {
-            setCompanyAccountExists(true);
-            setIsLogin(true); // Force login view if company account exists
-          }
-        } catch (err) {
-          console.error('Error checking for singleton config:', err);
-          // Set error state for user feedback if needed
-        } finally {
-          setLoading(false);
+        const configDocRef = doc(db, 'platformConfig', 'singleton');
+        const configDocSnap = await getDoc(configDocRef);
+        if (configDocSnap.exists()) {
+          setCompanyAccountExists(true);
+          setIsLogin(true);
         }
       }
     };
-
     checkCompanyAccount();
   }, [defaultRole]);
 
@@ -49,24 +40,30 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
     setLoading(true);
     setError('');
 
+    const roleToSet = defaultRole === 'learner' ? 'student' : defaultRole;
+
     try {
-      if (!isLogin && password !== confirmPassword) {
-        throw new Error('Passwords do not match');
-      }
-
-      if (!isLogin && defaultRole === 'company' && companyAccountExists) {
-        throw new Error('Only one company account is allowed. Please login instead.');
-      }
-
-      let userCredential;
       if (isLogin) {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
+        // --- LOGIN LOGIC WITH ROLE CHECK ---
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const userDocRef = doc(db, 'users', userCredential.user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists() && userDocSnap.data().role === roleToSet) {
+          // Role matches, proceed with login
+          onAuthSuccess(userCredential.user);
+        } else {
+          // Role does NOT match, sign out and show an error
+          const existingRole = userDocSnap.exists() ? userDocSnap.data().role : 'another type of';
+          await signOut(auth);
+          throw new Error(`These credentials are for a ${existingRole} account. Please use the correct portal.`);
+        }
       } else {
-        userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        
-        const roleToSet = defaultRole === 'learner' ? 'student' : defaultRole;
-        
-        // Create the user document in Firestore
+        // --- SIGN UP LOGIC ---
+        if (password !== confirmPassword) throw new Error('Passwords do not match');
+        if (roleToSet === 'company' && companyAccountExists) throw new Error('Only one company account is allowed.');
+
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await setDoc(doc(db, 'users', userCredential.user.uid), {
           email: userCredential.user.email,
           createdAt: new Date().toISOString(),
@@ -76,63 +73,13 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
           ...(roleToSet === 'student' && { profileVisibility: 'private', paidForPublic: false }),
           ...(roleToSet === 'company' && { companyName: 'kimtronix' })
         });
-        
-        // If a company account was created, create the singleton lock document
+
         if (roleToSet === 'company') {
-          await setDoc(doc(db, 'platformConfig', 'singleton'), { 
-            companyAccountCreated: true,
-            companyName: 'kimtronix',
-            createdAt: new Date().toISOString()
-          });
+          await setDoc(doc(db, 'platformConfig', 'singleton'), { companyAccountCreated: true });
           setCompanyAccountExists(true);
         }
+        onAuthSuccess(userCredential.user);
       }
-      onAuthSuccess(userCredential.user);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleAuth = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      if (!isLogin && defaultRole === 'company' && companyAccountExists) {
-        throw new Error('Only one company account is allowed. Please login instead.');
-      }
-      const provider = new GoogleAuthProvider();
-      const userCredential = await signInWithPopup(auth, provider);
-      const userDocRef = doc(db, 'users', userCredential.user.uid);
-      const userDocSnap = await getDoc(userDocRef);
-
-      // If user doesn't exist, create them
-      if (!userDocSnap.exists()) {
-        const roleToSet = defaultRole === 'learner' ? 'student' : defaultRole;
-        await setDoc(userDocRef, {
-          email: userCredential.user.email,
-          displayName: userCredential.user.displayName,
-          photoURL: userCredential.user.photoURL,
-          createdAt: new Date().toISOString(),
-          authProvider: 'google',
-          profileCompleted: false,
-          role: roleToSet,
-          ...(roleToSet === 'student' && { profileVisibility: 'private', paidForPublic: false }),
-          ...(roleToSet === 'company' && { companyName: 'kimtronix' })
-        }, { merge: true });
-
-        // If a company account was created, create the singleton lock document
-        if (roleToSet === 'company') {
-            await setDoc(doc(db, 'platformConfig', 'singleton'), { 
-                companyAccountCreated: true,
-                companyName: 'kimtronix',
-                createdAt: new Date().toISOString()
-            });
-            setCompanyAccountExists(true);
-        }
-      }
-      onAuthSuccess(userCredential.user);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -140,6 +87,57 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
     }
   };
   
+  const handleGoogleAuth = async () => {
+    setLoading(true);
+    setError('');
+    const roleToSet = defaultRole === 'learner' ? 'student' : defaultRole;
+
+    try {
+        const provider = new GoogleAuthProvider();
+        const userCredential = await signInWithPopup(auth, provider);
+        const userDocRef = doc(db, 'users', userCredential.user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+            // --- LOGIN LOGIC WITH ROLE CHECK FOR GOOGLE ---
+            if (userDocSnap.data().role === roleToSet) {
+                onAuthSuccess(userCredential.user);
+            } else {
+                const existingRole = userDocSnap.data().role;
+                await signOut(auth);
+                throw new Error(`This Google account is registered as a ${existingRole}. Please use the correct portal.`);
+            }
+        } else {
+            // --- SIGN UP LOGIC FOR GOOGLE ---
+            if (roleToSet === 'company' && companyAccountExists) {
+                await signOut(auth);
+                throw new Error('Only one company account is allowed.');
+            }
+            await setDoc(userDocRef, {
+                email: userCredential.user.email,
+                displayName: userCredential.user.displayName,
+                photoURL: userCredential.user.photoURL,
+                createdAt: new Date().toISOString(),
+                authProvider: 'google',
+                profileCompleted: false,
+                role: roleToSet,
+                ...(roleToSet === 'student' && { profileVisibility: 'private', paidForPublic: false }),
+                ...(roleToSet === 'company' && { companyName: 'kimtronix' })
+            }, { merge: true });
+
+            if (roleToSet === 'company') {
+                await setDoc(doc(db, 'platformConfig', 'singleton'), { companyAccountCreated: true });
+                setCompanyAccountExists(true);
+            }
+            onAuthSuccess(userCredential.user);
+        }
+    } catch (err: any) {
+        setError(err.message);
+    } finally {
+        setLoading(false);
+    }
+  };
+
   const getRoleTheme = () => {
     switch(defaultRole) {
       case 'learner': return { bgGradient: 'from-blue-500 to-indigo-600', textColor: 'text-blue-600', borderColor: 'focus:ring-blue-500', buttonColor: 'bg-blue-600 hover:bg-blue-700', Icon: User };
@@ -206,7 +204,6 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
               <button onClick={() => setIsLogin(!isLogin)} className={`ml-1 ${theme.textColor} hover:underline font-medium`}>
                 {isLogin ? 'Sign up' : 'Sign in'}
               </button>
-              
             )}
           </p>
         </div>

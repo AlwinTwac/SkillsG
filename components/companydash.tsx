@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogOut, UploadCloud, Search, BookOpen, FileText, Video, Users, ClipboardList, BarChart2, FileBarChart2, Award, Mail, UserCheck, CalendarDays, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { auth, db, storage } from '@/lib/firebase';
-import { collection, query, arrayUnion, where, getDocs, doc, setDoc, onSnapshot, orderBy, updateDoc, serverTimestamp, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, onSnapshot,arrayUnion, orderBy, updateDoc, serverTimestamp, writeBatch, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
 
@@ -257,6 +257,31 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
         reason: status !== 'Absent' ? '' : prev[studentId]?.reason || ''
       }
     }));
+  };  
+   const handleDeleteMaterial = async (materialId: string, fileUrl: string): Promise<void> => {
+    // Use a simple confirmation before deleting
+    if (!window.confirm("Are you sure you want to delete this learning material? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      // 1. Create a reference to the file in Cloud Storage from its URL
+      const fileRef = ref(storage, fileUrl);
+      
+      // 2. Delete the file from Cloud Storage
+      await deleteObject(fileRef);
+
+      // 3. Delete the document from Firestore
+      await deleteDoc(doc(db, 'learningContent', materialId));
+
+      // The onSnapshot listener will now automatically detect this change and update the UI.
+      setUploadSuccess("Material deleted successfully!");
+
+    } catch (err: any) {
+      console.error("Error deleting material:", err);
+      // Use setError to display the error message to the user
+      setError(`Failed to delete material: ${err.message}`);
+    }
   };
 
   const handleSaveAttendance = async () => {
@@ -316,26 +341,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
       setSavingAttendance(false);
     }
   };
-  const handleDeleteMaterial = async (materialId: string, fileUrl: string) => {
-    // Use a simple confirmation before deleting
-    if (!confirm("Are you sure you want to delete this learning material? This action cannot be undone.")) {
-      return;
-    }
 
-    try {
-      // 1. Delete the file from Cloud Storage
-      const fileRef = ref(storage, fileUrl);
-      await deleteObject(fileRef);
-
-      // 2. Delete the document from Firestore
-      await deleteDoc(doc(db, 'learningContent', materialId));
-
-      setUploadSuccess("Material deleted successfully!"); // Optional: show success message
-    } catch (err: any) {
-      console.error("Error deleting material:", err);
-      setError(`Failed to delete material: ${err.message}`);
-    }
-  };
 
   const handleReasonChange = (studentId: string, reason: string) => {
     setAttendanceRecords(prev => ({
