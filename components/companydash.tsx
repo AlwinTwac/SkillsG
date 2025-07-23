@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { LogOut, UploadCloud, Search, BookOpen, FileText, Video, Users, ClipboardList, BarChart2, FileBarChart2, Award, Mail, UserCheck, CalendarDays, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { auth, db, storage } from '@/lib/firebase';
-import { collection, query, arrayUnion, where, getDocs, doc, setDoc, onSnapshot, orderBy, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, query, arrayUnion, where, getDocs, doc, setDoc, onSnapshot, orderBy, updateDoc, serverTimestamp, writeBatch, deleteDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
 
 interface CompanyDashboardProps {
@@ -314,6 +314,26 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
       setError(`Failed to save attendance: ${err.message}`);
     } finally {
       setSavingAttendance(false);
+    }
+  };
+  const handleDeleteMaterial = async (materialId: string, fileUrl: string) => {
+    // Use a simple confirmation before deleting
+    if (!confirm("Are you sure you want to delete this learning material? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      // 1. Delete the file from Cloud Storage
+      const fileRef = ref(storage, fileUrl);
+      await deleteObject(fileRef);
+
+      // 2. Delete the document from Firestore
+      await deleteDoc(doc(db, 'learningContent', materialId));
+
+      setUploadSuccess("Material deleted successfully!"); // Optional: show success message
+    } catch (err: any) {
+      console.error("Error deleting material:", err);
+      setError(`Failed to delete material: ${err.message}`);
     }
   };
 
@@ -680,136 +700,145 @@ const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, s
           )}
 
           {activeTab === 'content' && (
-            <div className="space-y-8">
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">Upload Learning Material</h3>
-                <form onSubmit={handleContentUpload} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                        <input
-                          type="text"
-                          value={newContent.title || ''}
-                          onChange={(e) => setNewContent({...newContent, title: e.target.value})}
-                          className="w-full p-2 border border-gray-300 rounded-lg"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                        <textarea
-                          value={newContent.description || ''}
-                          onChange={(e) => setNewContent({...newContent, description: e.target.value})}
-                          className="w-full p-2 border border-gray-300 rounded-lg"
-                          rows={3}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Course (Required)</label>
-                        <select
-                          value={newContent.courseId || ''}
-                          onChange={(e) => setNewContent({...newContent, courseId: e.target.value})}
-                          className="w-full p-2 border border-gray-300 rounded-lg"
-                          required
-                        >
-                          <option value="">Select a course</option>
-                          {courses.map(course => (
-                            <option key={course.id} value={course.id}>{course.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
-                        <input
-                          type="file"
-                          onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                          className="w-full p-2 border border-gray-300 rounded-lg"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                        <select
-                          value={newContent.type || 'pdf'}
-                          onChange={(e) => setNewContent({...newContent, type: e.target.value as any})}
-                          className="w-full p-2 border border-gray-300 rounded-lg"
-                        >
-                          <option value="pdf">PDF</option>
-                          <option value="video">Video</option>
-                          <option value="image">Image</option>
-                          <option value="other">Other</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={uploading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {uploading ? 'Uploading...' : 'Upload Material'}
-                  </button>
-                </form>
+    <div className="space-y-8">
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <h3 className="text-xl font-semibold text-gray-800 mb-4">Upload Learning Material</h3>
+        <form onSubmit={handleContentUpload} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input
+                  type="text"
+                  value={newContent.title || ''}
+                  onChange={(e) => setNewContent({...newContent, title: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  required
+                />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  value={newContent.description || ''}
+                  onChange={(e) => setNewContent({...newContent, description: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  rows={3}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Course (Required)</label>
+                <select
+                  value={newContent.courseId || ''}
+                  onChange={(e) => setNewContent({...newContent, courseId: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  required
+                >
+                  <option value="">Select a course</option>
+                  {courses.map(course => (
+                    <option key={course.id} value={course.id}>{course.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
+                <input
+                  type="file"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <select
+                  value={newContent.type || 'pdf'}
+                  onChange={(e) => setNewContent({...newContent, type: e.target.value as any})}
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                >
+                  <option value="pdf">PDF</option>
+                  <option value="video">Video</option>
+                  <option value="image">Image</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={uploading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {uploading ? 'Uploading...' : 'Upload Material'}
+          </button>
+        </form>
+      </div>
 
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">Learning Materials by Course</h3>
-                {loading.materials ? (
-                  <div>Loading...</div>
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <h3 className="text-xl font-semibold text-gray-800 mb-4">Learning Materials</h3>
+        {loading.materials ? (
+          <div>Loading...</div>
+        ) : (
+          <div className="space-y-8">
+            {Object.entries(materialsByCourse).map(([courseId, { course, materials }]) => (
+              <div key={courseId} className="border rounded-lg p-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-lg font-semibold">
+                    {course?.name || 'Uncategorized Materials'}
+                  </h4>
+                  {course?.description && (
+                    <p className="text-sm text-gray-600">{course.description}</p>
+                  )}
+                </div>
+                
+                {materials.length === 0 ? (
+                  <p className="text-gray-500 text-center py-4">No materials for this course</p>
                 ) : (
-                  <div className="space-y-8">
-                    {Object.entries(materialsByCourse).map(([courseId, { course, materials }]) => (
-                      <div key={courseId} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-center mb-4">
-                          <h4 className="text-lg font-semibold">
-                            {course?.name || 'Uncategorized Materials'}
-                          </h4>
-                          {course?.description && (
-                            <p className="text-sm text-gray-600">{course.description}</p>
-                          )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {materials.map(material => (
+                      <div key={material.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div className="flex items-center mb-2">
+                          {material.type === 'pdf' && <FileText className="text-red-500 mr-2" />}
+                          {material.type === 'video' && <Video className="text-blue-500 mr-2" />}
+                          {material.type === 'image' && <img src={material.fileUrl} className="w-6 h-6 mr-2" alt="Thumbnail" />}
+                          {material.type === 'other' && <BookOpen className="text-gray-500 mr-2" />}
+                          <h4 className="font-medium">{material.title}</h4>
                         </div>
-                        
-                        {materials.length === 0 ? (
-                          <p className="text-gray-500 text-center py-4">No materials for this course</p>
-                        ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {materials.map(material => (
-                              <div key={material.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                                <div className="flex items-center mb-2">
-                                  {material.type === 'pdf' && <FileText className="text-red-500 mr-2" />}
-                                  {material.type === 'video' && <Video className="text-blue-500 mr-2" />}
-                                  {material.type === 'image' && <img src={material.fileUrl} className="w-6 h-6 mr-2" alt="Thumbnail" />}
-                                  {material.type === 'other' && <BookOpen className="text-gray-500 mr-2" />}
-                                  <h4 className="font-medium">{material.title}</h4>
-                                </div>
-                                <p className="text-sm text-gray-600 mb-2">{material.description}</p>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-xs text-gray-500">
-                                    Uploaded: {new Date(material.uploadedAt).toLocaleDateString()}
-                                  </span>
-                                  <a
-                                    href={material.fileUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 text-sm hover:underline"
-                                  >
-                                    View Material
-                                  </a>
-                                </div>
-                              </div>
-                            ))}
+                        <p className="text-sm text-gray-600 mb-2">{material.description}</p>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-500">
+                            Uploaded: {new Date(material.uploadedAt).toLocaleDateString()}
+                          </span>
+                          <div className="flex items-center space-x-4">
+                            <a
+                              href={material.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 text-sm hover:underline"
+                            >
+                              View Material
+                            </a>
+                            {/* --- THIS IS THE NEW DELETE BUTTON --- */}
+                            <button
+                              onClick={() => handleDeleteMaterial(material.id!, material.fileUrl)}
+                              className="text-red-600 hover:text-red-800 text-sm font-medium"
+                            >
+                              Delete
+                            </button>
                           </div>
-                        )}
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )}
 
           {activeTab === 'reports' && (
             <div className="space-y-6">

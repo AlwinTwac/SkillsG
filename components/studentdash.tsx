@@ -2,12 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, User as FirebaseAuthUser } from 'firebase/auth';
-import { BookOpen, Edit, Award, LayoutDashboard, LogOut, FileText, Video, CheckCircle, XCircle, Clock, ArrowLeftCircle, Loader2, Eye, EyeOff, Upload, File, Image, Download, GraduationCap } from 'lucide-react';
+import { BookOpen, Edit, Award, LayoutDashboard, LogOut, FileText, Video, CheckCircle,File as FileIcon, XCircle, Clock, ArrowLeftCircle, Loader2, Eye, EyeOff, Upload, File, Image, Download, GraduationCap } from 'lucide-react';
 import { auth, db, storage } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc, getDoc, setDoc, getDocs, documentId } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
-
+import { collection, query, where, onSnapshot, doc, updateDoc, getDoc, setDoc, getDocs, documentId, deleteDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 interface LearningMaterial {
   id: string;
   companyUid: string;
@@ -253,6 +252,24 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
       setError("Failed to upload tutorial. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+  const handleDeleteTutorial = async (tutorialId: string, fileUrl: string) => {
+    if (!confirm("Are you sure you want to delete this tutorial?")) {
+      return;
+    }
+    try {
+      // 1. Delete file from Storage
+      const fileRef = ref(storage, fileUrl);
+      await deleteObject(fileRef);
+
+      // 2. Delete document from Firestore
+      await deleteDoc(doc(db, 'tutorials', tutorialId));
+      
+      // The onSnapshot listener will automatically update the UI
+    } catch (err: any) {
+      console.error("Error deleting tutorial:", err);
+      setError(`Failed to delete tutorial: ${err.message}`);
     }
   };
 
@@ -541,155 +558,161 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
           )}
 
           {activeView === 'tutorials' && (
+    <div>
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+        <h3 className="text-2xl font-semibold text-gray-800 flex items-center">
+          <Edit className="w-7 h-7 mr-2 text-purple-600" />
+          My Tutorials
+        </h3>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setActiveView('overview')}
+            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 flex items-center transition-colors duration-300"
+          >
+            <ArrowLeftCircle className="w-4 h-4 mr-2" /> Back
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
+        <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+          <Upload className="w-5 h-5 mr-2 text-purple-600" /> Create New Tutorial
+        </h4>
+        <form onSubmit={handleTutorialSubmit}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
-                <h3 className="text-2xl font-semibold text-gray-800 flex items-center">
-                  <Edit className="w-7 h-7 mr-2 text-purple-600" />
-                  My Tutorials
-                </h3>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setActiveView('overview')}
-                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 flex items-center transition-colors duration-300"
-                  >
-                    <ArrowLeftCircle className="w-4 h-4 mr-2" /> Back
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
-                <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                  <Upload className="w-5 h-5 mr-2 text-purple-600" /> Create New Tutorial
-                </h4>
-                <form onSubmit={handleTutorialSubmit}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                      <input
-                        type="text"
-                        value={newTutorial.title}
-                        onChange={(e) => setNewTutorial({ ...newTutorial, title: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        placeholder="Tutorial title"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Week Number</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="52"
-                        value={newTutorial.weekNumber}
-                        onChange={(e) => setNewTutorial({ ...newTutorial, weekNumber: parseInt(e.target.value) })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea
-                      value={newTutorial.description}
-                      onChange={(e) => setNewTutorial({ ...newTutorial, description: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      rows={3}
-                      placeholder="What did you learn this week?"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                      <select
-                        value={newTutorial.type}
-                        onChange={(e) => setNewTutorial({ ...newTutorial, type: e.target.value as any })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      >
-                        <option value="pdf">PDF Document</option>
-                        <option value="video">Video</option>
-                        <option value="image">Image</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
-                      <div className="flex items-center">
-                        <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg border border-gray-300 flex items-center transition-colors duration-300">
-                          <Upload className="w-4 h-4 mr-2" />
-                          {newTutorial.file ? newTutorial.file.name : 'Choose file'}
-                          <input
-                            type="file"
-                            onChange={handleFileChange}
-                            className="hidden"
-                            required
-                          />
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-300 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
-                  >
-                    {loading ? (
-                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    ) : (
-                      <Edit className="w-5 h-5 mr-2" />
-                    )}
-                    Upload Tutorial
-                  </button>
-                </form>
-              </div>
-
-              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <File className="w-5 h-5 mr-2 text-purple-600" /> My Uploaded Tutorials
-              </h4>
-
-              {loading ? (
-                <div className="text-center py-12">
-                  <Loader2 className="w-12 h-12 text-purple-600 animate-spin mx-auto mb-4" />
-                  <p className="text-gray-600 text-lg">Loading your tutorials...</p>
-                </div>
-              ) : tutorials.length === 0 ? (
-                <div className="bg-gray-100 border border-gray-200 rounded-lg p-6 text-center">
-                  <p className="text-gray-600">You haven't uploaded any tutorials yet.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {tutorials.map((tutorial) => (
-                    <div key={tutorial.id} className="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-300">
-                      <div className="flex items-center mb-3">
-                        {tutorial.type === 'pdf' && <FileText className="w-7 h-7 mr-3 text-red-500" />}
-                        {tutorial.type === 'video' && <Video className="w-7 h-7 mr-3 text-blue-500" />}
-                        {tutorial.type === 'image' && <Image className="w-7 h-7 mr-3 text-green-500" />}
-                        {tutorial.type === 'other' && <File className="w-7 h-7 mr-3 text-gray-500" />}
-                        <div>
-                          <h4 className="text-xl font-semibold text-gray-800">{tutorial.title}</h4>
-                          <p className="text-xs text-gray-500">Week {tutorial.weekNumber}</p>
-                        </div>
-                      </div>
-                      <p className="text-gray-600 text-sm mb-4 line-clamp-3">{tutorial.description || 'No description provided.'}</p>
-                      <p className="text-xs text-gray-500 mb-4">
-                        Uploaded: {new Date(tutorial.createdAt).toLocaleDateString()}
-                      </p>
-                      <div className="flex space-x-2">
-                        <a
-                          href={tutorial.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors duration-300"
-                        >
-                          View Tutorial
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+              <input
+                type="text"
+                value={newTutorial.title}
+                onChange={(e) => setNewTutorial({ ...newTutorial, title: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="Tutorial title"
+                required
+              />
             </div>
-          )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Week Number</label>
+              <input
+                type="number"
+                min="1"
+                max="52"
+                value={newTutorial.weekNumber}
+                onChange={(e) => setNewTutorial({ ...newTutorial, weekNumber: parseInt(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                required
+              />
+            </div>
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              value={newTutorial.description}
+              onChange={(e) => setNewTutorial({ ...newTutorial, description: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              rows={3}
+              placeholder="What did you learn this week?"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+              <select
+                value={newTutorial.type}
+                onChange={(e) => setNewTutorial({ ...newTutorial, type: e.target.value as any })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="pdf">PDF Document</option>
+                <option value="video">Video</option>
+                <option value="image">Image</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
+              <div className="flex items-center">
+                <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg border border-gray-300 flex items-center transition-colors duration-300">
+                  <Upload className="w-4 h-4 mr-2" />
+                  {newTutorial.file ? newTutorial.file.name : 'Choose file'}
+                  <input
+                    type="file"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    required
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-300 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            {loading ? (
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+            ) : (
+              <Edit className="w-5 h-5 mr-2" />
+            )}
+            Upload Tutorial
+          </button>
+        </form>
+      </div>
 
+      <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+        <FileIcon className="w-5 h-5 mr-2 text-purple-600" /> My Uploaded Tutorials
+      </h4>
+
+      {loading ? (
+        <div className="text-center py-12">
+          <Loader2 className="w-12 h-12 text-purple-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 text-lg">Loading your tutorials...</p>
+        </div>
+      ) : tutorials.length === 0 ? (
+        <div className="bg-gray-100 border border-gray-200 rounded-lg p-6 text-center">
+          <p className="text-gray-600">You haven't uploaded any tutorials yet.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {tutorials.map((tutorial) => (
+            <div key={tutorial.id} className="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-300">
+              <div className="flex items-center mb-3">
+                {tutorial.type === 'pdf' && <FileText className="w-7 h-7 mr-3 text-red-500" />}
+                {tutorial.type === 'video' && <Video className="w-7 h-7 mr-3 text-blue-500" />}
+                {tutorial.type === 'image' && <Image className="w-7 h-7 mr-3 text-green-500" />}
+                {tutorial.type === 'other' && <FileIcon className="w-7 h-7 mr-3 text-gray-500" />}
+                <div>
+                  <h4 className="text-xl font-semibold text-gray-800">{tutorial.title}</h4>
+                  <p className="text-xs text-gray-500">Week {tutorial.weekNumber}</p>
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm mb-4 line-clamp-3">{tutorial.description || 'No description provided.'}</p>
+              <p className="text-xs text-gray-500 mb-4">
+                Uploaded: {new Date(tutorial.createdAt).toLocaleDateString()}
+              </p>
+              <div className="flex space-x-2">
+                <a
+                  href={tutorial.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors duration-300"
+                >
+                  View Tutorial
+                </a>
+                {/* --- THIS IS THE NEW DELETE BUTTON --- */}
+                <button
+                  onClick={() => handleDeleteTutorial(tutorial.id, tutorial.fileUrl)}
+                  className="inline-flex items-center px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors duration-300"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )}
           {activeView === 'certificates' && (
             <div>
               <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
