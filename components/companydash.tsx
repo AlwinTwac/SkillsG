@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogOut, UploadCloud, Search, BookOpen, FileText, Video, Users, ClipboardList, BarChart2, FileBarChart2, Award, Mail, UserCheck, CalendarDays, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { auth, db, storage } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, setDoc, onSnapshot,arrayUnion, orderBy, updateDoc, serverTimestamp, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs,getDoc, doc, setDoc, onSnapshot,arrayUnion,arrayRemove, orderBy, updateDoc, serverTimestamp, writeBatch, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
 
@@ -114,6 +114,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [unEnrollingStudent, setUnEnrollingStudent] = useState(false);
   const [studentToEnrollId, setStudentToEnrollId] = useState<string>('');
   const [courseToEnrollId, setCourseToEnrollId] = useState<string>('');
   const [enrollingStudent, setEnrollingStudent] = useState(false);
@@ -376,7 +377,47 @@ useEffect(() => {
       setSavingAttendance(false);
     }
   };
+   const handleUnenrollStudent = async (studentToUnenrollUid: string, courseToUnenrollId: string) => {
+    if (!studentToUnenrollUid || !courseToUnenrollId) {
+        alert("Please select a student and a course to unenroll.");
+        return;
+    }
 
+    setUnEnrollingStudent(true);
+    setUploadError(null);
+    setUploadSuccess(null);
+
+    try {
+        const student = students.find(s => s.id === studentToUnenrollUid);
+        const course = courses.find(c => c.id === courseToUnenrollId);
+        const enrollmentDocId = `${studentToUnenrollUid}_${courseToUnenrollId}`;
+        const enrollmentRef = doc(db, 'enrollments', enrollmentDocId);
+
+        // Check if the enrollment actually exists before trying to delete
+        const enrollmentSnap = await getDoc(enrollmentRef);
+        if (!enrollmentSnap.exists()) {
+            throw new Error(`Student is not enrolled in this specific course.`);
+        }
+
+        // 1. Delete the enrollment document
+        await deleteDoc(enrollmentRef);
+
+        // 2. Update the student's user document to remove the courseId from their array
+        const studentDocRef = doc(db, 'users', studentToUnenrollUid);
+        await updateDoc(studentDocRef, {
+            enrolledCourseIds: arrayRemove(courseToUnenrollId)
+        });
+
+        setUploadSuccess(`Successfully unenrolled ${student?.name || 'student'} from ${course?.name || 'course'}.`);
+        setStudentToEnrollId('');
+        setCourseToEnrollId('');
+    } catch (err: any) {
+        console.error("Error unenrolling student:", err);
+        setUploadError(`Failed to unenroll student: ${err.message}`);
+    } finally {
+        setUnEnrollingStudent(false);
+    }
+  };
 
   const handleReasonChange = (studentId: string, reason: string) => {
     setAttendanceRecords(prev => ({
@@ -985,109 +1026,139 @@ const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, s
           </div>
         )}
 
-        {activeTab === 'students' && (
-          <div className="space-y-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">Student Management</h3>
-              <div className="mb-6 border-b pb-4">
-                <h4 className="text-lg font-semibold text-gray-700 mb-3">Enroll Student in Course</h4>
-                <p className="text-sm text-gray-600 mb-4">Select a student who has completed the AI interview and enroll them into one of your courses. This will link them to your company.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Student (AI Interview Completed)</label>
-                    <select
-                      value={studentToEnrollId}
-                      onChange={(e) => setStudentToEnrollId(e.target.value)}
-                      className="w-full p-2 border border-gray-300 rounded-lg"
-                    >
-                      <option value="">Choose Student</option>
-                      {students.map(student => (
-                        <option key={student.id} value={student.id}>{student.name} ({student.email})</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Course</label>
-                    <select
-                      value={courseToEnrollId}
-                      onChange={(e) => setCourseToEnrollId(e.target.value)}
-                      className="w-full p-2 border border-gray-300 rounded-lg"
-                    >
-                      <option value="">Choose Course</option>
-                      {courses.map(course => (
-                        <option key={course.id} value={course.id}>{course.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleEnrollStudent(studentToEnrollId, courseToEnrollId)}
-                  disabled={enrollingStudent || !studentToEnrollId || !courseToEnrollId}
-                  className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                >
-                  {enrollingStudent ? 'Enrolling...' : 'Enroll Student'}
-                </button>
-              </div>
+       {activeTab === 'students' && (
+  <div className="space-y-6">
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+      <h3 className="text-xl font-semibold text-gray-800 mb-4">Student Management</h3>
 
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">Students Enrolled with Your Company</h3>
-              {loading.students ? (
-                <div>Loading students...</div>
-              ) : studentsLinkedToThisCompany.length === 0 ? (
-                <div className="text-center py-8 text-gray-600">
-                  <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <p>No students are currently linked to your company. Enroll students above to see them here.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profile</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enrolled Courses</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {studentsLinkedToThisCompany.map(student => (
-                        <tr key={student.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">{student.name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{student.email}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                              student.profileVisibility === 'public' 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {student.profileVisibility}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                              {enrollments.filter(e => e.studentUid === student.id).map(e => (
-                                  <span key={e.id} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1 mb-1">
-                                      {courses.find(c => c.id === e.courseId)?.name || 'N/A'}
-                                  </span>
-                              ))}
-                              {enrollments.filter(e => e.studentUid === student.id).length === 0 && 'None'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <button
-                              onClick={() => recommendCandidate(student.id)}
-                              className="text-blue-600 hover:text-blue-900 mr-3"
-                            >
-                              <UserCheck className="inline mr-1" /> Recommend
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+      <div className="mb-6 border-b pb-4">
+        <h4 className="text-lg font-semibold text-gray-700 mb-3">Enroll Student in Course</h4>
+        <p className="text-sm text-gray-600 mb-4">
+          Select a student who has completed the AI interview and enroll them into one of your courses. This will link them to your company.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Select Student (AI Interview Completed)
+            </label>
+            <select
+              value={studentToEnrollId}
+              onChange={(e) => setStudentToEnrollId(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg"
+            >
+              <option value="">Choose Student</option>
+              {students.map(student => (
+                <option key={student.id} value={student.id}>
+                  {student.name} ({student.email})
+                </option>
+              ))}
+            </select>
           </div>
-        )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Select Course</label>
+            <select
+              value={courseToEnrollId}
+              onChange={(e) => setCourseToEnrollId(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg"
+            >
+              <option value="">Choose Course</option>
+              {courses.map(course => (
+                <option key={course.id} value={course.id}>
+                  {course.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+      </div>
+
+      <div className="mt-4 flex space-x-4">
+        <button
+          onClick={() => handleEnrollStudent(studentToEnrollId, courseToEnrollId)}
+          disabled={enrollingStudent || !studentToEnrollId || !courseToEnrollId || unEnrollingStudent}
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+        >
+          {enrollingStudent ? 'Enrolling...' : 'Enroll Student'}
+        </button>
+
+        <button
+          onClick={() => handleUnenrollStudent(studentToEnrollId, courseToEnrollId)}
+          disabled={unEnrollingStudent || !studentToEnrollId || !courseToEnrollId || enrollingStudent}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+        >
+          {unEnrollingStudent ? 'Unenrolling...' : 'Unenroll Student'}
+        </button>
+      </div>
+
+      <h3 className="text-xl font-semibold text-gray-800 mb-4 mt-8">Students Enrolled with Your Company</h3>
+
+      {loading.students ? (
+        <div>Loading students...</div>
+      ) : studentsLinkedToThisCompany.length === 0 ? (
+        <div className="text-center py-8 text-gray-600">
+          <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+          <p>No students are currently linked to your company. Enroll students above to see them here.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profile</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enrolled Courses</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {studentsLinkedToThisCompany.map(student => (
+                <tr key={student.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">{student.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{student.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full ${
+                        student.profileVisibility === 'public'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {student.profileVisibility}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    {enrollments.filter(e => e.studentUid === student.id).map(e => (
+                      <span
+                        key={e.id}
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1 mb-1"
+                      >
+                        {courses.find(c => c.id === e.courseId)?.name || 'N/A'}
+                      </span>
+                    ))}
+                    {enrollments.filter(e => e.studentUid === student.id).length === 0 && 'None'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <button
+                      onClick={() => recommendCandidate(student.id)}
+                      className="text-blue-600 hover:text-blue-900 mr-3"
+                    >
+                      <UserCheck className="inline mr-1" /> Recommend
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
 
         {activeTab === 'attendance' && (
           <div className="space-y-6">

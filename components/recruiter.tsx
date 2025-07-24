@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, Search, Lightbulb, Filter, User, Mail, Award, BookOpen } from 'lucide-react';
+import { LogOut, Search, Lightbulb, Filter, User, Mail, Award, BookOpen, RefreshCw } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -31,9 +31,52 @@ export default function RecruiterDashboard({ userDisplayName, userEmail }: Recru
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSkills, setFilterSkills] = useState<string[]>([]);
   const [filterExperience, setFilterExperience] = useState('');
-  const [students, setStudents] = useState<StudentProfile[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [allPublicStudents, setAllPublicStudents] = useState<StudentProfile[]>([]);
+  const [displayedStudents, setDisplayedStudents] = useState<StudentProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [error, setError] = useState('');
+
+  // Fetch all public students when the component mounts
+  useEffect(() => {
+    const fetchAllStudents = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const q = query(
+          collection(db, 'users'),
+          where('role', '==', 'student'),
+          where('profileVisibility', '==', 'public')
+        );
+        const snapshot = await getDocs(q);
+        const results: StudentProfile[] = [];
+        
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          results.push({
+            id: doc.id,
+            name: data.name || '',
+            email: data.email || '',
+            skills: data.skills || [],
+            experience: data.experience || '',
+            interests: data.interests || [],
+            goals: data.goals || '',
+            profileVisibility: data.profileVisibility || 'private',
+            certificates: data.certificates || []
+          });
+        });
+        
+        setAllPublicStudents(results);
+        setDisplayedStudents(results);
+      } catch (err) {
+        console.error("Error fetching students:", err);
+        setError('Failed to fetch student profiles.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAllStudents();
+  }, []);
 
   const handleSignOut = async () => {
     try {
@@ -50,36 +93,12 @@ export default function RecruiterDashboard({ userDisplayName, userEmail }: Recru
       return;
     }
 
-    setLoading(true);
+    setSearching(true);
     setError('');
 
     try {
-      let q = query(
-        collection(db, 'users'),
-        where('role', '==', 'student'),
-        where('profileVisibility', '==', 'public')
-      );
-
-      const snapshot = await getDocs(q);
-      const results: StudentProfile[] = [];
-
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        results.push({
-          id: doc.id,
-          name: data.name || '',
-          email: data.email || '',
-          skills: data.skills || [],
-          experience: data.experience || '',
-          interests: data.interests || [],
-          goals: data.goals || '',
-          profileVisibility: data.profileVisibility || 'private',
-          certificates: data.certificates || []
-        });
-      });
-
-      // Apply filters
-      const filtered = results.filter(student => {
+      // Apply filters to all public students
+      const filtered = allPublicStudents.filter(student => {
         // Search term filter (name, email, or goals)
         const termMatch = !searchTerm || 
           student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -101,12 +120,50 @@ export default function RecruiterDashboard({ userDisplayName, userEmail }: Recru
         return termMatch && skillsMatch && experienceMatch;
       });
 
-      setStudents(filtered);
+      setDisplayedStudents(filtered);
     } catch (err) {
       console.error("Error searching students:", err);
       setError('Failed to search students. Please try again.');
     } finally {
-      setLoading(false);
+      setSearching(false);
+    }
+  };
+
+  const handleAiSearch = async () => {
+    if (!searchTerm && filterSkills.length === 0 && !filterExperience) {
+      setError('Please provide at least one search criteria for the AI.');
+      return;
+    }
+    
+    setSearching(true);
+    setError('');
+    
+    try {
+      const response = await fetch('/api/ai-recommend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          searchCriteria: {
+            searchTerm,
+            filterSkills,
+            filterExperience,
+          },
+          studentProfiles: allPublicStudents,
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'The AI recommender failed.');
+      }
+
+      const data = await response.json();
+      setDisplayedStudents(data.recommendedStudents);
+    } catch (err: any) {
+      console.error("Error with AI search:", err);
+      setError(`AI search failed: ${err.message}`);
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -119,6 +176,14 @@ export default function RecruiterDashboard({ userDisplayName, userEmail }: Recru
 
   const removeSkillFilter = (skill: string) => {
     setFilterSkills(filterSkills.filter(s => s !== skill));
+  };
+  
+  const resetSearch = () => {
+    setDisplayedStudents(allPublicStudents);
+    setSearchTerm('');
+    setFilterSkills([]);
+    setFilterExperience('');
+    setError('');
   };
 
   return (
@@ -208,18 +273,41 @@ export default function RecruiterDashboard({ userDisplayName, userEmail }: Recru
           </div>
         </div>
 
-        <button
-          onClick={searchStudents}
-          disabled={loading}
-          className="w-full md:w-auto px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center"
-        >
-          {loading ? (
-            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-          ) : (
-            <Search className="w-5 h-5 mr-2" />
-          )}
-          {loading ? 'Searching...' : 'Search Students'}
-        </button>
+        <div className="flex flex-col md:flex-row gap-4">
+          <button
+            onClick={searchStudents}
+            disabled={searching || loading}
+            className="w-full md:w-auto px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center"
+          >
+            {searching ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+            ) : (
+              <Search className="w-5 h-5 mr-2" />
+            )}
+            {searching ? 'Searching...' : 'Search Students'}
+          </button>
+          
+          <button
+            onClick={handleAiSearch}
+            disabled={searching || loading}
+            className="w-full md:w-auto px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center"
+          >
+            {searching ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+            ) : (
+              <Lightbulb className="w-5 h-5 mr-2" />
+            )}
+            {searching ? 'Analyzing...' : 'AI Recommendations'}
+          </button>
+          
+          <button 
+            onClick={resetSearch}
+            className="w-full md:w-auto px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 flex items-center justify-center"
+          >
+            <RefreshCw className="w-5 h-5 mr-2" />
+            Reset
+          </button>
+        </div>
 
         {error && (
           <div className="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md">
@@ -231,21 +319,21 @@ export default function RecruiterDashboard({ userDisplayName, userEmail }: Recru
       {/* Search Results */}
       <div className="mb-8">
         <h3 className="text-xl font-semibold text-gray-800 mb-4">
-          {students.length} {students.length === 1 ? 'Candidate' : 'Candidates'} Found
+          {displayedStudents.length} {displayedStudents.length === 1 ? 'Candidate' : 'Candidates'} Found
         </h3>
 
         {loading ? (
           <div className="text-center py-12">
             <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Searching for candidates...</p>
+            <p className="text-gray-600">Loading candidates...</p>
           </div>
-        ) : students.length === 0 ? (
+        ) : displayedStudents.length === 0 ? (
           <div className="bg-gray-100 border border-gray-200 rounded-lg p-6 text-center">
             <p className="text-gray-600">No candidates match your search criteria.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {students.map(student => (
+            {displayedStudents.map(student => (
               <div key={student.id} className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 p-6">
                 <div className="flex items-center mb-4">
                   <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mr-4">
