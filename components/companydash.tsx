@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, UploadCloud, Search, BookOpen, FileText, Video, Users, ClipboardList, BarChart2, FileBarChart2, Award, Mail, UserCheck, CalendarDays, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { LogOut, UploadCloud, Search, BookOpen, MailPlus, FileText, Video, Users, ClipboardList, BarChart2, FileBarChart2, Award, Mail, UserCheck, CalendarDays, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { auth, db, storage } from '@/lib/firebase';
-import { collection, query, where, getDocs,getDoc, doc, setDoc, onSnapshot,arrayUnion,arrayRemove, orderBy, updateDoc, serverTimestamp, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs,getDoc, doc, setDoc,addDoc, onSnapshot,arrayUnion,arrayRemove, orderBy, updateDoc, serverTimestamp, writeBatch, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
 
@@ -23,6 +23,14 @@ interface EnrollmentReport {
   recommendedLearningPath?: string[];
   interviewScore?: number;
   companyUid: string;
+}
+interface Invitation {
+    id: string;
+    email: string;
+    role: 'student' | 'recruiter';
+    status: 'pending' | 'accepted';
+    companyUid: string;
+    createdAt: string;
 }
 
 interface LearningMaterial {
@@ -134,6 +142,10 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [currentDateTime, setCurrentDateTime] = useState<string>('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'student' | 'recruiter'>('student');
+  const [inviting, setInviting] = useState(false);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [weather, setWeather] = useState<{temp: number, description: string} | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendanceRecords, setAttendanceRecords] = useState<Record<string, AttendanceRecord>>({});
@@ -150,6 +162,10 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     const reportsUnsub = onSnapshot(reportsQuery, (snapshot) => {
       setEnrollmentReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EnrollmentReport)));
       setLoading(prev => ({ ...prev, reports: false }));
+    });
+     const invitesQuery = query(collection(db, 'invitations'), where('companyUid', '==', userUid), orderBy('createdAt', 'desc'));
+    const unsubscribeInvites = onSnapshot(invitesQuery, (snapshot) => {
+        setInvitations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Invitation)));
     });
 
     const materialsQuery = query(collection(db, 'learningContent'), where('companyUid', '==', userUid));
@@ -240,6 +256,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     materialsUnsub();
     coursesUnsub();
     studentsUnsub();
+    unsubscribeInvites();
     certsUnsub();
     enrollmentsUnsub();
     attendanceUnsub();
@@ -278,6 +295,41 @@ useEffect(() => {
     }
   }
 }, [activeTab, learningMaterials]);
+
+ const handleSendInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail) {
+        alert("Please enter an email address.");
+        return;
+    }
+    setInviting(true);
+    try {
+        // Check if an invitation for this email already exists
+        const existingInviteQuery = query(collection(db, 'invitations'), where('email', '==', inviteEmail.toLowerCase()));
+        const existingSnapshot = await getDocs(existingInviteQuery);
+        if (!existingSnapshot.empty) {
+            throw new Error("An invitation for this email address already exists.");
+        }
+
+        // Create new invitation document
+        await addDoc(collection(db, 'invitations'), {
+            email: inviteEmail.toLowerCase(),
+            role: inviteRole,
+            status: 'pending',
+            companyUid: userUid,
+            createdAt: new Date().toISOString()
+        });
+
+        alert(`Invitation sent to ${inviteEmail}!`);
+        setInviteEmail('');
+    } catch (err: any) {
+        console.error("Error sending invite:", err);
+        alert(`Failed to send invite: ${err.message}`);
+    } finally {
+        setInviting(false);
+    }
+  };
+
   const handleAttendanceChange = (studentId: string, studentName: string, status: 'Present' | 'Absent' | 'Late') => {
     setAttendanceRecords(prev => ({
       ...prev,
@@ -693,7 +745,7 @@ const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, s
       {/* Tab Navigation */}
       <div className="border-b border-gray-200 bg-gray-50 overflow-x-auto">
         <nav className="flex space-x-8 px-6">
-          {['overview', 'content', 'reports', 'students', 'attendance', 'certificates', 'courses'].map((tab) => (
+          {['overview', 'content', 'reports', 'students', 'attendance', 'invitations','certificates', 'courses'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -721,7 +773,7 @@ const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, s
             {uploadSuccess}
           </div>
         )}
-
+        
         {activeTab === 'overview' && (
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
@@ -1342,62 +1394,108 @@ const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, s
             </div>
           </div>
         )}
+{activeTab === 'invitations' && (
+  <div className="space-y-6">
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+      <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+        <MailPlus className="w-6 h-6 mr-2 text-blue-600" />
+        Invite a New User
+      </h3>
+      <form onSubmit={handleSendInvite} className="flex flex-col md:flex-row gap-4 items-end">
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+          <input
+            type="email"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            placeholder="user@example.com"
+            className="w-full p-2 border border-gray-300 rounded-lg"
+            required
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+          <select
+            value={inviteRole}
+            onChange={(e) => setInviteRole(e.target.value as any)}
+            className="w-full p-2 border border-gray-300 rounded-lg"
+          >
+            <option value="student">Student</option>
+            <option value="recruiter">Recruiter</option>
+          </select>
+        </div>
+        <button
+          type="submit"
+          disabled={inviting}
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        >
+          {inviting ? 'Sending...' : 'Send Invite'}
+        </button>
+      </form>
+    </div>
 
-        {activeTab === 'courses' && (
-          <div className="space-y-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">Create New Course</h3>
-              <form onSubmit={handleCreateCourse} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Course Name</label>
-                  <input
-                    type="text"
-                    value={newCourse.name || ''}
-                    onChange={(e) => setNewCourse({...newCourse, name: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea
-                    value={newCourse.description || ''}
-                    onChange={(e) => setNewCourse({...newCourse, description: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
-                    rows={3}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={uploading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {uploading ? 'Creating...' : 'Create Course'}
-                </button>
-              </form>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">Available Courses</h3>
-              {loading.courses ? (
-                <div>Loading...</div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {courses.map(course => (
-                    <div key={course.id} className="border rounded-lg p-4">
-                      <h4 className="font-medium text-lg mb-2">{course.name}</h4>
-                      <p className="text-sm text-gray-600 mb-3">{course.description}</p>
-                      <div className="flex justify-between items-center text-xs text-gray-500">
-                        <span>Created: {new Date(course.createdDate).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+      <h3 className="text-xl font-semibold text-gray-800 mb-4">Sent Invitations</h3>
+      {/* List of sent invitations */}
     </div>
   </div>
+)}
+
+{activeTab === 'courses' && (
+  <div className="space-y-6">
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+      <h3 className="text-xl font-semibold text-gray-800 mb-4">Create New Course</h3>
+      <form onSubmit={handleCreateCourse} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Course Name</label>
+          <input
+            type="text"
+            value={newCourse.name || ''}
+            onChange={(e) => setNewCourse({ ...newCourse, name: e.target.value })}
+            className="w-full p-2 border border-gray-300 rounded-lg"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <textarea
+            value={newCourse.description || ''}
+            onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
+            className="w-full p-2 border border-gray-300 rounded-lg"
+            rows={3}
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={uploading}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        >
+          {uploading ? 'Creating...' : 'Create Course'}
+        </button>
+      </form>
+    </div>
+
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+      <h3 className="text-xl font-semibold text-gray-800 mb-4">Available Courses</h3>
+      {loading.courses ? (
+        <div>Loading...</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {courses.map((course) => (
+            <div key={course.id} className="border rounded-lg p-4">
+              <h4 className="font-medium text-lg mb-2">{course.name}</h4>
+              <p className="text-sm text-gray-600 mb-3">{course.description}</p>
+              <div className="flex justify-between items-center text-xs text-gray-500">
+                <span>Created: {new Date(course.createdDate).toLocaleDateString()}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}  
+    </div>
+  </div>
+)}
+     </div>
+          </div>
+      </div>
 )};

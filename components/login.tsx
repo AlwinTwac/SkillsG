@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, User as FirebaseAuthUser, signOut } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc,collection,where,getDocs,query, updateDoc,getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { User, Mail, Lock, Eye, EyeOff, Briefcase } from 'lucide-react';
 
@@ -36,107 +36,155 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
   }, [defaultRole]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+  e.preventDefault();
+  setLoading(true);
+  setError('');
+  const roleToSet = defaultRole === 'learner' ? 'student' : defaultRole;
 
-    const roleToSet = defaultRole === 'learner' ? 'student' : defaultRole;
-
-    try {
-      if (isLogin) {
-        // --- LOGIN LOGIC WITH ROLE CHECK ---
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const userDocRef = doc(db, 'users', userCredential.user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-
-        if (userDocSnap.exists() && userDocSnap.data().role === roleToSet) {
-          // Role matches, proceed with login
-          onAuthSuccess(userCredential.user);
-        } else {
-          // Role does NOT match, sign out and show an error
-          const existingRole = userDocSnap.exists() ? userDocSnap.data().role : 'another type of';
-          await signOut(auth);
-          throw new Error(`These credentials are for a ${existingRole} account. Please use the correct portal.`);
-        }
-      } else {
-        // --- SIGN UP LOGIC ---
-        if (password !== confirmPassword) throw new Error('Passwords do not match');
-        if (roleToSet === 'company' && companyAccountExists) throw new Error('Only one company account is allowed.');
-
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        await setDoc(doc(db, 'users', userCredential.user.uid), {
-          email: userCredential.user.email,
-          createdAt: new Date().toISOString(),
-          authProvider: 'email',
-          profileCompleted: false,
-          role: roleToSet,
-          ...(roleToSet === 'student' && { profileVisibility: 'private', paidForPublic: false }),
-          ...(roleToSet === 'company' && { companyName: 'kimtronix' })
-        });
-
-        if (roleToSet === 'company') {
-          await setDoc(doc(db, 'platformConfig', 'singleton'), { companyAccountCreated: true });
-          setCompanyAccountExists(true);
-        }
+  try {
+    if (isLogin) {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userDocRef = doc(db, 'users', userCredential.user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      if (userDocSnap.exists() && userDocSnap.data().role === roleToSet) {
         onAuthSuccess(userCredential.user);
+      } else {
+        const existingRole = userDocSnap.exists() ? userDocSnap.data().role : 'another type of';
+        await signOut(auth);
+        throw new Error(`These credentials are for a ${existingRole} account. Please use the correct portal.`);
       }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleGoogleAuth = async () => {
-    setLoading(true);
-    setError('');
-    const roleToSet = defaultRole === 'learner' ? 'student' : defaultRole;
+    } else {
+      // --- SIGN UP LOGIC WITH INVITATION CHECK ---
+      if (password !== confirmPassword) throw new Error('Passwords do not match');
+      if (roleToSet === 'company' && companyAccountExists) throw new Error('Only one company account is allowed.');
 
-    try {
-        const provider = new GoogleAuthProvider();
-        const userCredential = await signInWithPopup(auth, provider);
-        const userDocRef = doc(db, 'users', userCredential.user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-
-        if (userDocSnap.exists()) {
-            // --- LOGIN LOGIC WITH ROLE CHECK FOR GOOGLE ---
-            if (userDocSnap.data().role === roleToSet) {
-                onAuthSuccess(userCredential.user);
-            } else {
-                const existingRole = userDocSnap.data().role;
-                await signOut(auth);
-                throw new Error(`This Google account is registered as a ${existingRole}. Please use the correct portal.`);
-            }
-        } else {
-            // --- SIGN UP LOGIC FOR GOOGLE ---
-            if (roleToSet === 'company' && companyAccountExists) {
-                await signOut(auth);
-                throw new Error('Only one company account is allowed.');
-            }
-            await setDoc(userDocRef, {
-                email: userCredential.user.email,
-                displayName: userCredential.user.displayName,
-                photoURL: userCredential.user.photoURL,
-                createdAt: new Date().toISOString(),
-                authProvider: 'google',
-                profileCompleted: false,
-                role: roleToSet,
-                ...(roleToSet === 'student' && { profileVisibility: 'private', paidForPublic: false }),
-                ...(roleToSet === 'company' && { companyName: 'kimtronix' })
-            }, { merge: true });
-
-            if (roleToSet === 'company') {
-                await setDoc(doc(db, 'platformConfig', 'singleton'), { companyAccountCreated: true });
-                setCompanyAccountExists(true);
-            }
-            onAuthSuccess(userCredential.user);
+      // 1. Check for a valid invitation before creating the user
+      if (roleToSet === 'student' || roleToSet === 'recruiter') {
+        const inviteQuery = query(
+          collection(db, 'invitations'),
+          where('email', '==', email.toLowerCase()),
+          where('role', '==', roleToSet),
+          where('status', '==', 'pending')
+        );
+        const inviteSnapshot = await getDocs(inviteQuery);
+        if (inviteSnapshot.empty) {
+          throw new Error("You do not have a pending invitation to create this type of account.");
         }
-    } catch (err: any) {
-        setError(err.message);
-    } finally {
-        setLoading(false);
+      }
+
+      // 2. Create the user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // 3. Create the user document in Firestore
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        email: userCredential.user.email,
+        createdAt: new Date().toISOString(),
+        authProvider: 'email',
+        profileCompleted: false,
+        role: roleToSet,
+        ...(roleToSet === 'student' && { profileVisibility: 'private', paidForPublic: false }),
+        ...(roleToSet === 'company' && { companyName: 'kimtronix' })
+      });
+
+      // 4. Update the invitation status to 'accepted'
+      if (roleToSet === 'student' || roleToSet === 'recruiter') {
+        const inviteQuery = query(collection(db, 'invitations'), where('email', '==', email.toLowerCase()));
+        const inviteSnapshot = await getDocs(inviteQuery);
+        const inviteDoc = inviteSnapshot.docs[0];
+        if (inviteDoc) {
+          await updateDoc(doc(db, 'invitations', inviteDoc.id), {
+            status: 'accepted',
+            acceptedAt: new Date().toISOString(),
+            userId: userCredential.user.uid
+          });
+        }
+      }
+      
+      if (roleToSet === 'company') {
+        await setDoc(doc(db, 'platformConfig', 'singleton'), { companyAccountCreated: true });
+        setCompanyAccountExists(true);
+      }
+      onAuthSuccess(userCredential.user);
     }
-  };
+  } catch (err: any) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleGoogleAuth = async () => {
+  setLoading(true);
+  setError('');
+  const roleToSet = defaultRole === 'learner' ? 'student' : defaultRole;
+
+  try {
+    const provider = new GoogleAuthProvider();
+    const userCredential = await signInWithPopup(auth, provider);
+    const userDocRef = doc(db, 'users', userCredential.user.uid);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (userDocSnap.exists()) {
+      if (userDocSnap.data().role === roleToSet) {
+        onAuthSuccess(userCredential.user);
+      } else {
+        const existingRole = userDocSnap.data().role;
+        await signOut(auth);
+        throw new Error(`This Google account is registered as a ${existingRole}. Please use the correct portal.`);
+      }
+    } else {
+      if (roleToSet === 'company' && companyAccountExists) {
+        await signOut(auth);
+        throw new Error('Only one company account is allowed.');
+      }
+
+      if (roleToSet === 'student' || roleToSet === 'recruiter') {
+        const inviteQuery = query(
+          collection(db, 'invitations'),
+          where('email', '==', userCredential.user.email?.toLowerCase()),
+          where('role', '==', roleToSet),
+          where('status', '==', 'pending')
+        );
+        const inviteSnapshot = await getDocs(inviteQuery);
+        if (inviteSnapshot.empty) {
+          await signOut(auth);
+          throw new Error("You do not have a pending invitation to create this type of account.");
+        }
+        const inviteDoc = inviteSnapshot.docs[0];
+        if (inviteDoc) {
+          await updateDoc(doc(db, 'invitations', inviteDoc.id), {
+            status: 'accepted',
+            acceptedAt: new Date().toISOString(),
+            userId: userCredential.user.uid
+          });
+        }
+      }
+      
+      await setDoc(userDocRef, {
+        email: userCredential.user.email,
+        displayName: userCredential.user.displayName,
+        photoURL: userCredential.user.photoURL,
+        createdAt: new Date().toISOString(),
+        authProvider: 'google',
+        profileCompleted: false,
+        role: roleToSet,
+        ...(roleToSet === 'student' && { profileVisibility: 'private', paidForPublic: false }),
+        ...(roleToSet === 'company' && { companyName: 'kimtronix' })
+      }, { merge: true });
+
+      if (roleToSet === 'company') {
+        await setDoc(doc(db, 'platformConfig', 'singleton'), { companyAccountCreated: true });
+        setCompanyAccountExists(true);
+      }
+      onAuthSuccess(userCredential.user);
+    }
+  } catch (err: any) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const getRoleTheme = () => {
     switch(defaultRole) {
