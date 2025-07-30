@@ -1,0 +1,1597 @@
+{
+  "attendance": {
+    "1Mchnib1BJVetERfFy4WDRz4ppw1_2025-07-21": {
+      "date": "2025-07-21",
+      "reason": "",
+      "studentUid": "1Mchnib1BJVetERfFy4WDRz4ppw1",
+      "studentName": "Berverly Takawira ",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "Present"
+    },
+    "1Mchnib1BJVetERfFy4WDRz4ppw1_2025-07-23": {
+      "date": "2025-07-23",
+      "reason": "",
+      "studentUid": "1Mchnib1BJVetERfFy4WDRz4ppw1",
+      "studentName": "Berverly Takawira ",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "Present"
+    },
+    "9t6SFgaQzAZsdPozPKJZeZBIhYx1_2025-07-21": {
+      "date": "2025-07-21",
+      "reason": "",
+      "studentUid": "9t6SFgaQzAZsdPozPKJZeZBIhYx1",
+      "studentName": "Dionne C",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "Present"
+    },
+    "9t6SFgaQzAZsdPozPKJZeZBIhYx1_2025-07-23": {
+      "date": "2025-07-23",
+      "reason": "",
+      "studentUid": "9t6SFgaQzAZsdPozPKJZeZBIhYx1",
+      "studentName": "Dionne C",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "Present"
+    },
+    "Gm35SybAV0TAK2FI0FOJfG6zDa32_2025-07-21": {
+      "date": "2025-07-21",
+      "reason": "",
+      "studentUid": "Gm35SybAV0TAK2FI0FOJfG6zDa32",
+      "studentName": "Charlotte C Mtenga",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "Late"
+    },
+    "Gm35SybAV0TAK2FI0FOJfG6zDa32_2025-07-23": {
+      "date": "2025-07-23",
+      "reason": "",
+      "studentUid": "Gm35SybAV0TAK2FI0FOJfG6zDa32",
+      "studentName": "Charlotte C Mtenga",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "Present"
+    },
+    "MyQLuUxWz7URVPtXNUYHMJAucoW2_2025-07-23": {
+      "date": "2025-07-23",
+      "reason": "n/a",
+      "studentUid": "MyQLuUxWz7URVPtXNUYHMJAucoW2",
+      "studentName": "delight chirume",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "Absent"
+    },
+    "QQ8xkTnNHfPdPBE2rkev9MuH8IU2_2025-07-21": {
+      "date": "2025-07-21",
+      "reason": "NA",
+      "studentUid": "QQ8xkTnNHfPdPBE2rkev9MuH8IU2",
+      "studentName": "Fionna",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "Absent"
+    },
+    "QQ8xkTnNHfPdPBE2rkev9MuH8IU2_2025-07-23": {
+      "date": "2025-07-23",
+      "reason": "",
+      "studentUid": "QQ8xkTnNHfPdPBE2rkev9MuH8IU2",
+      "studentName": "Fionna",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "Present"
+    },
+    "crvPLMKQMgcVmyR2sA8T9qNco8u2_2025-07-24": {
+      "date": "2025-07-24",
+      "reason": "",
+      "studentUid": "crvPLMKQMgcVmyR2sA8T9qNco8u2",
+      "studentName": "Marvin Ngaloseh",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "Present"
+    },
+    "qXBD4GpnNpV7F8kPy9EY3HtzZc33_2025-07-23": {
+      "date": "2025-07-23",
+      "reason": "",
+      "studentUid": "qXBD4GpnNpV7F8kPy9EY3HtzZc33",
+      "studentName": "Naison Chidimure",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "Late"
+    },
+    "vFcPNT6GcwOrwLLL0roO78UnLvn2_2025-07-21": {
+      "date": "2025-07-21",
+      "reason": "",
+      "studentUid": "vFcPNT6GcwOrwLLL0roO78UnLvn2",
+      "studentName": "Delight Chirume",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "Present"
+    },
+    "vFcPNT6GcwOrwLLL0roO78UnLvn2_2025-07-23": {
+      "date": "2025-07-23",
+      "reason": "",
+      "studentUid": "vFcPNT6GcwOrwLLL0roO78UnLvn2",
+      "studentName": "Delight Chirume",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "Present"
+    },
+    "ze2knPt9JpTASU7WW6Yanw6SyWh2_2025-07-21": {
+      "date": "2025-07-21",
+      "reason": "",
+      "studentUid": "ze2knPt9JpTASU7WW6Yanw6SyWh2",
+      "studentName": "Innocent Knowledge Mafusire",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "Present"
+    },
+    "ze2knPt9JpTASU7WW6Yanw6SyWh2_2025-07-23": {
+      "date": "2025-07-23",
+      "reason": "n/a",
+      "studentUid": "ze2knPt9JpTASU7WW6Yanw6SyWh2",
+      "studentName": "Innocent Knowledge Mafusire",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "Absent"
+    }
+  },
+  "certificates": {
+    "6P62JhQhOhMww8NjsAAK": {
+      "studentUid": "1de0tJHnLTf3MHEioiaRp2Wc3cA3",
+      "studentName": "Zuva",
+      "studentEmail": "zuva10@gmail.com",
+      "courseName": "DSI & IOT",
+      "completionDate": "2025-07-21T16:46:48.235Z",
+      "issuedBy": "Company Admin",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "Qk8MQlQngZxaREuWmpQP": {
+      "studentUid": "ze2knPt9JpTASU7WW6Yanw6SyWh2",
+      "studentName": "Innocent Knowledge Mafusire",
+      "studentEmail": "sir@gmail.com",
+      "courseName": "ISD",
+      "completionDate": "2025-07-18T15:00:18.154Z",
+      "issuedBy": "Company Admin",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    }
+  },
+  "courses": {
+    "MNwokOJaAHj4Fev2HjKd": {
+      "name": "Digital Systems Integration & Internet of Things (DSI & IoT)",
+      "description": "connected systems, smart cities, smart homes, trackers, automated systems etc",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "createdDate": "2025-07-18T16:14:36.154Z"
+    },
+    "NC87zjVkx7YWtu7Ii8DD": {
+      "name": "Introduction to Industrial Systems ",
+      "description": "- System development careers and their market portion\n - Breaking down a system into 4 major parts\n - Discussion on circuits and typical system ideas (LV and HV Systems)\n - Resolving systems as blocks (System Design)\n - Developer mindset + Business and Financial Intelligence",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "createdDate": "2025-07-14T09:13:05.696Z"
+    },
+    "VUIH0ZhzMs5S4fhxBy8X": {
+      "name": " Product development ",
+      "description": "-Production tools utilization [AI, Design Software, Code Reuse] \n - PCB Design \n- Stress Testing \n- Documentation ",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "createdDate": "2025-07-14T09:15:23.634Z"
+    },
+    "g9V4PNgxxbjd59yTXskD": {
+      "name": "Software as a tool ",
+      "description": " Image Processing as a Product \n- HMI Design in Python, PHP, MySQL database integration \n- Integrating our Hardware electronic circuits with our own Software \n- System upscaling strategies ",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "createdDate": "2025-07-14T09:14:44.512Z"
+    },
+    "sdeEWqDnwIVNCGR7vjUN": {
+      "name": "In-depth ISD [Monitoring, Monitoring and Control Systems – Instruments] ",
+      "description": "Circuit design and concept development [Proteus simulations]\n - Dynamic Arduino Mastery – Back-to-back immersive Adventure\n - Sensor Analysis – [interfacing analog sensors] + [simplified c-program]\n - Data Handling and data presentation [LCD, Serial Monitor and Plotter] \n- Monitoring and Control - Practical System Development \n- Communication Modules [USB, Bluetooth, Wi-Fi, LORAWAN, GSM, IR etc] \n- Power and Control [Developing an imitation of existing systems]",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "createdDate": "2025-07-14T09:14:05.265Z"
+    }
+  },
+  "enrollments": {
+    "1Mchnib1BJVetERfFy4WDRz4ppw1_VUIH0ZhzMs5S4fhxBy8X": {
+      "studentUid": "1Mchnib1BJVetERfFy4WDRz4ppw1",
+      "courseId": "VUIH0ZhzMs5S4fhxBy8X",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "active",
+      "enrolledAt": {
+        "_seconds": 1752855136,
+        "_nanoseconds": 671000000
+      }
+    },
+    "1Mchnib1BJVetERfFy4WDRz4ppw1_g9V4PNgxxbjd59yTXskD": {
+      "studentUid": "1Mchnib1BJVetERfFy4WDRz4ppw1",
+      "courseId": "g9V4PNgxxbjd59yTXskD",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "active",
+      "enrolledAt": {
+        "_seconds": 1752855181,
+        "_nanoseconds": 282000000
+      }
+    },
+    "1Mchnib1BJVetERfFy4WDRz4ppw1_sdeEWqDnwIVNCGR7vjUN": {
+      "studentUid": "1Mchnib1BJVetERfFy4WDRz4ppw1",
+      "courseId": "sdeEWqDnwIVNCGR7vjUN",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "active",
+      "enrolledAt": {
+        "_seconds": 1752855170,
+        "_nanoseconds": 254000000
+      }
+    },
+    "9t6SFgaQzAZsdPozPKJZeZBIhYx1_NC87zjVkx7YWtu7Ii8DD": {
+      "studentUid": "9t6SFgaQzAZsdPozPKJZeZBIhYx1",
+      "courseId": "NC87zjVkx7YWtu7Ii8DD",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "active",
+      "enrolledAt": {
+        "_seconds": 1752586628,
+        "_nanoseconds": 284000000
+      }
+    },
+    "Gm35SybAV0TAK2FI0FOJfG6zDa32_VUIH0ZhzMs5S4fhxBy8X": {
+      "studentUid": "Gm35SybAV0TAK2FI0FOJfG6zDa32",
+      "courseId": "VUIH0ZhzMs5S4fhxBy8X",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "active",
+      "enrolledAt": {
+        "_seconds": 1752855144,
+        "_nanoseconds": 944000000
+      }
+    },
+    "QQ8xkTnNHfPdPBE2rkev9MuH8IU2_VUIH0ZhzMs5S4fhxBy8X": {
+      "studentUid": "QQ8xkTnNHfPdPBE2rkev9MuH8IU2",
+      "courseId": "VUIH0ZhzMs5S4fhxBy8X",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "active",
+      "enrolledAt": {
+        "_seconds": 1752855128,
+        "_nanoseconds": 721000000
+      }
+    },
+    "crvPLMKQMgcVmyR2sA8T9qNco8u2_NC87zjVkx7YWtu7Ii8DD": {
+      "studentUid": "crvPLMKQMgcVmyR2sA8T9qNco8u2",
+      "courseId": "NC87zjVkx7YWtu7Ii8DD",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "active",
+      "enrolledAt": {
+        "_seconds": 1753367652,
+        "_nanoseconds": 972000000
+      }
+    },
+    "crvPLMKQMgcVmyR2sA8T9qNco8u2_sdeEWqDnwIVNCGR7vjUN": {
+      "studentUid": "crvPLMKQMgcVmyR2sA8T9qNco8u2",
+      "courseId": "sdeEWqDnwIVNCGR7vjUN",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "active",
+      "enrolledAt": {
+        "_seconds": 1753367688,
+        "_nanoseconds": 89000000
+      }
+    },
+    "vFcPNT6GcwOrwLLL0roO78UnLvn2_NC87zjVkx7YWtu7Ii8DD": {
+      "studentUid": "vFcPNT6GcwOrwLLL0roO78UnLvn2",
+      "courseId": "NC87zjVkx7YWtu7Ii8DD",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "active",
+      "enrolledAt": {
+        "_seconds": 1752586599,
+        "_nanoseconds": 622000000
+      }
+    },
+    "vFcPNT6GcwOrwLLL0roO78UnLvn2_VUIH0ZhzMs5S4fhxBy8X": {
+      "studentUid": "vFcPNT6GcwOrwLLL0roO78UnLvn2",
+      "courseId": "VUIH0ZhzMs5S4fhxBy8X",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "active",
+      "enrolledAt": {
+        "_seconds": 1752586613,
+        "_nanoseconds": 279000000
+      }
+    },
+    "ze2knPt9JpTASU7WW6Yanw6SyWh2_MNwokOJaAHj4Fev2HjKd": {
+      "studentUid": "ze2knPt9JpTASU7WW6Yanw6SyWh2",
+      "courseId": "MNwokOJaAHj4Fev2HjKd",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "active",
+      "enrolledAt": {
+        "_seconds": 1752855349,
+        "_nanoseconds": 82000000
+      }
+    },
+    "ze2knPt9JpTASU7WW6Yanw6SyWh2_NC87zjVkx7YWtu7Ii8DD": {
+      "studentUid": "ze2knPt9JpTASU7WW6Yanw6SyWh2",
+      "courseId": "NC87zjVkx7YWtu7Ii8DD",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "active",
+      "enrolledAt": {
+        "_seconds": 1752855378,
+        "_nanoseconds": 684000000
+      }
+    },
+    "ze2knPt9JpTASU7WW6Yanw6SyWh2_sdeEWqDnwIVNCGR7vjUN": {
+      "studentUid": "ze2knPt9JpTASU7WW6Yanw6SyWh2",
+      "courseId": "sdeEWqDnwIVNCGR7vjUN",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "status": "active",
+      "enrolledAt": {
+        "_seconds": 1752855356,
+        "_nanoseconds": 363000000
+      }
+    }
+  },
+  "interviewReports": {
+    "0FqquacKrHn2oX4Ce5LH": {
+      "studentUid": "gPq2kMEjHKUMucEj1ozjd0eLoS63",
+      "studentName": "Mufaro Chari",
+      "studentEmail": "charimufaro4@gmail.com",
+      "interviewDate": "2025-07-12T12:08:10.091Z",
+      "reportSummary": "Interview conducted for Mufaro Chari. Experience level: intermediate. Key skills identified: software programming. Primary interests include: l'm interested in programming. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "General IT Fundamentals"
+      ],
+      "interviewScore": 28,
+      "strengths": [
+        "Proficient in software programming"
+      ],
+      "weaknesses": [
+        "Limited technical skill breadth",
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "1soMnmPo8mjIejB6eQXw": {
+      "studentUid": "1Mchnib1BJVetERfFy4WDRz4ppw1",
+      "studentName": "Berverly Takawira ",
+      "studentEmail": "berverlytakawira@gmail.com",
+      "interviewDate": "2025-07-12T12:15:17.449Z",
+      "reportSummary": "Interview conducted for Berverly Takawira . Experience level: Beginner . Key skills identified: Not any skills yet. Primary interests include: I want to know most on computer Networks and maintenance. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "General IT Fundamentals"
+      ],
+      "interviewScore": 8,
+      "strengths": [
+        "Proficient in Not any skills yet"
+      ],
+      "weaknesses": [
+        "Limited technical skill breadth",
+        "Requires foundational training",
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "5ICk8S42URqz26W1fwmb": {
+      "studentName": "Denzel Tawira",
+      "studentEmail": "denzel@gmail.com",
+      "interviewDate": "2025-07-18T12:41:32.849Z",
+      "reportSummary": "Denzel Tawira is a beginner in the industrial systems field with a keen interest in microcontroller programming using Arduino. His career goal is to be able to make projects using Arduino.",
+      "recommendedLearningPath": [
+        "Introduction to Industrial Systems"
+      ],
+      "interviewScore": 75,
+      "strengths": [
+        "Clear career objectives"
+      ],
+      "weaknesses": [
+        "Limited technical skills"
+      ],
+      "experience": "Beginner",
+      "skills": [],
+      "interests": [
+        "Microcontroller programming using Arduino"
+      ],
+      "goals": "To be able to make projects using Arduino",
+      "studentUid": "fhiPeCR7NqSLff6yYTqifU4AipI3",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "6EPTUD3EeCGyYrxGtQsX": {
+      "studentName": "Tinotenda Rwodzi",
+      "studentEmail": "tino2@gmail.com",
+      "interviewDate": "2025-07-17T13:02:49.703Z",
+      "reportSummary": "Tinotenda Rwodzi is a beginner with a primary technical skill in Python. His primary learning interest is in developing systems using Arduino, and his career goal is to solve industrial system problems using Arduino.",
+      "recommendedLearningPath": [
+        "Introduction to Industrial Systems"
+      ],
+      "interviewScore": 75,
+      "strengths": [
+        "Clear career objectives"
+      ],
+      "weaknesses": [
+        "Limited practical experience in industrial systems"
+      ],
+      "experience": "Beginner",
+      "skills": [
+        "Python"
+      ],
+      "interests": [
+        "Arduino Development"
+      ],
+      "goals": "To solve almost any industrial system problem using Arduino",
+      "studentUid": "B9lHB2w4euU9hyp1otOdbFmzOo82",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "Cb8Hy2azcVQmH3d4UEJe": {
+      "studentName": "Innocent Knowledge Mafusire",
+      "studentEmail": "sir@gmail.com",
+      "interviewDate": "2025-07-18T13:29:03.442Z",
+      "reportSummary": "Innocent Knowledge Mafusire is a beginner with technical skills in Proteus, Python, and C programming for Arduino. They have a keen interest in hardware and software integration. Their career goal is to make money.",
+      "recommendedLearningPath": [
+        "Introduction to Industrial Systems"
+      ],
+      "interviewScore": 75,
+      "strengths": [
+        "Clear career objectives",
+        "Basic technical skills in software and hardware"
+      ],
+      "weaknesses": [
+        "Limited practical experience",
+        "Goals could be more specific"
+      ],
+      "experience": "Beginner",
+      "skills": [
+        "Proteus",
+        "Python",
+        "C programming for Arduino"
+      ],
+      "interests": [
+        "Hardware and software integration"
+      ],
+      "goals": "To make money",
+      "studentUid": "ze2knPt9JpTASU7WW6Yanw6SyWh2",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "ENa8jl7tg6PuMlPOqVR7": {
+      "studentName": "Marvin Ngaloseh",
+      "studentEmail": "ngalondemarvin@gmail.com",
+      "interviewDate": "2025-07-24T14:31:54.675Z",
+      "reportSummary": "Marvin Ngaloseh is a beginner in industrial systems development with a primary interest in microcontrollers and coding, specifically web technologies. His career goal is to become an Electronic Engineer.",
+      "recommendedLearningPath": [
+        "Introduction to Industrial Systems"
+      ],
+      "interviewScore": 75,
+      "strengths": [
+        "Clear career objectives"
+      ],
+      "weaknesses": [
+        "Limited practical experience"
+      ],
+      "experience": "Beginner",
+      "skills": [
+        "Coding"
+      ],
+      "interests": [
+        "Microcontrollers"
+      ],
+      "goals": "To become an Electronic Engineer",
+      "studentUid": "crvPLMKQMgcVmyR2sA8T9qNco8u2",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "Keudpnze1nw0BI1d5J2t": {
+      "studentUid": "v964RSlTmbbZul9D453cTxg8HD53",
+      "studentName": "Alwin Wesley",
+      "studentEmail": "wesley@gmail.com",
+      "interviewDate": "2025-07-11T09:21:41.410Z",
+      "reportSummary": "Interview conducted for Alwin Wesley. Experience level: none. Key skills identified: none. Primary interests include: Robotics. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "General IT Fundamentals"
+      ],
+      "interviewScore": 8,
+      "strengths": [
+        "Proficient in none"
+      ],
+      "weaknesses": [
+        "Limited technical skill breadth",
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "L2eHvX0uCJYkCmiqiKcK": {
+      "studentUid": "GUfSLYNLbeeXaHAaz99MGv1b0vP2",
+      "studentName": "Tadiwanashe Ndokwani",
+      "studentEmail": "ndokwanitadiwa@gmail.com",
+      "interviewDate": "2025-07-12T12:05:45.330Z",
+      "reportSummary": "Interview conducted for Tadiwanashe Ndokwani. Experience level: intermidiate. Key skills identified: none. Primary interests include: hacking, programming, automation, coding, and network engineering. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "General IT Fundamentals"
+      ],
+      "interviewScore": 20,
+      "strengths": [
+        "Proficient in none"
+      ],
+      "weaknesses": [
+        "Limited technical skill breadth",
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "Pu60IEG1xFeWfNOonpfw": {
+      "studentName": "Baa Harare",
+      "studentEmail": "harare@gmail.com",
+      "interviewDate": "2025-07-18T12:53:40.266Z",
+      "reportSummary": "Baa Harare is a beginner with no technical skills but has a keen interest in microcontroller programming. Their career goal is in microcontroller programming.",
+      "recommendedLearningPath": [
+        "Introduction to Industrial Systems"
+      ],
+      "interviewScore": 75,
+      "strengths": [
+        "Clear career objectives"
+      ],
+      "weaknesses": [
+        "Limited technical skills"
+      ],
+      "experience": "Beginner",
+      "skills": [],
+      "interests": [
+        "Microcontroller Programming"
+      ],
+      "goals": "To pursue a career in microcontroller programming",
+      "studentUid": "3yPLv3SHKlauh24pTJ4HlJhDhQa2",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "VC1rnvzalPcDOdke2tm0": {
+      "studentUid": "9mjunkdezsa4vAF8oEvyWr9cmLH2",
+      "studentName": "Wesley",
+      "studentEmail": "wesley1@gmail.com",
+      "interviewDate": "2025-07-11T12:15:19.544Z",
+      "reportSummary": "Interview conducted for Wesley. Experience level: Beginner. Key skills identified: none. Primary interests include: robotics. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "General IT Fundamentals"
+      ],
+      "interviewScore": 8,
+      "strengths": [
+        "Proficient in none"
+      ],
+      "weaknesses": [
+        "Limited technical skill breadth",
+        "Requires foundational training",
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "WvxzXzwPjEOKM19DtV73": {
+      "studentUid": "x1Fn9PuK43erxvoexPKjWgWHrOZ2",
+      "studentName": "Dogman Z Dawgs",
+      "studentEmail": "w@gmail.com",
+      "interviewDate": "2025-07-12T10:18:29.773Z",
+      "reportSummary": "Interview conducted for Dogman Z Dawgs. Experience level: Advanced. Key skills identified: None. Primary interests include: Robotics. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "General IT Fundamentals"
+      ],
+      "interviewScore": 48,
+      "strengths": [
+        "Proficient in None",
+        "Strong foundational experience"
+      ],
+      "weaknesses": [
+        "Limited technical skill breadth",
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "XuDpY9wwqvPxteJIV3H4": {
+      "studentUid": "qXBD4GpnNpV7F8kPy9EY3HtzZc33",
+      "studentName": "Naison Chidimure",
+      "studentEmail": "naisonchidimure@gmail.com",
+      "interviewDate": "2025-07-12T12:02:22.136Z",
+      "reportSummary": "Interview conducted for Naison Chidimure. Experience level: Intermediate. Key skills identified: programming with python, process automation, virtualization. Primary interests include: process automation. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "General IT Fundamentals"
+      ],
+      "interviewScore": 38,
+      "strengths": [
+        "Proficient in programming with python, process automation"
+      ],
+      "weaknesses": [
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "Z9SQj5Lx5Iopp3IfGtzp": {
+      "studentUid": "52yNIWqYnSfB7tEfGrpqsZl3B2x1",
+      "studentName": "Well Wells",
+      "studentEmail": "wac@gmail.com",
+      "interviewDate": "2025-07-12T11:47:02.231Z",
+      "reportSummary": "Interview conducted for Well Wells. Experience level: Beginner. Key skills identified: Software dev. Primary interests include: Robotics. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "General IT Fundamentals"
+      ],
+      "interviewScore": 8,
+      "strengths": [
+        "Proficient in Software dev"
+      ],
+      "weaknesses": [
+        "Limited technical skill breadth",
+        "Requires foundational training",
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "Ze5bKdIlw1QTAy5o4ZTL": {
+      "studentUid": "T4Qyq2jrQ6X6sEicuBlFfMp20TD2",
+      "studentName": "HAZAEL TINOTENDA CHIFURA",
+      "studentEmail": "tinotendahazael@gmail.com",
+      "interviewDate": "2025-07-12T12:06:17.818Z",
+      "reportSummary": "Interview conducted for HAZAEL TINOTENDA CHIFURA. Experience level: I'm an intermediate. Key skills identified: software programming. Primary interests include: software architecture. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "General IT Fundamentals"
+      ],
+      "interviewScore": 28,
+      "strengths": [
+        "Proficient in software programming"
+      ],
+      "weaknesses": [
+        "Limited technical skill breadth",
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "ao5x98FnMdwU1IvSSQur": {
+      "studentName": "Fionna",
+      "studentEmail": "lisa@gmail.com",
+      "interviewDate": "2025-07-16T10:43:54.339Z",
+      "reportSummary": "Fionna is a beginner with knowledge in Visual Basic. She is interested in learning to use software as a tool and aims to develop industrial systems.",
+      "recommendedLearningPath": [],
+      "interviewScore": 85,
+      "strengths": [
+        "Clear career goals"
+      ],
+      "weaknesses": [
+        "Limited technical skills"
+      ],
+      "experience": "Beginner",
+      "skills": [
+        "Visual Basic"
+      ],
+      "interests": [
+        "Using software as a tool"
+      ],
+      "goals": "To develop industrial systems",
+      "studentUid": "QQ8xkTnNHfPdPBE2rkev9MuH8IU2",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "d4nPpKYvaDqkY79wWE6k": {
+      "studentUid": "5NYzY9Onp8gSQV95hy4c6LAwS7L2",
+      "studentName": "Tatenda A Zifunzi",
+      "studentEmail": "tatendazifunzi@gmail.com",
+      "interviewDate": "2025-07-12T12:08:00.233Z",
+      "reportSummary": "Interview conducted for Tatenda A Zifunzi. Experience level: Beginner. Key skills identified: not yet. Primary interests include: software architecture. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "General IT Fundamentals"
+      ],
+      "interviewScore": 8,
+      "strengths": [
+        "Proficient in not yet"
+      ],
+      "weaknesses": [
+        "Limited technical skill breadth",
+        "Requires foundational training",
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "fZrSXbxV0eadPDdSlUvZ": {
+      "studentUid": "1de0tJHnLTf3MHEioiaRp2Wc3cA3",
+      "studentName": "Zuva",
+      "studentEmail": "zuva10@gmail.com",
+      "interviewDate": "2025-07-15T09:03:04.894Z",
+      "reportSummary": "Interview conducted for Zuva. Experience level: none. Key skills identified: zero. Primary interests include: analytics. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "Data Science & AI Track"
+      ],
+      "interviewScore": 8,
+      "strengths": [
+        "Proficient in zero"
+      ],
+      "weaknesses": [
+        "Limited technical skill breadth",
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "kW2M3qNetqVMGr2EOZh5": {
+      "studentUid": "Gm35SybAV0TAK2FI0FOJfG6zDa32",
+      "studentName": "Charlotte C Mtenga",
+      "studentEmail": "charlottemtenga24@gmail.com",
+      "interviewDate": "2025-07-12T12:05:21.276Z",
+      "reportSummary": "Interview conducted for Charlotte C Mtenga. Experience level: beginner. Key skills identified: nothing yet im still learning. Primary interests include: software programming. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "General IT Fundamentals"
+      ],
+      "interviewScore": 8,
+      "strengths": [
+        "Proficient in nothing yet im still learning"
+      ],
+      "weaknesses": [
+        "Limited technical skill breadth",
+        "Requires foundational training",
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "lOBNV8Y5TmUTjBR8w7RF": {
+      "studentUid": "8Zq1Ae9LTZP67mgXiCzI775P1Wh1",
+      "studentName": "Divine Chirume",
+      "studentEmail": "delight2@gmail.com",
+      "interviewDate": "2025-07-11T12:20:40.033Z",
+      "reportSummary": "Interview conducted for Divine Chirume. Experience level: Beginner. Key skills identified: javascript. Primary interests include: mobile app development. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "Mobile App Development Track"
+      ],
+      "interviewScore": 8,
+      "strengths": [
+        "Proficient in javascript"
+      ],
+      "weaknesses": [
+        "Limited technical skill breadth",
+        "Requires foundational training",
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "lbe7t6lB4tmzaY2XxfPA": {
+      "studentName": "Dionne C",
+      "studentEmail": "dionnec@gmail.com",
+      "interviewDate": "2025-07-15T13:01:14.449Z",
+      "reportSummary": "Dionne C is an intermediate-level student with a background in industrial systems development and a keen interest in developing apps using Flutter. Currently, mobile app development is a primary learning interest, aligning with the career goal of becoming a mobile app developer.",
+      "recommendedLearningPath": [
+        "Mobile App Development with Flutter",
+        "User Experience (UX) Design for Mobile Apps"
+      ],
+      "interviewScore": 95,
+      "strengths": [
+        "Clear career goal and focused learning interest"
+      ],
+      "weaknesses": [],
+      "experience": "Intermediate",
+      "skills": [
+        "Industrial Systems Development",
+        "Flutter"
+      ],
+      "interests": [
+        "Mobile App Development"
+      ],
+      "goals": "To become a mobile app developer",
+      "studentUid": "9t6SFgaQzAZsdPozPKJZeZBIhYx1",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "nW4AIe5jNHKrqgxuZLvy": {
+      "studentName": "Delight Chirume",
+      "studentEmail": "stella@gmail.com",
+      "interviewDate": "2025-07-11T15:01:55.887Z",
+      "reportSummary": "Delight Chirume is a beginner in the field, with a focus on advancing Python programming skills. They are also interested in learning C++ for Arduino programming and backend development with Django. Delight aspires to become a professional Python developer.",
+      "recommendedLearningPath": [
+        "Python Development Fundamentals",
+        "Arduino Programming with C++",
+        "Django Web Development"
+      ],
+      "interviewScore": 95,
+      "strengths": [
+        "Clear career goal in Python development"
+      ],
+      "weaknesses": [
+        "Limited experience in other languages"
+      ],
+      "experience": "Beginner",
+      "skills": [
+        "Python",
+        "C++"
+      ],
+      "interests": [
+        "Arduino Programming",
+        "Backend Development with Django"
+      ],
+      "goals": "To become a professional Python developer",
+      "studentUid": "vFcPNT6GcwOrwLLL0roO78UnLvn2",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "nkqNURtbkNBjVkoCJnit": {
+      "studentName": "Tatenda Mavetere",
+      "studentEmail": "tatenda@gmail.com",
+      "interviewDate": "2025-07-11T17:15:37.760Z",
+      "reportSummary": "Tatenda is a beginner with key technical skills in C. Their primary learning interest is in industrial systems development, and their career goal is to create systems that aid hardware systems used in industries.",
+      "recommendedLearningPath": [],
+      "interviewScore": 85,
+      "strengths": [
+        "Clear career goals and aspirations"
+      ],
+      "weaknesses": [
+        "Limited technical skills beyond C"
+      ],
+      "experience": "Beginner",
+      "skills": [
+        "C"
+      ],
+      "interests": [
+        "Industrial Systems Development"
+      ],
+      "goals": "To create systems that aid hardware systems used in industries",
+      "studentUid": "AMq8K3mHOrbjNKOSk6PECjn0dzo2",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "nqcAurvqiLzv3YSiNAFa": {
+      "studentUid": "Z28y9kmZRra52ZfdE8wiUXz0FHL2",
+      "studentName": "Innocent Mafusire",
+      "studentEmail": "ino@gmail.com",
+      "interviewDate": "2025-07-12T12:00:01.637Z",
+      "reportSummary": "Interview conducted for Innocent Mafusire. Experience level: Beginner. Key skills identified: Python, ISD, FTP, hosting. Primary interests include: Image processing. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "General IT Fundamentals"
+      ],
+      "interviewScore": 23,
+      "strengths": [
+        "Proficient in Python, ISD"
+      ],
+      "weaknesses": [
+        "Requires foundational training",
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "phoSdn03B244oW4FT2Hd": {
+      "studentUid": "MyQLuUxWz7URVPtXNUYHMJAucoW2",
+      "studentName": "delight chirume",
+      "studentEmail": "chirumedelight@gmail.com",
+      "interviewDate": "2025-07-11T09:44:03.173Z",
+      "reportSummary": "Interview conducted for delight chirume. Experience level: advance. Key skills identified: python. Primary interests include: c. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "General IT Fundamentals"
+      ],
+      "interviewScore": 8,
+      "strengths": [
+        "Proficient in python"
+      ],
+      "weaknesses": [
+        "Limited technical skill breadth",
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "seeuvGMyEwlB6eOVzzWt": {
+      "studentName": "Peter Dhewa",
+      "studentEmail": "peter2@gmail.com",
+      "interviewDate": "2025-07-17T09:08:07.105Z",
+      "reportSummary": "Peter Dhewa is a beginner with a keen interest in learning Arduino programming to create innovative projects like smart door systems for home safety.",
+      "recommendedLearningPath": [
+        "Arduino Programming Fundamentals",
+        "IoT Project Development"
+      ],
+      "interviewScore": 90,
+      "strengths": [
+        "Clear career goals and aspirations"
+      ],
+      "weaknesses": [
+        "Lack of current technical skills"
+      ],
+      "experience": "Beginner",
+      "skills": [],
+      "interests": [
+        "Arduino Programming"
+      ],
+      "goals": "To create advanced projects using Arduino, such as smart door systems for home safety",
+      "studentUid": "uQ4Xf7AQtrU7GP87ON9Vw79A26C3",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "uNmh1s1E33LlosMTHfDb": {
+      "studentUid": "q9apOqeRE9QujkR1Pgqcx7MjXut1",
+      "studentName": "Alwin W Chitewe",
+      "studentEmail": "dawn@dawn.com",
+      "interviewDate": "2025-07-12T09:02:05.125Z",
+      "reportSummary": "Interview conducted for Alwin W Chitewe. Experience level: Beginner. Key skills identified: none. Primary interests include: engineering. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "General IT Fundamentals"
+      ],
+      "interviewScore": 8,
+      "strengths": [
+        "Proficient in none"
+      ],
+      "weaknesses": [
+        "Limited technical skill breadth",
+        "Requires foundational training",
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "uorYwbAKvkfdNoHn1Jjx": {
+      "studentUid": "8gOhA2vzsFTuBOUh3I39CQhXRBm1",
+      "studentName": "Prominent Bonde",
+      "studentEmail": "prominentbonde56@gmail.com",
+      "interviewDate": "2025-07-12T11:01:46.580Z",
+      "reportSummary": "Interview conducted for Prominent Bonde. Experience level: beginner . Key skills identified: none. Primary interests include: software and web development. Career goals: not explicitly stated.",
+      "recommendedLearningPath": [
+        "Web Development Track"
+      ],
+      "interviewScore": 8,
+      "strengths": [
+        "Proficient in none"
+      ],
+      "weaknesses": [
+        "Limited technical skill breadth",
+        "Requires foundational training",
+        "Goals could be more defined"
+      ],
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    }
+  },
+  "learningContent": {
+    "HDpr9haIGNEGjkK1ipcU": {
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "title": "Sensor Analysis",
+      "description": "A sensor is basically an electrical representation of a physical parameter, for example, LDR is an electrical representation of light signal hitting its surface. sensors usually classified as analog sensors and digital sensors. analog sensors are connected as follows (Vcc - 5V or 3.3V , GND - GND , Signal to analog pin)",
+      "type": "pdf",
+      "fileUrl": "https://firebasestorage.googleapis.com/v0/b/skillsg-44ea6.firebasestorage.app/o/learning_materials%2F8aDiNHPX7eSzMEXecHbQsNpy6XY2%2F1752854734052_IoT-Gadgets-for-Climate-Resilience-and-Disaster-Preparedness.pdf?alt=media&token=d96e3475-78af-43bf-9f4c-3ee2e7c51392",
+      "uploadedAt": "2025-07-18T16:06:00.516Z",
+      "courseId": "sdeEWqDnwIVNCGR7vjUN"
+    },
+    "N8oi6xGkLVV9qUEWeOIU": {
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "title": "document",
+      "description": "uiycljh.kb",
+      "type": "pdf",
+      "fileUrl": "https://firebasestorage.googleapis.com/v0/b/skillsg-44ea6.firebasestorage.app/o/learning_materials%2F8aDiNHPX7eSzMEXecHbQsNpy6XY2%2F1753285213359_coverletter.pdf?alt=media&token=9188b4da-80c4-48f6-b84b-e74536e5ba59",
+      "uploadedAt": "2025-07-23T15:40:17.980Z",
+      "courseId": "VUIH0ZhzMs5S4fhxBy8X"
+    },
+    "bZkmTQBMQj0Ieb0qpJtS": {
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "title": "into to isd",
+      "description": "introduction to isd",
+      "type": "pdf",
+      "fileUrl": "https://firebasestorage.googleapis.com/v0/b/skillsg-44ea6.firebasestorage.app/o/learning_materials%2F8aDiNHPX7eSzMEXecHbQsNpy6XY2%2F1752576203105_delight%20cv%20(1).pdf?alt=media&token=8329d8e3-f7a6-4e0f-b9eb-132513e5a374",
+      "uploadedAt": "2025-07-15T10:43:27.859Z",
+      "courseId": "NC87zjVkx7YWtu7Ii8DD"
+    },
+    "qnXbX18pVwyNXQVxE6cE": {
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "title": "basics programming ",
+      "description": "document",
+      "type": "pdf",
+      "fileUrl": "https://firebasestorage.googleapis.com/v0/b/skillsg-44ea6.firebasestorage.app/o/learning_materials%2F8aDiNHPX7eSzMEXecHbQsNpy6XY2%2F1753284572763_g.pdf?alt=media&token=ea083e47-ae2b-408a-a66c-f3f5b9187dba",
+      "uploadedAt": "2025-07-23T15:29:38.455Z",
+      "courseId": "g9V4PNgxxbjd59yTXskD"
+    }
+  },
+  "users": {
+    "1Mchnib1BJVetERfFy4WDRz4ppw1": {
+      "email": "berverlytakawira@gmail.com",
+      "createdAt": "2025-07-12T12:12:37.350Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "Not any skills yet"
+      ],
+      "lastUpdated": "2025-07-12T12:15:19.732Z",
+      "name": "Berverly Takawira ",
+      "profileCompleted": true,
+      "experience": "Beginner ",
+      "interests": [
+        "I want to know most on computer Networks and maintenance"
+      ],
+      "goals": "",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "enrolledCourseIds": [
+        "VUIH0ZhzMs5S4fhxBy8X",
+        "sdeEWqDnwIVNCGR7vjUN",
+        "g9V4PNgxxbjd59yTXskD"
+      ],
+      "recommendedBy": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "recommended": true,
+      "recommendedAt": "2025-07-24T09:42:05.289Z"
+    },
+    "1de0tJHnLTf3MHEioiaRp2Wc3cA3": {
+      "email": "zuva10@gmail.com",
+      "createdAt": "2025-07-15T09:02:01.184Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "zero"
+      ],
+      "lastUpdated": "2025-07-15T09:03:07.019Z",
+      "name": "Zuva",
+      "profileCompleted": true,
+      "experience": "none",
+      "interests": [
+        "analytics"
+      ],
+      "goals": ""
+    },
+    "3yPLv3SHKlauh24pTJ4HlJhDhQa2": {
+      "email": "harare@gmail.com",
+      "createdAt": "2025-07-18T12:52:26.739Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [],
+      "lastUpdated": "2025-07-18T12:53:27.281Z",
+      "name": "Baa Harare",
+      "profileCompleted": true,
+      "experience": "Beginner",
+      "interests": [
+        "Microcontroller Programming"
+      ],
+      "goals": "To pursue a career in microcontroller programming"
+    },
+    "52yNIWqYnSfB7tEfGrpqsZl3B2x1": {
+      "email": "wac@gmail.com",
+      "createdAt": "2025-07-12T11:46:03.836Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "Software dev"
+      ],
+      "lastUpdated": "2025-07-12T11:47:02.619Z",
+      "name": "Well Wells",
+      "profileCompleted": true,
+      "experience": "Beginner",
+      "interests": [
+        "Robotics"
+      ],
+      "goals": ""
+    },
+    "5NYzY9Onp8gSQV95hy4c6LAwS7L2": {
+      "email": "tatendazifunzi@gmail.com",
+      "createdAt": "2025-07-12T12:04:48.640Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "not yet"
+      ],
+      "lastUpdated": "2025-07-12T12:08:02.526Z",
+      "name": "Tatenda A Zifunzi",
+      "profileCompleted": true,
+      "experience": "Beginner",
+      "interests": [
+        "software architecture"
+      ],
+      "goals": ""
+    },
+    "8Zq1Ae9LTZP67mgXiCzI775P1Wh1": {
+      "email": "delight2@gmail.com",
+      "createdAt": "2025-07-11T12:19:40.164Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "javascript"
+      ],
+      "lastUpdated": "2025-07-11T12:20:40.354Z",
+      "name": "Divine Chirume",
+      "profileCompleted": true,
+      "experience": "Beginner",
+      "interests": [
+        "mobile app development"
+      ],
+      "goals": ""
+    },
+    "8aDiNHPX7eSzMEXecHbQsNpy6XY2": {
+      "email": "chirumedelight2@gmail.com",
+      "createdAt": "2025-07-11T09:40:43.821Z",
+      "authProvider": "email",
+      "profileCompleted": false,
+      "role": "company"
+    },
+    "8gOhA2vzsFTuBOUh3I39CQhXRBm1": {
+      "email": "prominentbonde56@gmail.com",
+      "createdAt": "2025-07-12T10:56:19.918Z",
+      "authProvider": "email",
+      "role": "student",
+      "paidForPublic": false,
+      "skills": [
+        "none"
+      ],
+      "lastUpdated": "2025-07-12T11:01:51.080Z",
+      "name": "Prominent Bonde",
+      "profileCompleted": true,
+      "experience": "beginner ",
+      "interests": [
+        "software and web development"
+      ],
+      "goals": "",
+      "profileVisibility": "private"
+    },
+    "9mjunkdezsa4vAF8oEvyWr9cmLH2": {
+      "email": "wesley1@gmail.com",
+      "createdAt": "2025-07-11T12:14:13.355Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "none"
+      ],
+      "lastUpdated": "2025-07-11T12:15:21.594Z",
+      "name": "Wesley",
+      "profileCompleted": true,
+      "experience": "Beginner",
+      "interests": [
+        "robotics"
+      ],
+      "goals": ""
+    },
+    "9t6SFgaQzAZsdPozPKJZeZBIhYx1": {
+      "email": "dionnec@gmail.com",
+      "createdAt": "2025-07-15T12:59:14.255Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "Industrial Systems Development",
+        "Flutter"
+      ],
+      "lastUpdated": "2025-07-15T13:01:24.341Z",
+      "name": "Dionne C",
+      "profileCompleted": true,
+      "experience": "Intermediate",
+      "interests": [
+        "Mobile App Development"
+      ],
+      "goals": "To become a mobile app developer",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "enrolledCourseIds": [
+        "NC87zjVkx7YWtu7Ii8DD"
+      ],
+      "recommendedBy": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "recommendedAt": "2025-07-18T13:42:30.729Z",
+      "recommended": true
+    },
+    "AMq8K3mHOrbjNKOSk6PECjn0dzo2": {
+      "email": "tatenda@gmail.com",
+      "createdAt": "2025-07-11T17:14:00.168Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "C"
+      ],
+      "lastUpdated": "2025-07-11T17:15:41.718Z",
+      "name": "Tatenda Mavetere",
+      "profileCompleted": true,
+      "experience": "Beginner",
+      "interests": [
+        "Industrial Systems Development"
+      ],
+      "goals": "To create systems that aid hardware systems used in industries"
+    },
+    "ANIoA6xr3KWk1iicUVUG8zD1vUE3": {
+      "email": "mike4@gmail.com",
+      "createdAt": "2025-07-17T09:59:41.049Z",
+      "authProvider": "email",
+      "profileCompleted": false,
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false
+    },
+    "B9lHB2w4euU9hyp1otOdbFmzOo82": {
+      "email": "tino2@gmail.com",
+      "createdAt": "2025-07-17T12:14:59.216Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "Python"
+      ],
+      "lastUpdated": "2025-07-17T13:02:57.416Z",
+      "name": "Tinotenda Rwodzi",
+      "profileCompleted": true,
+      "experience": "Beginner",
+      "interests": [
+        "Arduino Development"
+      ],
+      "goals": "To solve almost any industrial system problem using Arduino"
+    },
+    "GUfSLYNLbeeXaHAaz99MGv1b0vP2": {
+      "email": "ndokwanitadiwa@gmail.com",
+      "createdAt": "2025-07-12T11:57:46.859Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "none"
+      ],
+      "lastUpdated": "2025-07-12T12:05:46.245Z",
+      "name": "Tadiwanashe Ndokwani",
+      "profileCompleted": true,
+      "experience": "intermidiate",
+      "interests": [
+        "hacking",
+        "programming",
+        "automation",
+        "coding",
+        "and network engineering"
+      ],
+      "goals": ""
+    },
+    "Gm35SybAV0TAK2FI0FOJfG6zDa32": {
+      "email": "charlottemtenga24@gmail.com",
+      "createdAt": "2025-07-12T12:01:12.751Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "nothing yet im still learning"
+      ],
+      "lastUpdated": "2025-07-12T12:05:22.233Z",
+      "name": "Charlotte C Mtenga",
+      "profileCompleted": true,
+      "experience": "beginner",
+      "interests": [
+        "software programming"
+      ],
+      "goals": "",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "enrolledCourseIds": [
+        "VUIH0ZhzMs5S4fhxBy8X"
+      ]
+    },
+    "ME8tFZJaXjOEEGNswVGsUqp2SQj1": {
+      "email": "hhh@gmail.com",
+      "role": "company",
+      "createdAt": "2025-07-11T09:15:16.776Z",
+      "profileCompleted": false,
+      "companyUid": "ME8tFZJaXjOEEGNswVGsUqp2SQj1"
+    },
+    "MfIEmGJLSaNFuZmkYUQVinze7Kz1": {
+      "email": "rety@gmail.com",
+      "createdAt": "2025-07-18T12:51:14.639Z",
+      "authProvider": "email",
+      "profileCompleted": false,
+      "role": "recruiter"
+    },
+    "MyQLuUxWz7URVPtXNUYHMJAucoW2": {
+      "email": "chirumedelight@gmail.com",
+      "createdAt": "2025-07-11T09:43:33.940Z",
+      "authProvider": "email",
+      "role": "student",
+      "paidForPublic": false,
+      "skills": [
+        "python"
+      ],
+      "lastUpdated": "2025-07-11T09:44:03.574Z",
+      "name": "delight chirume",
+      "profileCompleted": true,
+      "experience": "advance",
+      "interests": [
+        "c"
+      ],
+      "goals": "",
+      "profileVisibility": "private",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2"
+    },
+    "QQ8xkTnNHfPdPBE2rkev9MuH8IU2": {
+      "email": "lisa@gmail.com",
+      "createdAt": "2025-07-15T15:53:25.169Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "Visual Basic"
+      ],
+      "lastUpdated": "2025-07-16T10:44:00.856Z",
+      "name": "Fionna",
+      "profileCompleted": true,
+      "experience": "Beginner",
+      "interests": [
+        "Using software as a tool"
+      ],
+      "goals": "To develop industrial systems",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "enrolledCourseIds": [
+        "VUIH0ZhzMs5S4fhxBy8X"
+      ],
+      "recommendedBy": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "recommendedAt": "2025-07-18T16:15:34.186Z",
+      "recommended": true
+    },
+    "RIccT8pIwEPDDUO0AwCUDSqItuU2": {
+      "email": "resty@gmail.com",
+      "createdAt": "2025-07-18T12:44:05.386Z",
+      "authProvider": "email",
+      "profileCompleted": false,
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false
+    },
+    "T4Qyq2jrQ6X6sEicuBlFfMp20TD2": {
+      "email": "tinotendahazael@gmail.com",
+      "createdAt": "2025-07-12T11:59:25.558Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "software programming"
+      ],
+      "lastUpdated": "2025-07-12T12:06:18.949Z",
+      "name": "HAZAEL TINOTENDA CHIFURA",
+      "profileCompleted": true,
+      "experience": "I'm an intermediate",
+      "interests": [
+        "software architecture"
+      ],
+      "goals": ""
+    },
+    "YDNvqOSWxbUDo3IdTLYAAp0yCt93": {
+      "email": "cloud@gmail.com",
+      "createdAt": "2025-07-18T12:33:24.279Z",
+      "authProvider": "email",
+      "profileCompleted": false,
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false
+    },
+    "Z28y9kmZRra52ZfdE8wiUXz0FHL2": {
+      "email": "ino@gmail.com",
+      "createdAt": "2025-07-12T11:57:35.225Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "Python",
+        "ISD",
+        "FTP",
+        "hosting"
+      ],
+      "lastUpdated": "2025-07-12T12:00:03.889Z",
+      "name": "Innocent Mafusire",
+      "profileCompleted": true,
+      "experience": "Beginner",
+      "interests": [
+        "Image processing"
+      ],
+      "goals": ""
+    },
+    "ck0JBz7NRKenpb8N9LhORR5AdD03": {
+      "email": "dawn1@dawn.com",
+      "createdAt": "2025-07-12T15:19:53.643Z",
+      "authProvider": "email",
+      "profileCompleted": false,
+      "role": "recruiter"
+    },
+    "crvPLMKQMgcVmyR2sA8T9qNco8u2": {
+      "email": "ngalondemarvin@gmail.com",
+      "createdAt": "2025-07-18T12:21:52.532Z",
+      "authProvider": "email",
+      "role": "student",
+      "paidForPublic": false,
+      "skills": [
+        "Coding"
+      ],
+      "lastUpdated": "2025-07-24T14:32:03.999Z",
+      "name": "Marvin Ngaloseh",
+      "profileCompleted": true,
+      "experience": "Beginner",
+      "interests": [
+        "Microcontrollers"
+      ],
+      "goals": "To become an Electronic Engineer",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "enrolledCourseIds": [
+        "NC87zjVkx7YWtu7Ii8DD",
+        "sdeEWqDnwIVNCGR7vjUN"
+      ],
+      "profileVisibility": "private"
+    },
+    "fhiPeCR7NqSLff6yYTqifU4AipI3": {
+      "email": "denzel@gmail.com",
+      "createdAt": "2025-07-18T12:40:03.841Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [],
+      "lastUpdated": "2025-07-18T12:41:38.769Z",
+      "name": "Denzel Tawira",
+      "profileCompleted": true,
+      "experience": "Beginner",
+      "interests": [
+        "Microcontroller programming using Arduino"
+      ],
+      "goals": "To be able to make projects using Arduino"
+    },
+    "gPq2kMEjHKUMucEj1ozjd0eLoS63": {
+      "email": "charimufaro4@gmail.com",
+      "createdAt": "2025-07-12T11:59:00.950Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "software programming"
+      ],
+      "lastUpdated": "2025-07-12T12:08:13.532Z",
+      "name": "Mufaro Chari",
+      "profileCompleted": true,
+      "experience": "intermediate",
+      "interests": [
+        "l'm interested in programming"
+      ],
+      "goals": ""
+    },
+    "guZkFfS7MbZ4Dn9ZHVE44fXUp8r2": {
+      "email": "chirume@gmail.com",
+      "createdAt": "2025-07-11T11:16:09.258Z",
+      "authProvider": "email",
+      "profileCompleted": false,
+      "role": "recruiter"
+    },
+    "iYVwlvQ7KDTeHjlYmd77LNodaV12": {
+      "email": "tafad@gmail.com",
+      "createdAt": "2025-07-18T12:22:55.333Z",
+      "authProvider": "email",
+      "profileCompleted": false,
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false
+    },
+    "q9apOqeRE9QujkR1Pgqcx7MjXut1": {
+      "email": "dawn@dawn.com",
+      "createdAt": "2025-07-12T08:59:15.395Z",
+      "authProvider": "email",
+      "role": "student",
+      "paidForPublic": false,
+      "skills": [
+        "none"
+      ],
+      "lastUpdated": "2025-07-12T09:02:07.596Z",
+      "name": "Alwin W Chitewe",
+      "profileCompleted": true,
+      "experience": "Beginner",
+      "interests": [
+        "engineering"
+      ],
+      "goals": "",
+      "profileVisibility": "private"
+    },
+    "qXBD4GpnNpV7F8kPy9EY3HtzZc33": {
+      "email": "naisonchidimure@gmail.com",
+      "createdAt": "2025-07-12T11:57:43.408Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "programming with python",
+        "process automation",
+        "virtualization"
+      ],
+      "lastUpdated": "2025-07-12T12:02:24.348Z",
+      "name": "Naison Chidimure",
+      "profileCompleted": true,
+      "experience": "Intermediate",
+      "interests": [
+        "process automation"
+      ],
+      "goals": "",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "recommendedBy": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "recommendedAt": "2025-07-15T11:12:58.662Z",
+      "recommended": true
+    },
+    "raUTPDzxoSgQ7lgtqW9L7Tm83pL2": {
+      "email": "james@gmail.com",
+      "createdAt": "2025-07-17T11:18:42.934Z",
+      "authProvider": "email",
+      "profileCompleted": false,
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false
+    },
+    "uQ4Xf7AQtrU7GP87ON9Vw79A26C3": {
+      "email": "peter2@gmail.com",
+      "createdAt": "2025-07-17T09:06:20.650Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [],
+      "lastUpdated": "2025-07-17T09:08:12.700Z",
+      "name": "Peter Dhewa",
+      "profileCompleted": true,
+      "experience": "Beginner",
+      "interests": [
+        "Arduino Programming"
+      ],
+      "goals": "To create advanced projects using Arduino, such as smart door systems for home safety"
+    },
+    "v964RSlTmbbZul9D453cTxg8HD53": {
+      "email": "wesley@gmail.com",
+      "role": "student",
+      "createdAt": "2025-07-11T09:16:07.562Z",
+      "companyUid": "ME8tFZJaXjOEEGNswVGsUqp2SQj1",
+      "skills": [
+        "none"
+      ],
+      "lastUpdated": "2025-07-11T09:21:43.505Z",
+      "name": "Alwin Wesley",
+      "profileCompleted": true,
+      "experience": "none",
+      "interests": [
+        "Robotics"
+      ],
+      "goals": ""
+    },
+    "vFcPNT6GcwOrwLLL0roO78UnLvn2": {
+      "email": "stella@gmail.com",
+      "createdAt": "2025-07-11T14:57:31.997Z",
+      "authProvider": "email",
+      "role": "student",
+      "paidForPublic": false,
+      "skills": [
+        "Python",
+        "C++"
+      ],
+      "lastUpdated": "2025-07-11T15:02:01.833Z",
+      "name": "Delight Chirume",
+      "profileCompleted": true,
+      "experience": "Beginner",
+      "interests": [
+        "Arduino Programming",
+        "Backend Development with Django"
+      ],
+      "goals": "To become a professional Python developer",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "enrolledCourseIds": [
+        "NC87zjVkx7YWtu7Ii8DD",
+        "VUIH0ZhzMs5S4fhxBy8X"
+      ],
+      "profileVisibility": "public"
+    },
+    "x1Fn9PuK43erxvoexPKjWgWHrOZ2": {
+      "email": "w@gmail.com",
+      "createdAt": "2025-07-12T10:17:04.312Z",
+      "authProvider": "email",
+      "role": "student",
+      "profileVisibility": "private",
+      "paidForPublic": false,
+      "skills": [
+        "None"
+      ],
+      "lastUpdated": "2025-07-12T10:18:31.998Z",
+      "name": "Dogman Z Dawgs",
+      "profileCompleted": true,
+      "experience": "Advanced",
+      "interests": [
+        "Robotics"
+      ],
+      "goals": ""
+    },
+    "ykMuwu3ca7SDfhhRtcaJol0dBcg1": {
+      "email": "recruit@gmail.com",
+      "createdAt": "2025-07-15T13:49:49.226Z",
+      "authProvider": "email",
+      "profileCompleted": false,
+      "role": "recruiter"
+    },
+    "ze2knPt9JpTASU7WW6Yanw6SyWh2": {
+      "email": "sir@gmail.com",
+      "createdAt": "2025-07-18T13:27:12.025Z",
+      "authProvider": "email",
+      "role": "student",
+      "paidForPublic": false,
+      "skills": [
+        "Proteus",
+        "Python",
+        "C programming for Arduino"
+      ],
+      "lastUpdated": "2025-07-18T13:29:08.861Z",
+      "name": "Innocent Knowledge Mafusire",
+      "profileCompleted": true,
+      "experience": "Beginner",
+      "interests": [
+        "Hardware and software integration"
+      ],
+      "goals": "To make money",
+      "companyUid": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "enrolledCourseIds": [
+        "MNwokOJaAHj4Fev2HjKd",
+        "sdeEWqDnwIVNCGR7vjUN",
+        "NC87zjVkx7YWtu7Ii8DD"
+      ],
+      "recommendedBy": "8aDiNHPX7eSzMEXecHbQsNpy6XY2",
+      "recommendedAt": "2025-07-18T16:16:21.953Z",
+      "recommended": true,
+      "profileVisibility": "public"
+    }
+  }
+}

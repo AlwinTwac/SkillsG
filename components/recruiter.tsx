@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogOut, Search, Lightbulb, Filter, User, Mail, Award, BookOpen, RefreshCw } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
+import { getAuth } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
@@ -39,44 +40,49 @@ export default function RecruiterDashboard({ userDisplayName, userEmail }: Recru
 
   // Fetch all public students when the component mounts
   useEffect(() => {
-    const fetchAllStudents = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const q = query(
-          collection(db, 'users'),
-          where('role', '==', 'student'),
-          where('profileVisibility', '==', 'public')
-        );
-        const snapshot = await getDocs(q);
-        const results: StudentProfile[] = [];
-        
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          results.push({
-            id: doc.id,
-            name: data.name || '',
-            email: data.email || '',
-            skills: data.skills || [],
-            experience: data.experience || '',
-            interests: data.interests || [],
-            goals: data.goals || '',
-            profileVisibility: data.profileVisibility || 'private',
-            certificates: data.certificates || []
-          });
+  const fetchAllStudents = async () => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) return; // 🔐 Prevent fetching if not logged in
+
+    setLoading(true);
+    setError('');
+    try {
+      const q = query(
+        collection(db, 'users'),
+        where('role', '==', 'student'),
+        where('profileVisibility', '==', 'public')
+      );
+      const snapshot = await getDocs(q);
+      const results: StudentProfile[] = [];
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        results.push({
+          id: doc.id,
+          name: data.name || '',
+          email: data.email || '',
+          skills: data.skills || [],
+          experience: data.experience || '',
+          interests: data.interests || [],
+          goals: data.goals || '',
+          profileVisibility: data.profileVisibility || 'private',
+          certificates: data.certificates || []
         });
-        
-        setAllPublicStudents(results);
-        setDisplayedStudents(results);
-      } catch (err) {
-        console.error("Error fetching students:", err);
-        setError('Failed to fetch student profiles.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAllStudents();
-  }, []);
+      });
+
+      setAllPublicStudents(results);
+      setDisplayedStudents(results);
+    } catch (err) {
+      console.error("Error fetching students:", err);
+      setError('Failed to fetch student profiles.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchAllStudents();
+}, []);
 
   const handleSignOut = async () => {
     try {

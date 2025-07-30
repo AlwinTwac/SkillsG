@@ -2,16 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, User as FirebaseAuthUser, signOut } from 'firebase/auth';
-import { doc, setDoc,collection,where,getDocs,query, updateDoc,getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { User, Mail, Lock, Eye, EyeOff, Briefcase } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, ArrowLeft, Briefcase } from 'lucide-react';
 
 interface AuthComponentProps {
   onAuthSuccess: (user: FirebaseAuthUser) => void;
   defaultRole: 'learner' | 'company' | 'recruiter';
+  onBack?: () => void; // Made optional with ?
 }
 
-export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthComponentProps) {
+export default function AuthComponent({ onAuthSuccess, defaultRole, onBack }: AuthComponentProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,155 +37,105 @@ export default function AuthComponent({ onAuthSuccess, defaultRole }: AuthCompon
   }, [defaultRole]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  setError('');
-  const roleToSet = defaultRole === 'learner' ? 'student' : defaultRole;
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    const roleToSet = defaultRole === 'learner' ? 'student' : defaultRole;
 
-  try {
-    if (isLogin) {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    try {
+      if (isLogin) {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const userDocRef = doc(db, 'users', userCredential.user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists() && userDocSnap.data().role === roleToSet) {
+          onAuthSuccess(userCredential.user);
+        } else {
+          const existingRole = userDocSnap.exists() ? userDocSnap.data().role : 'another type of';
+          await signOut(auth);
+          throw new Error(`These credentials are for a ${existingRole} account. Please use the correct portal.`);
+        }
+      } else {
+        if (password !== confirmPassword) throw new Error('Passwords do not match');
+        if (roleToSet === 'company' && companyAccountExists) throw new Error('Only one company account is allowed.');
+        
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        
+        await setDoc(doc(db, 'users', userCredential.user.uid), {
+          uid: userCredential.user.uid,
+          email: userCredential.user.email,
+          createdAt: new Date().toISOString(),
+          authProvider: 'email',
+          profileCompleted: roleToSet === 'recruiter',
+          role: roleToSet,
+          ...(roleToSet === 'student' && { profileVisibility: 'private', paidForPublic: false }),
+          ...(roleToSet === 'company' && { companyName: 'kimtronix' }),
+          ...(roleToSet === 'recruiter' && { name: userCredential.user.email?.split('@')[0] || 'Recruiter' })
+        });
+        
+        if (roleToSet === 'company') {
+          await setDoc(doc(db, 'platformConfig', 'singleton'), { companyAccountCreated: true });
+          setCompanyAccountExists(true);
+        }
+        onAuthSuccess(userCredential.user);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleGoogleAuth = async () => {
+    setLoading(true);
+    setError('');
+    const roleToSet = defaultRole === 'learner' ? 'student' : defaultRole;
+
+    try {
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
       const userDocRef = doc(db, 'users', userCredential.user.uid);
       const userDocSnap = await getDoc(userDocRef);
-      
-      if (userDocSnap.exists() && userDocSnap.data().role === roleToSet) {
-        onAuthSuccess(userCredential.user);
-      } else {
-        const existingRole = userDocSnap.exists() ? userDocSnap.data().role : 'another type of';
-        await signOut(auth);
-        throw new Error(`These credentials are for a ${existingRole} account. Please use the correct portal.`);
-      }
-    } else {
-      // --- SIGN UP LOGIC WITH INVITATION CHECK ---
-      if (password !== confirmPassword) throw new Error('Passwords do not match');
-      if (roleToSet === 'company' && companyAccountExists) throw new Error('Only one company account is allowed.');
 
-      // 1. Check for a valid invitation before creating the user
-      if (roleToSet === 'student' || roleToSet === 'recruiter') {
-        const inviteQuery = query(
-          collection(db, 'invitations'),
-          where('email', '==', email.toLowerCase()),
-          where('role', '==', roleToSet),
-          where('status', '==', 'pending')
-        );
-        const inviteSnapshot = await getDocs(inviteQuery);
-        if (inviteSnapshot.empty) {
-          throw new Error("You do not have a pending invitation to create this type of account.");
-        }
-      }
-
-      // 2. Create the user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
-      // 3. Create the user document in Firestore
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
-        email: userCredential.user.email,
-        createdAt: new Date().toISOString(),
-        authProvider: 'email',
-        profileCompleted: false,
-        role: roleToSet,
-        ...(roleToSet === 'student' && { profileVisibility: 'private', paidForPublic: false }),
-        ...(roleToSet === 'company' && { companyName: 'kimtronix' })
-      });
-
-      // 4. Update the invitation status to 'accepted'
-      if (roleToSet === 'student' || roleToSet === 'recruiter') {
-        const inviteQuery = query(collection(db, 'invitations'), where('email', '==', email.toLowerCase()));
-        const inviteSnapshot = await getDocs(inviteQuery);
-        const inviteDoc = inviteSnapshot.docs[0];
-        if (inviteDoc) {
-          await updateDoc(doc(db, 'invitations', inviteDoc.id), {
-            status: 'accepted',
-            acceptedAt: new Date().toISOString(),
-            userId: userCredential.user.uid
-          });
-        }
-      }
-      
-      if (roleToSet === 'company') {
-        await setDoc(doc(db, 'platformConfig', 'singleton'), { companyAccountCreated: true });
-        setCompanyAccountExists(true);
-      }
-      onAuthSuccess(userCredential.user);
-    }
-  } catch (err: any) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
-
-const handleGoogleAuth = async () => {
-  setLoading(true);
-  setError('');
-  const roleToSet = defaultRole === 'learner' ? 'student' : defaultRole;
-
-  try {
-    const provider = new GoogleAuthProvider();
-    const userCredential = await signInWithPopup(auth, provider);
-    const userDocRef = doc(db, 'users', userCredential.user.uid);
-    const userDocSnap = await getDoc(userDocRef);
-
-    if (userDocSnap.exists()) {
-      if (userDocSnap.data().role === roleToSet) {
-        onAuthSuccess(userCredential.user);
-      } else {
-        const existingRole = userDocSnap.data().role;
-        await signOut(auth);
-        throw new Error(`This Google account is registered as a ${existingRole}. Please use the correct portal.`);
-      }
-    } else {
-      if (roleToSet === 'company' && companyAccountExists) {
-        await signOut(auth);
-        throw new Error('Only one company account is allowed.');
-      }
-
-      if (roleToSet === 'student' || roleToSet === 'recruiter') {
-        const inviteQuery = query(
-          collection(db, 'invitations'),
-          where('email', '==', userCredential.user.email?.toLowerCase()),
-          where('role', '==', roleToSet),
-          where('status', '==', 'pending')
-        );
-        const inviteSnapshot = await getDocs(inviteQuery);
-        if (inviteSnapshot.empty) {
+      if (userDocSnap.exists()) {
+        if (userDocSnap.data().role === roleToSet) {
+          onAuthSuccess(userCredential.user);
+        } else {
+          const existingRole = userDocSnap.data().role;
           await signOut(auth);
-          throw new Error("You do not have a pending invitation to create this type of account.");
+          throw new Error(`This Google account is registered as a ${existingRole}. Please use the correct portal.`);
         }
-        const inviteDoc = inviteSnapshot.docs[0];
-        if (inviteDoc) {
-          await updateDoc(doc(db, 'invitations', inviteDoc.id), {
-            status: 'accepted',
-            acceptedAt: new Date().toISOString(),
-            userId: userCredential.user.uid
-          });
+      } else {
+        if (roleToSet === 'company' && companyAccountExists) {
+          await signOut(auth);
+          throw new Error('Only one company account is allowed.');
         }
-      }
-      
-      await setDoc(userDocRef, {
-        email: userCredential.user.email,
-        displayName: userCredential.user.displayName,
-        photoURL: userCredential.user.photoURL,
-        createdAt: new Date().toISOString(),
-        authProvider: 'google',
-        profileCompleted: false,
-        role: roleToSet,
-        ...(roleToSet === 'student' && { profileVisibility: 'private', paidForPublic: false }),
-        ...(roleToSet === 'company' && { companyName: 'kimtronix' })
-      }, { merge: true });
+        
+        await setDoc(userDocRef, {
+          uid: userCredential.user.uid,
+          email: userCredential.user.email,
+          displayName: userCredential.user.displayName,
+          photoURL: userCredential.user.photoURL,
+          createdAt: new Date().toISOString(),
+          authProvider: 'google',
+          profileCompleted: roleToSet === 'recruiter',
+          role: roleToSet,
+          ...(roleToSet === 'student' && { profileVisibility: 'private', paidForPublic: false }),
+          ...(roleToSet === 'company' && { companyName: 'kimtronix' }),
+          ...(roleToSet === 'recruiter' && { name: userCredential.user.displayName || 'Recruiter' })
+        }, { merge: true });
 
-      if (roleToSet === 'company') {
-        await setDoc(doc(db, 'platformConfig', 'singleton'), { companyAccountCreated: true });
-        setCompanyAccountExists(true);
+        if (roleToSet === 'company') {
+          await setDoc(doc(db, 'platformConfig', 'singleton'), { companyAccountCreated: true });
+          setCompanyAccountExists(true);
+        }
+        onAuthSuccess(userCredential.user);
       }
-      onAuthSuccess(userCredential.user);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-  } catch (err: any) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const getRoleTheme = () => {
     switch(defaultRole) {
@@ -198,7 +149,17 @@ const handleGoogleAuth = async () => {
   const theme = getRoleTheme();
 
   return (
-    <div className="max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+    <div className="max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden relative">
+      {onBack && (
+        <button 
+          onClick={onBack}
+          className="absolute top-4 left-4 flex items-center text-sm text-gray-500 hover:text-gray-800 transition-colors z-10"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" />
+          Back
+        </button>
+      )}
+      
       <div className={`bg-gradient-to-r ${theme.bgGradient} p-6 text-center`}>
         <h2 className="text-2xl font-bold text-white mb-2">
           {isLogin ? 'Welcome Back!' : 'Create Account'}
@@ -214,13 +175,31 @@ const handleGoogleAuth = async () => {
         <form onSubmit={handleEmailAuth} className="space-y-5">
           <div className="relative">
             <Mail className="h-5 w-5 text-gray-400 absolute top-3.5 left-4" />
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={`w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ${theme.borderColor}`} placeholder="Enter your email" required />
+            <input 
+              type="email" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              className={`w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ${theme.borderColor}`} 
+              placeholder="Enter your email" 
+              required 
+            />
           </div>
 
           <div className="relative">
             <Lock className="h-5 w-5 text-gray-400 absolute top-3.5 left-4" />
-            <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className={`w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ${theme.borderColor}`} placeholder="Enter your password" required />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600">
+            <input 
+              type={showPassword ? 'text' : 'password'} 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              className={`w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ${theme.borderColor}`} 
+              placeholder="Enter your password" 
+              required 
+            />
+            <button 
+              type="button" 
+              onClick={() => setShowPassword(!showPassword)} 
+              className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+            >
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
@@ -228,19 +207,47 @@ const handleGoogleAuth = async () => {
           {!isLogin && (
             <div className="relative">
               <Lock className="h-5 w-5 text-gray-400 absolute top-3.5 left-4" />
-              <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={`w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ${theme.borderColor}`} placeholder="Confirm your password" required />
+              <input 
+                type="password" 
+                value={confirmPassword} 
+                onChange={(e) => setConfirmPassword(e.target.value)} 
+                className={`w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ${theme.borderColor}`} 
+                placeholder="Confirm your password" 
+                required 
+              />
             </div>
           )}
 
-          <button type="submit" disabled={loading || (defaultRole === 'company' && companyAccountExists && !isLogin)} className={`w-full ${theme.buttonColor} text-white py-3 rounded-lg font-semibold transition-all duration-300 disabled:opacity-70 flex items-center justify-center`}>
+          <button 
+            type="submit" 
+            disabled={loading || (defaultRole === 'company' && companyAccountExists && !isLogin)} 
+            className={`w-full ${theme.buttonColor} text-white py-3 rounded-lg font-semibold transition-all duration-300 disabled:opacity-70 flex items-center justify-center`}
+          >
             {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')}
           </button>
         </form>
 
         <div className="mt-6">
-          <div className="relative"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-300"></div></div><div className="relative flex justify-center text-sm"><span className="px-3 bg-white text-gray-500">Or</span></div></div>
-          <button onClick={handleGoogleAuth} disabled={loading || (defaultRole === 'company' && companyAccountExists && !isLogin)} className="mt-5 w-full bg-white border border-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-50 transition-all duration-300 disabled:opacity-50 flex items-center justify-center shadow-sm">
-            <svg className="w-5 h-5 mr-3" viewBox="0 0 48 48"><path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.91l7.97-6.22z"></path><path fill="#EA4335" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path><path fill="none" d="M0 0h48v48H0z"></path></svg>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-3 bg-white text-gray-500">Or</span>
+            </div>
+          </div>
+          <button 
+            onClick={handleGoogleAuth} 
+            disabled={loading || (defaultRole === 'company' && companyAccountExists && !isLogin)} 
+            className="mt-5 w-full bg-white border border-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-50 transition-all duration-300 disabled:opacity-50 flex items-center justify-center shadow-sm"
+          >
+            <svg className="w-5 mr-3" viewBox="0 0 48 48">
+              <path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+              <path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.91l7.97-6.22z"></path>
+              <path fill="#EA4335" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+              <path fill="none" d="M0 0h48v48H0z"></path>
+            </svg>
             Continue with Google
           </button>
         </div>
@@ -249,7 +256,10 @@ const handleGoogleAuth = async () => {
           <p className="text-sm text-gray-600">
             {isLogin ? "Don't have an account?" : "Already have an account?"}
             {(!companyAccountExists || defaultRole !== 'company') && (
-              <button onClick={() => setIsLogin(!isLogin)} className={`ml-1 ${theme.textColor} hover:underline font-medium`}>
+              <button 
+                onClick={() => setIsLogin(!isLogin)} 
+                className={`ml-1 ${theme.textColor} hover:underline font-medium`}
+              >
                 {isLogin ? 'Sign up' : 'Sign in'}
               </button>
             )}

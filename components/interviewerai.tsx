@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, Send, User, Bot } from 'lucide-react';
-import { doc, setDoc, getDoc, collection, updateDoc, query, where, getDocs } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { MessageCircle, Send, User, Bot, ArrowLeft } from 'lucide-react';
+// Make sure to import 'addDoc' for creating documents with random IDs
+import { collection, where, query, addDoc, QuerySnapshot, DocumentData, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { User as FirebaseAuthUser } from 'firebase/auth';
 import axios from 'axios';
 
-// --- Interfaces (No Changes) ---
+// --- Interfaces ---
 interface Message {
   id: string;
   content: string;
@@ -15,68 +16,34 @@ interface Message {
   timestamp: Date;
 }
 
-interface StudentData {
-  name: string;
-  email: string;
-  experience: string;
-  skills: string[];
-  interests: string[];
-  goals: string;
-  uid?: string;
-}
-
-interface EnrollmentReport {
-  studentUid: string;
-  studentName: string;
-  studentEmail: string;
-  interviewDate: string;
-  reportSummary: string;
-  recommendedLearningPath?: string[];
-  interviewScore?: number;
-  strengths?: string[];
-  weaknesses?: string[];
-  companyUid: string;
-  experience?: string;
-  skills?: string[];
-  interests?: string[];
-  goals?: string;
-}
-
 interface AIInterviewerProps {
-  user: FirebaseAuthUser;
-  onInterviewComplete: () => void;
+  user: FirebaseAuthUser; // This will be the anonymous user
+  onInterviewComplete: (reportData: any) => void;
+    isAnonymous?: boolean;
+   onGoBack: () => void;
 }
 
 // --- Component ---
-export default function AIInterviewer({ user, onInterviewComplete }: AIInterviewerProps) {
+export default function AIInterviewer({ user, onInterviewComplete, onGoBack }: AIInterviewerProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [studentData, setStudentData] = useState<StudentData>({
-    name: user.displayName || '',
-    email: user.email || '',
-    experience: '',
-    skills: [],
-    interests: [],
-    goals: '',
-    uid: user.uid
-  });
+  const [isLoading, setIsLoading] = useState(true);
   const [interviewFinished, setInterviewFinished] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => {
     const startInterview = async () => {
+      if (messages.length > 0) return; // Prevents re-triggering
       setIsLoading(true);
       try {
         const response = await axios.post('/api/ai-interview', {
           conversationHistory: [],
           studentProfile: {
             uid: user.uid,
-            name: user.displayName || '',
+            name: user.displayName || 'New Applicant',
             email: user.email || '',
           },
           action: 'start_interview',
@@ -101,10 +68,53 @@ export default function AIInterviewer({ user, onInterviewComplete }: AIInterview
       }
     };
 
-    if (user.email && messages.length === 0) {
+    if (user) {
       startInterview();
     }
-  }, [user, messages.length]);
+  }, [user]);
+
+  const saveReportAndComplete = async (reportData: any) => {
+    if (!user || !user.uid) {
+      console.error("User not authenticated, cannot save report.");
+      return;
+    }
+    
+    try {
+      // 1. Find the company's UID
+      const companyQuery = query(collection(db, 'users'), where('role', '==', 'company'));
+      // --- FIX: Explicitly type the snapshot to match the error's expectation ---
+      const companySnapshot: QuerySnapshot<DocumentData, DocumentData> = await getDocs(companyQuery);
+      
+      if (companySnapshot.empty) {
+        throw new Error("No company account found to associate the report with.");
+      }
+      const companyUid = companySnapshot.docs[0].id;
+
+      // 2. Create the pending report object with the companyUid
+      const pendingReport = {
+        ...reportData,
+        studentUid: user.uid, // The anonymous user's ID
+        companyUid: companyUid, // The company's ID
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      };
+
+      // 3. Save the document to the 'pendingInterviewReports' collection
+      await addDoc(collection(db, 'pendingInterviewReports'), pendingReport);
+      
+      // 4. Only call onInterviewComplete AFTER the save is successful
+      onInterviewComplete(reportData);
+
+    } catch (error) {
+      console.error("CRITICAL: Error saving pending report:", error);
+      setMessages(prev => [...prev, {
+        id: `save-error-${Date.now()}`,
+        content: "I'm sorry, there was an error saving your report. Please try again later.",
+        isAI: true,
+        timestamp: new Date()
+      }]);
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!currentInput.trim() || isLoading || interviewFinished) return;
@@ -129,7 +139,7 @@ export default function AIInterviewer({ user, onInterviewComplete }: AIInterview
     try {
       const response = await axios.post('/api/ai-interview', {
         conversationHistory,
-        studentProfile: studentData,
+        studentProfile: { uid: user.uid, name: 'New Applicant', email: '' },
         action: 'continue_interview',
       });
 
@@ -144,13 +154,11 @@ export default function AIInterviewer({ user, onInterviewComplete }: AIInterview
 
       if (interviewStatus === 'completed' && reportData) {
         setInterviewFinished(true);
-        await generateAndSaveEnrollmentReport(reportData);
-        // Ensure the callback is called to notify the parent component
-        onInterviewComplete();
+        await saveReportAndComplete(reportData);
       }
     } catch (error) {
       console.error("Error communicating with AI interviewer:", error);
-      setMessages(prev => [...prev, {
+       setMessages(prev => [...prev, {
         id: `error-${Date.now()}-${Math.random()}`,
         content: "I'm having trouble connecting right now. Please try again.",
         isAI: true,
@@ -161,57 +169,15 @@ export default function AIInterviewer({ user, onInterviewComplete }: AIInterview
     }
   };
 
-  const generateAndSaveEnrollmentReport = async (reportData: Omit<EnrollmentReport, 'id' | 'companyUid'>) => {
-    if (!user || !user.uid) {
-        console.error("User not authenticated, cannot save report.");
-        return;
-    }
-
-    let companyUid = '';
-    try {
-      const companyQuery = query(collection(db, 'users'), where('role', '==', 'company'));
-      const companySnapshot = await getDocs(companyQuery);
-
-      if (!companySnapshot.empty) {
-        companyUid = companySnapshot.docs[0].id;
-      } else {
-        console.error("CRITICAL: No company account found in the database.");
-      }
-    } catch (fetchError) {
-      console.error("Error fetching companyUid:", fetchError);
-      return;
-    }
-
-    const enrollmentReportData: Omit<EnrollmentReport, 'id'> = {
-      ...reportData,
-      studentUid: user.uid,
-      companyUid: companyUid,
-      interviewDate: reportData.interviewDate || new Date().toISOString(),
-      studentName: reportData.studentName || user.displayName || 'N/A',
-      studentEmail: reportData.studentEmail || user.email || 'N/A',
-    };
-
-    try {
-      const newReportRef = doc(collection(db, 'interviewReports'));
-      await setDoc(newReportRef, enrollmentReportData);
-
-      await updateDoc(doc(db, 'users', user.uid), {
-        profileCompleted: true,
-        lastUpdated: new Date().toISOString(),
-        name: enrollmentReportData.studentName,
-        experience: reportData.experience || '',
-        skills: reportData.skills || [],
-        interests: reportData.interests || [],
-        goals: reportData.goals || '',
-      });
-
-    } catch (firestoreError) {
-      console.error("Error saving enrollment report:", firestoreError);
-    }
-  };
-
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
+      <button 
+        onClick={onGoBack}
+        className="absolute top-4 left-4 flex items-center text-sm text-gray-500 hover:text-gray-800 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4 mr-1" />
+        Back
+      </button>
       <div className="flex items-center mb-6">
         <MessageCircle className="w-6 h-6 text-blue-600 mr-2" />
         <h2 className="text-2xl font-bold text-gray-800">AI Interview Process</h2>
@@ -257,10 +223,15 @@ export default function AIInterviewer({ user, onInterviewComplete }: AIInterview
           className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={isLoading || interviewFinished}
         />
-        <button onClick={handleSendMessage} disabled={isLoading || !currentInput.trim() || interviewFinished} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center">
+        <button
+          onClick={handleSendMessage}
+          disabled={isLoading || !currentInput.trim() || interviewFinished}
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
+        >
           <Send className="w-4 h-4" />
         </button>
       </div>
     </div>
   );
 }
+

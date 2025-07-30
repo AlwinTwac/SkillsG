@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, User as FirebaseAuthUser } from 'firebase/auth';
 import { BookOpen, Edit, Award, LayoutDashboard, LogOut, FileText, Video, CheckCircle,File as FileIcon, XCircle, Clock, ArrowLeftCircle, Loader2, Eye, EyeOff, Upload, File, Image, Download, GraduationCap } from 'lucide-react';
 import { auth, db, storage } from '@/lib/firebase';
+import { getAuth } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, onSnapshot, doc, updateDoc, getDoc, setDoc, getDocs, documentId, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc,  updateDoc,addDoc, getDoc, setDoc, getDocs, documentId, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 interface LearningMaterial {
   id: string;
@@ -77,6 +78,7 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
   const [loading, setLoading] = useState(true);
   const [initialDataLoading, setInitialDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+    const [uploading, setUploading] = useState(false);
   const [profileVisibility, setProfileVisibility] = useState<'public' | 'private'>('private');
   const [newTutorial, setNewTutorial] = useState({
     title: '',
@@ -87,122 +89,138 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
   });
 
   // Handle authentication state
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (!currentUser) {
-        setLoading(false);
+useEffect(() => {
+  const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+    setUser(currentUser);
+    if (!currentUser) {
+      setEnrolledCoursesData([]);
+      setLearningMaterials([]);
+      setTutorials([]);
+      setCertificates([]);
+      setTodaysAttendance(null);
+      setLoading(false);
+    }
+  });
+  return () => unsubscribeAuth();
+}, []);
+
+// Fetch all data only when user is confirmed
+useEffect(() => {
+  if (!user) return;
+
+  const userUid = user.uid;
+
+  const fetchStudentData = async () => {
+    setInitialDataLoading(true);
+    setError(null);
+
+    let unsubscribeTutorials: () => void = () => {};
+    let unsubscribeCerts: () => void = () => {};
+    let attendanceUnsub: () => void = () => {};
+
+    try {
+      // Fetch User Profile
+      const userDocRef = doc(db, 'users', userUid);
+      const userDocSnap = await getDoc(userDocRef);
+      if (userDocSnap.exists()) {
+        setProfileVisibility(userDocSnap.data().profileVisibility || 'private');
       }
-    });
-    return () => unsubscribeAuth();
-  }, []);
 
-  // Fetch all data only when user is confirmed
-  useEffect(() => {
-    if (!user) return;
+      // Fetch Enrolled Courses
+      const enrollmentsQuery = query(
+        collection(db, 'enrollments'),
+        where('studentUid', '==', userUid),
+        where('status', '==', 'active')
+      );
+      const enrollmentsSnapshot = await getDocs(enrollmentsQuery);
+      const enrolledCourseIds = enrollmentsSnapshot.docs.map(doc => doc.data().courseId as string);
+      const fetchedEnrollments: Enrollment[] = enrollmentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Enrollment));
 
-    const fetchStudentData = async () => {
-      setInitialDataLoading(true);
-      setError(null);
-      try {
-        // Fetch User Profile
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists()) {
-          setProfileVisibility(userDocSnap.data().profileVisibility || 'private');
+      const coursesToDisplay: (Course & { enrollmentId: string })[] = [];
+      const materialsToDisplay: LearningMaterial[] = [];
+
+      if (enrolledCourseIds.length > 0) {
+        const chunkSize = 10;
+        for (let i = 0; i < enrolledCourseIds.length; i += chunkSize) {
+          const chunk = enrolledCourseIds.slice(i, i + chunkSize);
+          const coursesQuery = query(collection(db, 'courses'), where(documentId(), 'in', chunk));
+          const coursesSnap = await getDocs(coursesQuery);
+          coursesSnap.forEach(doc => {
+            coursesToDisplay.push({
+              id: doc.id,
+              ...(doc.data() as Omit<Course, 'id'>),
+              enrollmentId: fetchedEnrollments.find(e => e.courseId === doc.id)?.id || ''
+            });
+          });
         }
+        setEnrolledCoursesData(coursesToDisplay);
 
-        // Fetch Enrolled Courses
-        const enrollmentsQuery = query(
-          collection(db, 'enrollments'),
-          where('studentUid', '==', user.uid),
-          where('status', '==', 'active')
-        );
-        const enrollmentsSnapshot = await getDocs(enrollmentsQuery);
-        const enrolledCourseIds = enrollmentsSnapshot.docs.map(doc => doc.data().courseId as string);
-        const fetchedEnrollments: Enrollment[] = enrollmentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Enrollment));
+        for (let i = 0; i < enrolledCourseIds.length; i += chunkSize) {
+          const chunk = enrolledCourseIds.slice(i, i + chunkSize);
+          const materialsQuery = query(collection(db, 'learningContent'), where('courseId', 'in', chunk));
+          const materialsSnap = await getDocs(materialsQuery);
+          materialsSnap.forEach(doc => {
+            materialsToDisplay.push({ id: doc.id, ...doc.data() } as LearningMaterial);
+          });
+        }
+        setLearningMaterials(materialsToDisplay);
+      } else {
+        setEnrolledCoursesData([]);
+        setLearningMaterials([]);
+      }
 
-        const coursesToDisplay: (Course & { enrollmentId: string })[] = [];
-        const materialsToDisplay: LearningMaterial[] = [];
+      // Real-time Listeners
+      const tutorialsQuery = query(collection(db, 'tutorials'), where('studentUid', '==', userUid));
+      unsubscribeTutorials = onSnapshot(tutorialsQuery, (snapshot) => {
+        const fetchedTutorials: Tutorial[] = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as Omit<Tutorial, 'id'>) }));
+        setTutorials(fetchedTutorials);
+      }, (error) => {
+        console.error("Error fetching tutorials:", error);
+      });
 
-        if (enrolledCourseIds.length > 0) {
-          const chunkSize = 10;
-          for (let i = 0; i < enrolledCourseIds.length; i += chunkSize) {
-            const chunk = enrolledCourseIds.slice(i, i + chunkSize);
-            const coursesQuery = query(collection(db, 'courses'), where(documentId(), 'in', chunk));
-            const coursesSnap = await getDocs(coursesQuery);
-            coursesSnap.forEach(doc => {
-              coursesToDisplay.push({
-                id: doc.id,
-                ...(doc.data() as Omit<Course, 'id'>),
-                enrollmentId: fetchedEnrollments.find(e => e.courseId === doc.id)?.id || ''
-              });
-            });
-          }
-          setEnrolledCoursesData(coursesToDisplay);
+      const certsQuery = query(collection(db, 'certificates'), where('studentUid', '==', userUid));
+      unsubscribeCerts = onSnapshot(certsQuery, (snapshot) => {
+        const fetchedCerts: Certificate[] = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as Omit<Certificate, 'id'>) }));
+        setCertificates(fetchedCerts);
+      }, (error) => {
+        console.error("Error fetching certificates:", error);
+      });
 
-          for (let i = 0; i < enrolledCourseIds.length; i += chunkSize) {
-            const chunk = enrolledCourseIds.slice(i, i + chunkSize);
-            const materialsQuery = query(collection(db, 'learningContent'), where('courseId', 'in', chunk));
-            const materialsSnap = await getDocs(materialsQuery);
-            materialsSnap.forEach(doc => {
-              materialsToDisplay.push({ id: doc.id, ...doc.data() } as LearningMaterial);
-            });
-          }
-          setLearningMaterials(materialsToDisplay);
+      const todayStr = new Date().toISOString().split('T')[0];
+      const attendanceDocId = `${userUid}_${todayStr}`;
+      const attendanceDocRef = doc(db, 'attendance', attendanceDocId);
+      attendanceUnsub = onSnapshot(attendanceDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          setTodaysAttendance(docSnap.data() as AttendanceRecord);
         } else {
-          setEnrolledCoursesData([]);
-          setLearningMaterials([]);
+          setTodaysAttendance(null);
         }
+      });
 
-        // Set up real-time listeners
-        const tutorialsQuery = query(collection(db, 'tutorials'), where('studentUid', '==', user.uid));
-        const unsubscribeTutorials = onSnapshot(tutorialsQuery, (snapshot) => {
-          const fetchedTutorials: Tutorial[] = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as Omit<Tutorial, 'id'>) }));
-          setTutorials(fetchedTutorials);
-        }, (error) => {
-          console.error("Error fetching tutorials:", error);
-        });
+      setInitialDataLoading(false);
+      setLoading(false);
 
-        const certsQuery = query(collection(db, 'certificates'), where('studentUid', '==', user.uid));
-        const unsubscribeCerts = onSnapshot(certsQuery, (snapshot) => {
-          const fetchedCerts: Certificate[] = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as Omit<Certificate, 'id'>) }));
-          setCertificates(fetchedCerts);
-        }, (error) => {
-          console.error("Error fetching certificates:", error);
-        });
+    } catch (err: any) {
+      console.error("Error in fetching student dashboard data:", err);
+      setError(`Failed to load your dashboard data: ${err.message || 'An unexpected error occurred.'}`);
+      setInitialDataLoading(false);
+      setLoading(false);
+    }
 
-        // Set up attendance listener
-        const todayStr = new Date().toISOString().split('T')[0];
-        const attendanceDocId = `${userUid}_${todayStr}`;
-        const attendanceDocRef = doc(db, 'attendance', attendanceDocId);
-        const attendanceUnsub = onSnapshot(attendanceDocRef, (docSnap) => {
-          if (docSnap.exists()) {
-            setTodaysAttendance(docSnap.data() as AttendanceRecord);
-          } else {
-            setTodaysAttendance(null);
-          }
-        });
-
-        setInitialDataLoading(false);
-        setLoading(false);
-
-        return () => {
-          unsubscribeTutorials();
-          unsubscribeCerts();
-          attendanceUnsub();
-        };
-
-      } catch (err: any) {
-        console.error("Error in fetching student dashboard data:", err);
-        setError(`Failed to load your dashboard data: ${err.message || 'An unexpected error occurred.'}`);
-        setInitialDataLoading(false);
-        setLoading(false);
-      }
+    return () => {
+      unsubscribeTutorials();
+      unsubscribeCerts();
+      attendanceUnsub();
     };
+  };
 
-    fetchStudentData();
-  }, [user, userUid]);
+  const cleanup = fetchStudentData();
+
+  return () => {
+    cleanup?.then(unsub => unsub && unsub());
+  };
+}, [user]);
+
 
   const handleSignOut = async () => {
     try {
@@ -216,20 +234,20 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
 
   const handleTutorialSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTutorial.file || !user) {
-      setError('Please select a file to upload');
+    if (!newTutorial.file || !userUid) {
+      setError('File and user information are required.');
       return;
     }
-
+    setUploading(true);
+    setError(null);
     try {
-      setLoading(true);
-      const fileRef = ref(storage, `tutorials/${user.uid}/${Date.now()}_${newTutorial.file.name}`);
+      const fileRef = ref(storage, `tutorials/${userUid}/${Date.now()}_${newTutorial.file.name}`);
       await uploadBytes(fileRef, newTutorial.file);
       const fileUrl = await getDownloadURL(fileRef);
-
-      const tutorialRef = doc(collection(db, 'tutorials'));
-      await setDoc(tutorialRef, {
-        studentUid: user.uid,
+      
+      // Use addDoc to create a new document with an auto-generated ID
+      await addDoc(collection(db, 'tutorials'), {
+        studentUid: userUid,
         title: newTutorial.title,
         description: newTutorial.description,
         type: newTutorial.type,
@@ -238,37 +256,21 @@ export default function StudentDashboard({ userDisplayName, userEmail, userUid }
         createdAt: new Date().toISOString()
       });
 
-      setNewTutorial({
-        title: '',
-        description: '',
-        type: 'pdf',
-        weekNumber: 1,
-        file: null
-      });
-      setError(null);
-      alert('Tutorial uploaded successfully!');
-    } catch (err) {
-      console.error("Error uploading tutorial:", err);
-      setError("Failed to upload tutorial. Please try again.");
+      setNewTutorial({ title: '', description: '', type: 'pdf', weekNumber: 1, file: null });
+    } catch (err: any) {
+      setError(`Failed to upload tutorial: ${err.message}`);
     } finally {
-      setLoading(false);
+      setUploading(false);
     }
   };
+
   const handleDeleteTutorial = async (tutorialId: string, fileUrl: string) => {
-    if (!confirm("Are you sure you want to delete this tutorial?")) {
-      return;
-    }
+    if (!window.confirm("Are you sure you want to delete this tutorial?")) return;
     try {
-      // 1. Delete file from Storage
       const fileRef = ref(storage, fileUrl);
       await deleteObject(fileRef);
-
-      // 2. Delete document from Firestore
       await deleteDoc(doc(db, 'tutorials', tutorialId));
-      
-      // The onSnapshot listener will automatically update the UI
     } catch (err: any) {
-      console.error("Error deleting tutorial:", err);
       setError(`Failed to delete tutorial: ${err.message}`);
     }
   };

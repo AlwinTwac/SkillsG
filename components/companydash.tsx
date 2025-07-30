@@ -24,14 +24,6 @@ interface EnrollmentReport {
   interviewScore?: number;
   companyUid: string;
 }
-interface Invitation {
-    id: string;
-    email: string;
-    role: 'student' | 'recruiter';
-    status: 'pending' | 'accepted';
-    companyUid: string;
-    createdAt: string;
-}
 
 interface LearningMaterial {
   id?: string;
@@ -99,6 +91,23 @@ interface Enrollment {
   enrolledAt: string;
   status: 'active' | 'completed' | 'dropped';
 }
+interface PendingEnrollmentReport {
+  id: string;
+  studentUid: string;
+  studentName: string;
+  studentEmail: string;
+  interviewDate: string;
+  reportSummary: string;
+  recommendedLearningPath?: string[];
+  interviewScore?: number;
+  strengths?: string[];
+  weaknesses?: string[];
+  experience?: string;
+  skills?: string[];
+  interests?: string[];
+  goals?: string;
+  status: 'pending' | 'approved' | 'rejected';
+}
 
 export default function CompanyDashboard({ userDisplayName, userEmail, userUid }: CompanyDashboardProps) {
   const router = useRouter();
@@ -143,9 +152,6 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [currentDateTime, setCurrentDateTime] = useState<string>('');
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'student' | 'recruiter'>('student');
-  const [inviting, setInviting] = useState(false);
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [weather, setWeather] = useState<{temp: number, description: string} | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendanceRecords, setAttendanceRecords] = useState<Record<string, AttendanceRecord>>({});
@@ -153,6 +159,8 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
   const [savingAttendance, setSavingAttendance] = useState(false);
   const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingReports, setPendingReports] = useState<PendingEnrollmentReport[]>([]);
+  const [loadingPendingReports, setLoadingPendingReports] = useState(true);
 
   
   useEffect(() => {
@@ -162,10 +170,6 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     const reportsUnsub = onSnapshot(reportsQuery, (snapshot) => {
       setEnrollmentReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EnrollmentReport)));
       setLoading(prev => ({ ...prev, reports: false }));
-    });
-     const invitesQuery = query(collection(db, 'invitations'), where('companyUid', '==', userUid), orderBy('createdAt', 'desc'));
-    const unsubscribeInvites = onSnapshot(invitesQuery, (snapshot) => {
-        setInvitations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Invitation)));
     });
 
     const materialsQuery = query(collection(db, 'learningContent'), where('companyUid', '==', userUid));
@@ -179,7 +183,11 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
       setCourses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course)));
       setLoading(prev => ({ ...prev, courses: false }));
     });
-
+    const pendingReportsQuery = query(collection(db, 'pendingInterviewReports'), where('status', '==', 'pending'));
+    const pendingReportsUnsub = onSnapshot(pendingReportsQuery, (snapshot) => {
+     setPendingReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PendingEnrollmentReport)));
+      setLoadingPendingReports(false);
+     });
     const allEligibleStudentsQuery = query(collection(db, 'users'), where('role', '==', 'student'), where('profileCompleted', '==', true));
     const studentsUnsub = onSnapshot(allEligibleStudentsQuery, (snapshot) => {
       setStudents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student)));
@@ -256,7 +264,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     materialsUnsub();
     coursesUnsub();
     studentsUnsub();
-    unsubscribeInvites();
+    pendingReportsUnsub();
     certsUnsub();
     enrollmentsUnsub();
     attendanceUnsub();
@@ -295,40 +303,6 @@ useEffect(() => {
     }
   }
 }, [activeTab, learningMaterials]);
-
- const handleSendInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inviteEmail) {
-        alert("Please enter an email address.");
-        return;
-    }
-    setInviting(true);
-    try {
-        // Check if an invitation for this email already exists
-        const existingInviteQuery = query(collection(db, 'invitations'), where('email', '==', inviteEmail.toLowerCase()));
-        const existingSnapshot = await getDocs(existingInviteQuery);
-        if (!existingSnapshot.empty) {
-            throw new Error("An invitation for this email address already exists.");
-        }
-
-        // Create new invitation document
-        await addDoc(collection(db, 'invitations'), {
-            email: inviteEmail.toLowerCase(),
-            role: inviteRole,
-            status: 'pending',
-            companyUid: userUid,
-            createdAt: new Date().toISOString()
-        });
-
-        alert(`Invitation sent to ${inviteEmail}!`);
-        setInviteEmail('');
-    } catch (err: any) {
-        console.error("Error sending invite:", err);
-        alert(`Failed to send invite: ${err.message}`);
-    } finally {
-        setInviting(false);
-    }
-  };
 
   const handleAttendanceChange = (studentId: string, studentName: string, status: 'Present' | 'Absent' | 'Late') => {
     setAttendanceRecords(prev => ({
@@ -370,6 +344,45 @@ useEffect(() => {
     setLearningMaterials(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LearningMaterial)));
     
     setError(`Failed to delete material: ${err.message}`);
+  }
+};
+const handleApplicantDecision = async (reportId: string, decision: 'approve' | 'reject') => {
+  try {
+    // Update status in Firestore first
+    const reportRef = doc(db, 'pendingInterviewReports', reportId);
+    await updateDoc(reportRef, {
+      status: decision === 'approve' ? 'approved' : 'rejected'
+    });
+
+    if (decision === 'approve') {
+      // Call the Cloud Function to create the account
+      const reportDoc = await getDoc(reportRef);
+      const reportData = reportDoc.data();
+      
+      if (!reportData) throw new Error("Report not found");
+      
+      const response = await fetch('/api/approve-applicant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reportId,
+          studentEmail: reportData.studentEmail,
+          studentName: reportData.studentName,
+          reportData: reportData
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to approve applicant');
+      }
+    }
+
+    setUploadSuccess(`Applicant ${decision === 'approve' ? 'approved' : 'rejected'} successfully`);
+  } catch (error) {
+    console.error(`Error ${decision}ing applicant:`, error);
+    setUploadError(`Failed to ${decision} applicant`);
   }
 };
   const handleSaveAttendance = async () => {
@@ -745,7 +758,7 @@ const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, s
       {/* Tab Navigation */}
       <div className="border-b border-gray-200 bg-gray-50 overflow-x-auto">
         <nav className="flex space-x-8 px-6">
-          {['overview', 'content', 'reports', 'students', 'attendance', 'invitations','certificates', 'courses'].map((tab) => (
+          {['overview', 'content', 'reports', 'students', 'attendance','certificates', 'pending','courses'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -1394,53 +1407,80 @@ const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, s
             </div>
           </div>
         )}
-{activeTab === 'invitations' && (
+{activeTab === 'pending' && (
   <div className="space-y-6">
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-      <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-        <MailPlus className="w-6 h-6 mr-2 text-blue-600" />
-        Invite a New User
-      </h3>
-      <form onSubmit={handleSendInvite} className="flex flex-col md:flex-row gap-4 items-end">
-        <div className="flex-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-          <input
-            type="email"
-            value={inviteEmail}
-            onChange={(e) => setInviteEmail(e.target.value)}
-            placeholder="user@example.com"
-            className="w-full p-2 border border-gray-300 rounded-lg"
-            required
-          />
+      <h3 className="text-xl font-semibold text-gray-800 mb-4">Pending Interview Reviews</h3>
+      
+      {loadingPendingReports ? (
+        <div>Loading pending reports...</div>
+      ) : pendingReports.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applicant</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interview Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {pendingReports.map(report => (
+                <tr key={report.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="font-medium">{report.studentName}</div>
+                    <div className="text-sm text-gray-500">{report.studentEmail}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {new Date(report.interviewDate).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {report.interviewScore ? (
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        report.interviewScore >= 80 
+                          ? 'bg-green-100 text-green-800' 
+                          : report.interviewScore >= 60 
+                            ? 'bg-yellow-100 text-yellow-800' 
+                            : 'bg-red-100 text-red-800'
+                      }`}>
+                        {report.interviewScore}/100
+                      </span>
+                    ) : (
+                      <span className="text-gray-500">N/A</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <button
+                      onClick={() => handleApplicantDecision(report.id, 'approve')}
+                      className="text-green-600 hover:text-green-900 mr-3"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleApplicantDecision(report.id, 'reject')}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      Reject
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div className="flex-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-          <select
-            value={inviteRole}
-            onChange={(e) => setInviteRole(e.target.value as any)}
-            className="w-full p-2 border border-gray-300 rounded-lg"
-          >
-            <option value="student">Student</option>
-            <option value="recruiter">Recruiter</option>
-          </select>
+      ) : (
+        <div className="text-center py-8">
+          <FileText className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-lg font-medium text-gray-900">No pending reviews</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            There are currently no pending interview reports to review
+          </p>
         </div>
-        <button
-          type="submit"
-          disabled={inviting}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-        >
-          {inviting ? 'Sending...' : 'Send Invite'}
-        </button>
-      </form>
-    </div>
-
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-      <h3 className="text-xl font-semibold text-gray-800 mb-4">Sent Invitations</h3>
-      {/* List of sent invitations */}
+      )}
     </div>
   </div>
 )}
-
 {activeTab === 'courses' && (
   <div className="space-y-6">
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
