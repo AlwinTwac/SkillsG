@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signInAnonymously, signOut, User as FirebaseAuthUser } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { User, Building2, Briefcase, ArrowLeft, Loader2, CheckCircle } from 'lucide-react';
+import { User, Building2, Briefcase, ArrowLeft, Loader2, CheckCircle, Rocket, School, Search } from 'lucide-react';
+import { ThemeProvider } from '@/components/theme-provider';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import AuthComponent from '@/components/login';
 import AIInterviewer from '@/components/interviewerai';
@@ -12,7 +13,6 @@ import StudentDashboard from '@/components/studentdash';
 import CompanyDashboard from '@/components/companydash';
 import RecruiterDashboard from '@/components/recruiter';
 
-// --- Interfaces ---
 interface UserProfile {
   email: string;
   displayName?: string;
@@ -24,28 +24,16 @@ interface UserProfile {
   name?: string;
 }
 
-interface TempReportData {
-    studentName: string;
-    studentEmail: string;
-    interviewDate: string;
-    reportSummary: string;
-    experience?: string;
-    skills?: string[];
-    interests?: string[];
-    goals?: string;
-}
+type FlowState = 'roleSelection' | 'learnerChoice' | 'interviewing' | 'interviewComplete' | 'auth' | 'dashboard';
+type InitialRole = 'learner' | 'company' | 'recruiter';
 
 export default function Home() {
   const [user, setUser] = useState<FirebaseAuthUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  
-  // A single state to manage the entire user flow
-  const [flowState, setFlowState] = useState<'roleSelection' | 'learnerChoice' | 'interviewing' | 'interviewComplete' | 'auth' | 'dashboard'>('roleSelection');
-  
-  const [initialRoleSelection, setInitialRoleSelection] = useState<'learner' | 'company' | 'recruiter'>('learner');
+  const [flowState, setFlowState] = useState<FlowState>('roleSelection');
+  const [initialRoleSelection, setInitialRoleSelection] = useState<InitialRole>('learner');
 
-  // Main effect to handle authentication and user state
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -73,7 +61,6 @@ export default function Home() {
     return () => unsubscribeAuth();
   }, []);
 
-  // Handler for a new student starting the interview process
   const handleNewStudentStart = async () => {
     setLoading(true);
     try {
@@ -84,26 +71,22 @@ export default function Home() {
     }
   };
 
-  // Called from AIInterviewer when the interview is finished
   const handleInterviewComplete = () => {
-    setFlowState('interviewComplete'); // Move to the "Thank You" screen
+    setFlowState('interviewComplete');
   };
 
   const handleAuthSuccess = (loggedInUser: FirebaseAuthUser) => {
-    // This handles a regular login, not a post-interview signup
     setFlowState('dashboard');
   };
   
-  // Resets the state before showing the login form for Company or Recruiter
   const handlePortalSelection = (role: 'company' | 'recruiter') => {
     if (user && user.isAnonymous) {
-        signOut(auth);
+      signOut(auth);
     }
     setInitialRoleSelection(role);
     setFlowState('auth');
   };
 
-  // --- THIS IS THE NEW HANDLER FOR THE RETURN BUTTON ---
   const handleReturnHome = () => {
     if (user && user.isAnonymous) {
       signOut(auth);
@@ -113,22 +96,30 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center">
+          <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+          <span className="text-lg text-foreground">Loading your experience...</span>
+        </div>
       </div>
     );
   }
 
-  // --- Main Render Logic ---
   let contentToRender;
 
   switch (flowState) {
     case 'dashboard':
       if (user && userProfile) {
         switch (userProfile.role) {
-          case 'student': contentToRender = <StudentDashboard userDisplayName={userProfile.name || user.displayName} userEmail={user.email} userUid={user.uid} />; break;
-          case 'company': contentToRender = <CompanyDashboard userDisplayName={userProfile.displayName ?? null} userEmail={user.email} userUid={user.uid} />; break;
-          case 'recruiter': contentToRender = <RecruiterDashboard userDisplayName={userProfile.name || user.displayName} userEmail={user.email} />; break;
+          case 'student': 
+            contentToRender = <StudentDashboard userDisplayName={userProfile.name || user.displayName || ''} userEmail={user.email || ''} userUid={user.uid} />; 
+            break;
+          case 'company': 
+            contentToRender = <CompanyDashboard userDisplayName={userProfile.displayName || null} userEmail={user.email || ''} userUid={user.uid} />; 
+            break;
+          case 'recruiter': 
+            contentToRender = <RecruiterDashboard userDisplayName={userProfile.name || user.displayName || ''} userEmail={user.email || ''} />; 
+            break;
         }
       }
       break;
@@ -141,18 +132,20 @@ export default function Home() {
 
     case 'interviewComplete':
       contentToRender = (
-        <div className="max-w-md mx-auto text-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-8 shadow-2xl">
-            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4"/>
-            <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-4">Interview Complete!</h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
-              Your report has been submitted for review. If your application is approved, you will receive an email with a link to set your password. Please remember to check your spam folder.
+        <div className="max-w-md mx-auto my-12 p-8 bg-surface rounded-xl shadow-lg border">
+          <div className="text-center">
+            <CheckCircle className="w-16 h-16 text-success mx-auto mb-4"/>
+            <h2 className="text-3xl font-bold text-primary mb-4">Interview Complete!</h2>
+            <p className="text-onSurfaceVariant mb-6">
+              Your report has been submitted for review. If your application is approved, you'll receive an email to set your password.
             </p>
             <button 
               onClick={handleReturnHome} 
-              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold text-lg hover:bg-blue-700 transition"
+              className="w-full px-6 py-3 bg-primary text-onPrimary rounded-lg font-medium hover:bg-primaryDark transition elevation-2 hover:elevation-4"
             >
               Return Home
             </button>
+          </div>
         </div>
       );
       break;
@@ -162,67 +155,133 @@ export default function Home() {
         <AuthComponent 
           onAuthSuccess={handleAuthSuccess} 
           defaultRole={initialRoleSelection} 
-          onBack={handleReturnHome}  // This enables the back button
+          onBack={handleReturnHome}
         />
       );
       break;
 
     case 'learnerChoice':
       contentToRender = (
-        <div className="max-w-md mx-auto text-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-8 shadow-2xl">
-            <button onClick={() => setFlowState('roleSelection')} className="flex items-center text-sm text-gray-600 dark:text-gray-400 hover:underline mb-6"><ArrowLeft className="w-4 h-4 mr-1"/> Back</button>
-            <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">Welcome, Learner!</h2>
+        <div className="max-w-md mx-auto my-12 p-8 bg-surface rounded-xl shadow-lg border">
+          <button 
+            onClick={() => setFlowState('roleSelection')} 
+            className="flex items-center text-sm text-secondary hover:text-primary mb-6"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1"/> Back
+          </button>
+          <div className="text-center">
+            <School className="w-12 h-12 text-primary mx-auto mb-4" />
+            <h2 className="text-3xl font-bold text-primary mb-6">Welcome, Learner!</h2>
             <div className="space-y-4">
-                <button onClick={handleNewStudentStart} className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold text-lg hover:bg-blue-700 transition">I'm a New Student (Start AI Interview)</button>
-                <button onClick={() => { setInitialRoleSelection('learner'); setFlowState('auth'); }} className="w-full px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold text-lg hover:bg-gray-300 transition">I Already Have an Account (Login)</button>
+              <button 
+                onClick={handleNewStudentStart} 
+                className="w-full px-6 py-3 bg-primary text-onPrimary rounded-lg font-medium hover:bg-primaryDark transition elevation-2 hover:elevation-4"
+              >
+                New Student (Start AI Interview)
+              </button>
+              <button 
+                onClick={() => { setInitialRoleSelection('learner'); setFlowState('auth'); }} 
+                className="w-full px-6 py-3 bg-secondaryContainer text-onSecondaryContainer rounded-lg font-medium hover:bg-secondaryContainerDark transition elevation-2 hover:elevation-4"
+              >
+                Existing Account (Login)
+              </button>
             </div>
+          </div>
         </div>
       );
       break;
       
     default: // 'roleSelection'
       contentToRender = (
-        <div className="max-w-6xl mx-auto text-center relative">
-          <div className="absolute top-4 right-4 z-10"><ThemeSwitcher /></div>
-          <div className="bg-blue-100 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-8 shadow-2xl mb-12">
-            <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-6">Welcome to KG Learning Platform</h1>
-            <p className="text-xl text-gray-700 dark:text-gray-300 mb-8">Discover your perfect learning journey with us</p>
+        <div className="max-w-6xl mx-auto px-4 py-12">
+          <div className="fixed top-4 right-4 z-50">
+            <ThemeSwitcher />
           </div>
+          
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center justify-center bg-primary/10 text-primary px-6 py-2 rounded-full mb-4 shadow-sm">
+              <Rocket className="w-5 h-5 mr-2" />
+              <span className="font-medium">Future of Learning</span>
+            </div>
+            <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4">
+              Discover Your <span className="text-secondary">Perfect</span> Path
+            </h1>
+            <p className="text-xl text-onSurfaceVariant max-w-2xl mx-auto">
+              Join our platform to unlock personalized learning experiences tailored just for you.
+            </p>
+          </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div onClick={() => setFlowState('learnerChoice')} className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer flex flex-col items-center justify-center border-2 border-transparent hover:border-blue-300 dark:hover:border-blue-700 group">
-              <div className="bg-blue-100 dark:bg-blue-800 p-4 rounded-full mb-4 group-hover:bg-blue-200 dark:group-hover:bg-blue-700 transition">
-                <User className="w-8 h-8 text-blue-600 dark:text-blue-300" />
+            <div 
+              onClick={() => setFlowState('learnerChoice')}
+              className="bg-surface rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-outline hover:border-primary"
+            >
+              <div className="bg-primary/10 p-4 rounded-full w-max mb-6">
+                <User className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">Learner</h3>
-              <p className="text-gray-600 dark:text-gray-300">Start your learning journey with our AI-powered platform</p>
-              <button className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">Get Started</button>
-            </div>
-            <div onClick={() => handlePortalSelection('company')} className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer flex flex-col items-center justify-center border-2 border-transparent hover:border-blue-300 dark:hover:border-blue-700 group">
-              <div className="bg-blue-100 dark:bg-blue-800 p-4 rounded-full mb-4 group-hover:bg-blue-200 dark:group-hover:bg-blue-700 transition">
-                <Building2 className="w-8 h-8 text-blue-600 dark:text-blue-300" />
+              <h3 className="text-2xl font-bold text-primary mb-3">Learner</h3>
+              <p className="text-onSurfaceVariant mb-6">
+                Start your personalized learning journey with our AI-powered platform.
+              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-primary">Get Started</span>
+                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                  <ArrowLeft className="w-4 h-4 text-onPrimary rotate-180" />
+                </div>
               </div>
-              <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">Company</h3>
-              <p className="text-gray-600 dark:text-gray-300">Access talent and manage your organization's learning programs</p>
-              <button className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">Company Portal</button>
             </div>
-            <div onClick={() => handlePortalSelection('recruiter')} className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer flex flex-col items-center justify-center border-2 border-transparent hover:border-blue-300 dark:hover:border-blue-700 group">
-              <div className="bg-blue-100 dark:bg-blue-800 p-4 rounded-full mb-4 group-hover:bg-blue-200 dark:group-hover:bg-blue-700 transition">
-                <Briefcase className="w-8 h-8 text-blue-600 dark:text-blue-300" />
+            
+            <div 
+              onClick={() => handlePortalSelection('company')}
+              className="bg-surface rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-outline hover:border-primary"
+            >
+              <div className="bg-tertiary/10 p-4 rounded-full w-max mb-6">
+                <Building2 className="w-8 h-8 text-tertiary" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">Recruiter</h3>
-              <p className="text-gray-600 dark:text-gray-300">Find and connect with top talent in our network</p>
-              <button className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">Recruiter Portal</button>
+              <h3 className="text-2xl font-bold text-tertiary mb-3">Company</h3>
+              <p className="text-onSurfaceVariant mb-6">
+                Access top talent and manage your organization's learning programs.
+              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-tertiary">Company Portal</span>
+                <div className="w-8 h-8 bg-tertiary rounded-full flex items-center justify-center">
+                  <ArrowLeft className="w-4 h-4 text-onTertiary rotate-180" />
+                </div>
+              </div>
             </div>
+            
+            <div 
+              onClick={() => handlePortalSelection('recruiter')}
+              className="bg-surface rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-outline hover:border-primary"
+            >
+              <div className="bg-secondary/10 p-4 rounded-full w-max mb-6">
+                <Search className="w-8 h-8 text-secondary" />
+              </div>
+              <h3 className="text-2xl font-bold text-secondary mb-3">Recruiter</h3>
+              <p className="text-onSurfaceVariant mb-6">
+                Find and connect with exceptional talent in our growing network.
+              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-secondary">Recruiter Portal</span>
+                <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+                  <ArrowLeft className="w-4 h-4 text-onSecondary rotate-180" />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="text-center mt-16 text-onSurfaceVariant">
+            <p>Join thousands of learners and organizations transforming their futures</p>
           </div>
         </div>
       );
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 dark:from-blue-800 dark:via-blue-700 dark:to-blue-600 py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-500">
-      <div className="max-w-7xl mx-auto">
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <main className="min-h-screen bg-background text-foreground transition-colors duration-300">
         {contentToRender}
-      </div>
-    </main>
+      </main>
+    </ThemeProvider>
   );
 }

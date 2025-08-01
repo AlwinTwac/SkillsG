@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, UploadCloud, Search, BookOpen, MailPlus, FileText, Video, Users, ClipboardList, BarChart2, FileBarChart2, Award, Mail, UserCheck, CalendarDays, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { LogOut, UploadCloud, Search, BookOpen, MailPlus,Star, Briefcase,Loader2,Check ,Code ,X, FileText, Video, Users, ClipboardList, BarChart2, FileBarChart2, Award, Mail, UserCheck, CalendarDays, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { auth, db, storage } from '@/lib/firebase';
-import { collection, query, where, getDocs,getDoc, doc, setDoc,addDoc, onSnapshot,arrayUnion,arrayRemove, orderBy, updateDoc, serverTimestamp, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs,getDoc, doc, setDoc,addDoc, onSnapshot,arrayUnion,  arrayRemove, orderBy, updateDoc, serverTimestamp, writeBatch, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
+import {getFunctions, httpsCallable} from 'firebase/functions';
 
 interface CompanyDashboardProps {
   userDisplayName: string | null;
@@ -108,12 +109,28 @@ interface PendingEnrollmentReport {
   goals?: string;
   status: 'pending' | 'approved' | 'rejected';
 }
+interface PendingReport {
+     id: string;
+    studentUid: string;
+    studentName: string;
+    studentEmail: string;
+    reportSummary: string;
+    interviewDate: string;
+    status: 'pending' | 'approved' | 'rejected';
+    interviewScore?: number;
+    experience?: string;
+    skills?: string[];
+    interests?: string[];
+    goals?: string;
+    recommendedLearningPath?: string[];
+}
 
 export default function CompanyDashboard({ userDisplayName, userEmail, userUid }: CompanyDashboardProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
   const [enrollmentReports, setEnrollmentReports] = useState<EnrollmentReport[]>([]);
   const [learningMaterials, setLearningMaterials] = useState<LearningMaterial[]>([]);
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
@@ -199,7 +216,10 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
       setCertificates(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Certificate)));
       setLoading(prev => ({ ...prev, certificates: false }));
     });
-
+    const pendingQuery = query(collection(db, 'pendingInterviewReports'), where('status', '==', 'pending'));
+    const unsubscribePending = onSnapshot(pendingQuery, (snapshot) => {
+        setPendingReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PendingReport)));
+    });
     const enrollmentsQuery = query(collection(db, 'enrollments'), where('companyUid', '==', userUid));
     const enrollmentsUnsub = onSnapshot(enrollmentsQuery, (snapshot) => {
       setEnrollments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Enrollment)));
@@ -264,6 +284,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     materialsUnsub();
     coursesUnsub();
     studentsUnsub();
+    unsubscribePending();
     pendingReportsUnsub();
     certsUnsub();
     enrollmentsUnsub();
@@ -346,46 +367,79 @@ useEffect(() => {
     setError(`Failed to delete material: ${err.message}`);
   }
 };
-const handleApplicantDecision = async (reportId: string, decision: 'approve' | 'reject') => {
+
+const handleApprove = async (report: PendingReport) => {
+  setIsProcessing(report.id);
+  setUploadError(null);
+  setUploadSuccess(null);
+  
   try {
-    // Update status in Firestore first
-    const reportRef = doc(db, 'pendingInterviewReports', reportId);
-    await updateDoc(reportRef, {
-      status: decision === 'approve' ? 'approved' : 'rejected'
+    const response = await fetch('/api/approve-applicant', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        reportId: report.id, 
+        reportData: report 
+      })
     });
 
-    if (decision === 'approve') {
-      // Call the Cloud Function to create the account
-      const reportDoc = await getDoc(reportRef);
-      const reportData = reportDoc.data();
-      
-      if (!reportData) throw new Error("Report not found");
-      
-      const response = await fetch('/api/approve-applicant', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reportId,
-          studentEmail: reportData.studentEmail,
-          studentName: reportData.studentName,
-          reportData: reportData
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to approve applicant');
-      }
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Approval failed');
     }
 
-    setUploadSuccess(`Applicant ${decision === 'approve' ? 'approved' : 'rejected'} successfully`);
-  } catch (error) {
-    console.error(`Error ${decision}ing applicant:`, error);
-    setUploadError(`Failed to ${decision} applicant`);
+    setUploadSuccess(`${report.studentName} has been approved and an account creation email has been sent.`);
+    // Optionally refresh your pending reports list here
+    setPendingReports(prev => prev.filter(r => r.id !== report.id));
+    
+  } catch (err: any) {
+    console.error("Error approving applicant:", err);
+    setUploadError(`Failed to approve: ${err.message}`);
+  } finally {
+    setIsProcessing(null);
   }
 };
-  const handleSaveAttendance = async () => {
+
+const handleReject = async (report: PendingReport) => {
+  if (!window.confirm("Are you sure you want to reject this applicant?")) return;
+  
+  setIsProcessing(report.id);
+  setUploadError(null);
+  setUploadSuccess(null);
+  
+  try {
+    const response = await fetch('/api/reject-applicant', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        reportId: report.id, 
+        reportData: report 
+      })
+    });
+
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Rejection failed');
+    }
+
+    setUploadSuccess("Applicant has been rejected and notified.");
+    // Optionally refresh your pending reports list here
+    setPendingReports(prev => prev.filter(r => r.id !== report.id));
+    
+  } catch (err: any) {
+    console.error("Error rejecting applicant:", err);
+    setUploadError(`Failed to reject: ${err.message}`);
+  } finally {
+    setIsProcessing(null);
+  }
+};
+   const handleSaveAttendance = async () => {
     setSavingAttendance(true);
     setUploadSuccess(null);
     setError(null);
@@ -758,7 +812,7 @@ const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, s
       {/* Tab Navigation */}
       <div className="border-b border-gray-200 bg-gray-50 overflow-x-auto">
         <nav className="flex space-x-8 px-6">
-          {['overview', 'content', 'reports', 'students', 'attendance','certificates', 'pending','courses'].map((tab) => (
+          {['overview', 'content', 'reports', 'students', 'attendance','certificates', 'pending-reviews','courses'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -1407,80 +1461,60 @@ const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, s
             </div>
           </div>
         )}
-{activeTab === 'pending' && (
-  <div className="space-y-6">
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-      <h3 className="text-xl font-semibold text-gray-800 mb-4">Pending Interview Reviews</h3>
-      
-      {loadingPendingReports ? (
-        <div>Loading pending reports...</div>
-      ) : pendingReports.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applicant</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interview Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {pendingReports.map(report => (
-                <tr key={report.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-medium">{report.studentName}</div>
-                    <div className="text-sm text-gray-500">{report.studentEmail}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {new Date(report.interviewDate).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {report.interviewScore ? (
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        report.interviewScore >= 80 
-                          ? 'bg-green-100 text-green-800' 
-                          : report.interviewScore >= 60 
-                            ? 'bg-yellow-100 text-yellow-800' 
-                            : 'bg-red-100 text-red-800'
-                      }`}>
-                        {report.interviewScore}/100
-                      </span>
-                    ) : (
-                      <span className="text-gray-500">N/A</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <button
-                      onClick={() => handleApplicantDecision(report.id, 'approve')}
-                      className="text-green-600 hover:text-green-900 mr-3"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleApplicantDecision(report.id, 'reject')}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Reject
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="text-center py-8">
-          <FileText className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-lg font-medium text-gray-900">No pending reviews</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            There are currently no pending interview reports to review
-          </p>
-        </div>
-      )}
-    </div>
-  </div>
-)}
+ {activeTab === 'pending-reviews' && (
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">Pending Student Reviews</h3>
+              <div className="space-y-4">
+                {pendingReports.length === 0 ? (
+                  <p className="text-gray-500 text-center py-4">No pending reviews.</p>
+                ) : (
+                  pendingReports.map(report => (
+                    <div key={report.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                        {/* Left side: Applicant Info */}
+                        <div className="flex-grow">
+                          <p className="font-bold text-lg text-gray-900">{report.studentName}</p>
+                          <p className="text-sm text-gray-600">{report.studentEmail}</p>
+                          
+                          <div className="mt-3 flex items-center space-x-4 text-sm text-gray-700">
+                            {report.interviewScore && (
+                                <div className="flex items-center"><Star className="w-4 h-4 mr-1 text-yellow-500"/> <strong>Score:</strong><span className="ml-1">{report.interviewScore}/100</span></div>
+                            )}
+                            {report.experience && (
+                                <div className="flex items-center"><Briefcase className="w-4 h-4 mr-1 text-blue-500"/> <strong>Level:</strong><span className="ml-1">{report.experience}</span></div>
+                            )}
+                          </div>
+
+                          {report.skills && report.skills.length > 0 && (
+                            <div className="mt-3">
+                                <h4 className="text-xs font-semibold text-gray-600 mb-1 flex items-center"><Code className="w-4 h-4 mr-1"/>Skills</h4>
+                                <div className="flex flex-wrap gap-1">
+                                    {report.skills.map(skill => <span key={skill} className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full">{skill}</span>)}
+                                </div>
+                            </div>
+                          )}
+                          
+                          <div className="mt-3">
+                            <h4 className="text-xs font-semibold text-gray-600 mb-1">AI Summary</h4>
+                            <p className="text-sm text-gray-800 bg-gray-50 p-2 rounded-md">{report.reportSummary}</p>
+                          </div>
+                        </div>
+
+                        {/* Right side: Action Buttons */}
+                        <div className="flex space-x-2 flex-shrink-0">
+                          <button onClick={() => handleApprove(report)} disabled={!!isProcessing} className="p-2 bg-green-100 text-green-700 rounded-full hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                            {isProcessing === report.id ? <Loader2 className="w-5 h-5 animate-spin"/> : <Check className="w-5 h-5"/>}
+                          </button>
+                          <button onClick={() => handleReject(report)} disabled={!!isProcessing} className="p-2 bg-red-100 text-red-700 rounded-full hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                            {isProcessing === report.id ? <Loader2 className="w-5 h-5 animate-spin"/> : <X className="w-5 h-5"/>}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>)}
 {activeTab === 'courses' && (
   <div className="space-y-6">
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">

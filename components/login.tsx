@@ -9,7 +9,7 @@ import { User, Mail, Lock, Eye, EyeOff, ArrowLeft, Briefcase } from 'lucide-reac
 interface AuthComponentProps {
   onAuthSuccess: (user: FirebaseAuthUser) => void;
   defaultRole: 'learner' | 'company' | 'recruiter';
-  onBack?: () => void; // Made optional with ?
+  onBack?: () => void;
 }
 
 export default function AuthComponent({ onAuthSuccess, defaultRole, onBack }: AuthComponentProps) {
@@ -35,6 +35,7 @@ export default function AuthComponent({ onAuthSuccess, defaultRole, onBack }: Au
     };
     checkCompanyAccount();
   }, [defaultRole]);
+
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,58 +148,61 @@ export default function AuthComponent({ onAuthSuccess, defaultRole, onBack }: Au
   };
 
   const theme = getRoleTheme();
-
-  return (
-    <div className="max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden relative">
+return (
+    <div className="max-w-md mx-auto my-12 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden relative">
       {onBack && (
         <button 
           onClick={onBack}
-          className="absolute top-4 left-4 flex items-center text-sm text-gray-500 hover:text-gray-800 transition-colors z-10"
+          className="absolute top-4 left-4 flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors z-10"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
           Back
         </button>
       )}
       
-      <div className={`bg-gradient-to-r ${theme.bgGradient} p-6 text-center`}>
-        <h2 className="text-2xl font-bold text-white mb-2">
+      <div className="bg-gray-800 dark:bg-gray-700 p-6 text-center">
+        <h2 className="text-2xl font-bold text-gray-100 mb-2">
           {isLogin ? 'Welcome Back!' : 'Create Account'}
         </h2>
-        <p className="text-white/90">
+        <p className="text-gray-300">
           {isLogin ? `Sign in as a ${defaultRole}` : `Create your ${defaultRole} account`}
         </p>
       </div>
 
       <div className="p-8">
-        {error && <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-r-lg">{error}</div>}
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 mb-6 rounded-r-lg">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleEmailAuth} className="space-y-5">
           <div className="relative">
-            <Mail className="h-5 w-5 text-gray-400 absolute top-3.5 left-4" />
+            <Mail className="h-5 w-5 text-gray-500 dark:text-gray-400 absolute top-3.5 left-4" />
             <input 
               type="email" 
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
-              className={`w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ${theme.borderColor}`} 
+              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-gray-800 dark:text-gray-200" 
               placeholder="Enter your email" 
               required 
             />
           </div>
 
           <div className="relative">
-            <Lock className="h-5 w-5 text-gray-400 absolute top-3.5 left-4" />
+            <Lock className="h-5 w-5 text-gray-500 dark:text-gray-400 absolute top-3.5 left-4" />
             <input 
               type={showPassword ? 'text' : 'password'} 
               value={password} 
               onChange={(e) => setPassword(e.target.value)} 
-              className={`w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ${theme.borderColor}`} 
+              className="w-full pl-12 pr-12 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-gray-800 dark:text-gray-200" 
               placeholder="Enter your password" 
               required 
             />
             <button 
               type="button" 
               onClick={() => setShowPassword(!showPassword)} 
-              className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+              className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             >
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
@@ -206,12 +210,12 @@ export default function AuthComponent({ onAuthSuccess, defaultRole, onBack }: Au
 
           {!isLogin && (
             <div className="relative">
-              <Lock className="h-5 w-5 text-gray-400 absolute top-3.5 left-4" />
+              <Lock className="h-5 w-5 text-gray-500 dark:text-gray-400 absolute top-3.5 left-4" />
               <input 
                 type="password" 
                 value={confirmPassword} 
                 onChange={(e) => setConfirmPassword(e.target.value)} 
-                className={`w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ${theme.borderColor}`} 
+                className="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-gray-800 dark:text-gray-200" 
                 placeholder="Confirm your password" 
                 required 
               />
@@ -221,7 +225,7 @@ export default function AuthComponent({ onAuthSuccess, defaultRole, onBack }: Au
           <button 
             type="submit" 
             disabled={loading || (defaultRole === 'company' && companyAccountExists && !isLogin)} 
-            className={`w-full ${theme.buttonColor} text-white py-3 rounded-lg font-semibold transition-all duration-300 disabled:opacity-70 flex items-center justify-center`}
+            className="w-full bg-gray-800 hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-100 py-3 rounded-lg font-medium transition-all duration-300 disabled:opacity-70 flex items-center justify-center shadow hover:shadow-md"
           >
             {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')}
           </button>
@@ -230,16 +234,16 @@ export default function AuthComponent({ onAuthSuccess, defaultRole, onBack }: Au
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-3 bg-white text-gray-500">Or</span>
+              <span className="px-3 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Or</span>
             </div>
           </div>
           <button 
             onClick={handleGoogleAuth} 
             disabled={loading || (defaultRole === 'company' && companyAccountExists && !isLogin)} 
-            className="mt-5 w-full bg-white border border-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-50 transition-all duration-300 disabled:opacity-50 flex items-center justify-center shadow-sm"
+            className="mt-5 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300 disabled:opacity-50 flex items-center justify-center shadow-sm"
           >
             <svg className="w-5 mr-3" viewBox="0 0 48 48">
               <path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
@@ -253,12 +257,12 @@ export default function AuthComponent({ onAuthSuccess, defaultRole, onBack }: Au
         </div>
 
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             {isLogin ? "Don't have an account?" : "Already have an account?"}
             {(!companyAccountExists || defaultRole !== 'company') && (
               <button 
                 onClick={() => setIsLogin(!isLogin)} 
-                className={`ml-1 ${theme.textColor} hover:underline font-medium`}
+                className="ml-1 text-gray-800 dark:text-gray-200 hover:underline font-medium"
               >
                 {isLogin ? 'Sign up' : 'Sign in'}
               </button>
