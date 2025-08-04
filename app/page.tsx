@@ -12,6 +12,7 @@ import AIInterviewer from '@/components/interviewerai';
 import StudentDashboard from '@/components/studentdash';
 import CompanyDashboard from '@/components/companydash';
 import RecruiterDashboard from '@/components/recruiter';
+//import tailwindConfig from '@/tailwind.config';
 
 interface UserProfile {
   email: string;
@@ -96,10 +97,10 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-spring-50">
         <div className="flex flex-col items-center">
-          <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-          <span className="text-lg text-foreground">Loading your experience...</span>
+          <Loader2 className="w-12 h-12 text-spring-600 animate-spin mb-4" />
+          <span className="text-lg text-spring-800">Loading your experience...</span>
         </div>
       </div>
     );
@@ -132,16 +133,16 @@ export default function Home() {
 
     case 'interviewComplete':
       contentToRender = (
-        <div className="max-w-md mx-auto my-12 p-8 bg-surface rounded-xl shadow-lg border">
+        <div className="max-w-md mx-auto my-12 p-8 bg-white rounded-xl shadow-lg border border-spring-100">
           <div className="text-center">
-            <CheckCircle className="w-16 h-16 text-success mx-auto mb-4"/>
-            <h2 className="text-3xl font-bold text-primary mb-4">Interview Complete!</h2>
-            <p className="text-onSurfaceVariant mb-6">
+            <CheckCircle className="w-16 h-16 text-spring-600 mx-auto mb-4"/>
+            <h2 className="text-3xl font-bold text-spring-800 mb-4">Interview Complete!</h2>
+            <p className="text-spring-700 mb-6">
               Your report has been submitted for review. If your application is approved, you'll receive an email to set your password.
             </p>
             <button 
               onClick={handleReturnHome} 
-              className="w-full px-6 py-3 bg-primary text-onPrimary rounded-lg font-medium hover:bg-primaryDark transition elevation-2 hover:elevation-4"
+              className="w-full px-6 py-3 bg-spring-600 text-white rounded-lg font-medium hover:bg-spring-700 transition-all shadow-md hover:shadow-lg"
             >
               Return Home
             </button>
@@ -162,26 +163,26 @@ export default function Home() {
 
     case 'learnerChoice':
       contentToRender = (
-        <div className="max-w-md mx-auto my-12 p-8 bg-surface rounded-xl shadow-lg border">
+        <div className="max-w-md mx-auto my-12 p-8 bg-white rounded-xl shadow-lg border border-teal-100">
           <button 
             onClick={() => setFlowState('roleSelection')} 
-            className="flex items-center text-sm text-secondary hover:text-primary mb-6"
+            className="flex items-center text-sm text-teal-600 hover:text-spring-800 mb-6"
           >
             <ArrowLeft className="w-4 h-4 mr-1"/> Back
           </button>
           <div className="text-center">
-            <School className="w-12 h-12 text-primary mx-auto mb-4" />
-            <h2 className="text-3xl font-bold text-primary mb-6">Welcome, Learner!</h2>
+            <School className="w-12 h-12 text-teal-600 mx-auto mb-4" />
+            <h2 className="text-3xl font-bold text-teal-800 mb-6">Welcome, Learner!</h2>
             <div className="space-y-4">
               <button 
                 onClick={handleNewStudentStart} 
-                className="w-full px-6 py-3 bg-primary text-onPrimary rounded-lg font-medium hover:bg-primaryDark transition elevation-2 hover:elevation-4"
+                className="w-full px-6 py-3 bg-teal-600 text-teal-100 rounded-lg font-medium hover:bg-teal-700 transition-all shadow-md hover:shadow-lg"
               >
                 New Student (Start AI Interview)
               </button>
               <button 
                 onClick={() => { setInitialRoleSelection('learner'); setFlowState('auth'); }} 
-                className="w-full px-6 py-3 bg-secondaryContainer text-onSecondaryContainer rounded-lg font-medium hover:bg-secondaryContainerDark transition elevation-2 hover:elevation-4"
+                className="w-full px-6 py-3 bg-teal-100 text-teal-800 rounded-lg font-medium hover:bg-teal-200 transition-all shadow-sm hover:shadow-md"
               >
                 Existing Account (Login)
               </button>
@@ -199,78 +200,78 @@ export default function Home() {
           </div>
           
           <div className="text-center mb-16">
-            <div className="inline-flex items-center justify-center bg-primary/10 text-primary px-6 py-2 rounded-full mb-4 shadow-sm">
+            <div className="inline-flex items-center justify-center bg-spring-100 text-spring-800 px-6 py-2 rounded-full mb-4 shadow-sm">
               <Rocket className="w-5 h-5 mr-2" />
-              <span className="font-medium">Future of Learning</span>
+              <span className="font-medium">KG LEARNING PLATFORM</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4">
-              Discover Your <span className="text-secondary">Perfect</span> Path
+            <h1 className="text-4xl md:text-5xl font-bold text-spring-800 mb-4">
+              Discover Your <span className="text-spring-600">Perfect</span> Path
             </h1>
-            <p className="text-xl text-onSurfaceVariant max-w-2xl mx-auto">
-              Join our platform to unlock personalized learning experiences tailored just for you.
+            <p className="text-xl text-spring-700 max-w-2xl mx-auto">
+              Join our platform today to become an ISD.
             </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div 
               onClick={() => setFlowState('learnerChoice')}
-              className="bg-surface rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-outline hover:border-primary"
+              className="bg-teal-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-spring-100 hover:border-spring-300"
             >
-              <div className="bg-primary/10 p-4 rounded-full w-max mb-6">
-                <User className="w-8 h-8 text-primary" />
+              <div className="bg-teal-100 p-4 rounded-full w-max mb-6">
+                <User className="w-8 h-8 text-teal-600" />
               </div>
-              <h3 className="text-2xl font-bold text-primary mb-3">Learner</h3>
-              <p className="text-onSurfaceVariant mb-6">
+              <h3 className="text-2xl font-bold text-teal-800 mb-3">Learner</h3>
+              <p className="text-teal-900 mb-6">
                 Start your personalized learning journey with our AI-powered platform.
               </p>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-primary">Get Started</span>
-                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                  <ArrowLeft className="w-4 h-4 text-onPrimary rotate-180" />
+                <span className="text-sm text-teal-600">Get Started</span>
+                <div className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center">
+                  <ArrowLeft className="w-4 h-4 text-white rotate-180" />
                 </div>
               </div>
             </div>
             
             <div 
               onClick={() => handlePortalSelection('company')}
-              className="bg-surface rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-outline hover:border-primary"
+              className="bg-teal-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-spring-100 hover:border-teal-300"
             >
-              <div className="bg-tertiary/10 p-4 rounded-full w-max mb-6">
-                <Building2 className="w-8 h-8 text-tertiary" />
+              <div className="bg-teal-100 p-4 rounded-full w-max mb-6">
+                <Building2 className="w-8 h-8 text-teal-600" />
               </div>
-              <h3 className="text-2xl font-bold text-tertiary mb-3">Company</h3>
-              <p className="text-onSurfaceVariant mb-6">
+              <h3 className="text-2xl font-bold text-teal-800 mb-3">Company</h3>
+              <p className="text-teal-900 mb-6">
                 Access top talent and manage your organization's learning programs.
               </p>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-tertiary">Company Portal</span>
-                <div className="w-8 h-8 bg-tertiary rounded-full flex items-center justify-center">
-                  <ArrowLeft className="w-4 h-4 text-onTertiary rotate-180" />
+                <span className="text-teal text-teal-600">Company Portal</span>
+                <div className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center">
+                  <ArrowLeft className="w-4 h-4 text-white rotate-180" />
                 </div>
               </div>
             </div>
             
             <div 
               onClick={() => handlePortalSelection('recruiter')}
-              className="bg-surface rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-outline hover:border-primary"
+              className="bg-teal-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-spring-100 hover:border-teal-300"
             >
-              <div className="bg-secondary/10 p-4 rounded-full w-max mb-6">
-                <Search className="w-8 h-8 text-secondary" />
+              <div className="bg-teal-100 p-4 rounded-full w-max mb-6">
+                <Search className="w-8 h-8 text-teal-600" />
               </div>
-              <h3 className="text-2xl font-bold text-secondary mb-3">Recruiter</h3>
-              <p className="text-onSurfaceVariant mb-6">
+              <h3 className="text-2xl font-bold text-teal-800 mb-3">Recruiter</h3>
+              <p className="text-teal-900 mb-6">
                 Find and connect with exceptional talent in our growing network.
               </p>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-secondary">Recruiter Portal</span>
-                <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
-                  <ArrowLeft className="w-4 h-4 text-onSecondary rotate-180" />
+                <span className="text-sm text-teal-600">Recruiter Portal</span>
+                <div className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center">
+                  <ArrowLeft className="w-4 h-4 text-white rotate-180" />
                 </div>
               </div>
             </div>
           </div>
           
-          <div className="text-center mt-16 text-onSurfaceVariant">
+          <div className="min-h-screen flex items-center justify-center bg-spring-100">
             <p>Join thousands of learners and organizations transforming their futures</p>
           </div>
         </div>
@@ -279,7 +280,7 @@ export default function Home() {
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <main className="min-h-screen bg-background text-foreground transition-colors duration-300">
+      <main className="min-h-screen bg-teal-950 text-teal-100 transition-colors duration-300">
         {contentToRender}
       </main>
     </ThemeProvider>

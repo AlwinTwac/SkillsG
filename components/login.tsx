@@ -234,16 +234,16 @@ return (
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+              <div className="w-full border-t border-teal-300 dark:border-gray-600"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-3 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Or</span>
+              <span className="px-3 bg-white dark:bg-teal-800 text-gray-500 dark:text-gray-400">Or</span>
             </div>
           </div>
           <button 
             onClick={handleGoogleAuth} 
             disabled={loading || (defaultRole === 'company' && companyAccountExists && !isLogin)} 
-            className="mt-5 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300 disabled:opacity-50 flex items-center justify-center shadow-sm"
+            className="mt-5 w-full bg-white dark:bg-teal-800 border border-teal-300 dark:border-teal-700 text-teal-950 dark:text-gray-200 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-teal-700 transition-all duration-300 disabled:opacity-50 flex items-center justify-center shadow-sm"
           >
             <svg className="w-5 mr-3" viewBox="0 0 48 48">
               <path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
