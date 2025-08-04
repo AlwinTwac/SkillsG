@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { adminDb } from '@/lib/firebase-admin'; // Changed from getAdminDb to adminDb
+import { adminDb } from '@/lib/firebase-admin'; 
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -23,7 +23,6 @@ interface ClientRequestData {
   action: 'start_interview' | 'continue_interview';
 }
 
-// --- API Route Handler ---
 export async function POST(request: Request) {
   try {
     const { conversationHistory, studentProfile, action }: ClientRequestData = await request.json();
@@ -32,7 +31,6 @@ export async function POST(request: Request) {
       throw new Error('OpenAI API key is not configured.');
     }
     
-    // Directly use adminDb instead of getAdminDb()
     const coursesSnapshot = await adminDb.collection('courses').get();
     const availableCourses = coursesSnapshot.docs.map(doc => doc.data().name as string);
 
@@ -55,7 +53,7 @@ export async function POST(request: Request) {
       "studentEmail": "Extracted Email Address",
       "interviewDate": "${new Date().toISOString()}",
       "reportSummary": "A concise, professional summary of the student's profile.",
-      "recommendedLearningPath": ["Introduction to Industrial Systems"],
+      "recommendedLearningPath": ["learning path suggestion from the existing courses offered"],
       "interviewScore": 75,
       "strengths": ["Identified Strength 1"],
       "weaknesses": ["Identified Weakness 1"],
