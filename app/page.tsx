@@ -584,7 +584,7 @@ return (
   
     <div className="min-h-screen">
       <div className="mx-auto max-w-7xl min-h-screen flex flex-col">
-        <div className="flex-1 bg-white/90 backdrop-blur-sm lg:mx-2 lg:my-2 lg:rounded-2xl shadow-xl">
+        <div className="flex-1 bg-white/90 backdrop-blur-sm lg:mx-2 lg:my-2 lg:rounded-lg shadow-xl">
           {contentToRender}
         </div>
       </div>
