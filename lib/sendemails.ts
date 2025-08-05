@@ -35,11 +35,11 @@ export async function sendRejectionEmail(toEmail: string, studentName: string) {
       html: `
         <div>
           <h1>Thank You for Applying, ${studentName}</h1>
-          <p>We regret to inform you that your application has not been successful.</p>
-          <p>We encourage you to apply with us again next recruiting season.</p>
+          <p>We regret to inform you that you cannot join this class.</p>
+          <p>We will inform you of the next class you can join.</p>
         </div>
       `,
-      text: `Thank you for applying. Unfortunately, your application was not successful.`
+      text: `Thank you ..`
     });
   } catch (error) {
     console.error("Error sending rejection email:", error);
