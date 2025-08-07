@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, Send, User, Bot, ArrowLeft } from 'lucide-react';
-// Make sure to import 'addDoc' for creating documents with random IDs
 import { collection, where, query, addDoc, QuerySnapshot, DocumentData, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { User as FirebaseAuthUser } from 'firebase/auth';
@@ -19,8 +18,8 @@ interface Message {
 interface AIInterviewerProps {
   user: FirebaseAuthUser; // This will be the anonymous user
   onInterviewComplete: (reportData: any) => void;
-    isAnonymous?: boolean;
-   onGoBack: () => void;
+  isAnonymous?: boolean;
+  onGoBack: () => void;
 }
 
 // --- Component ---
@@ -30,6 +29,7 @@ export default function AIInterviewer({ user, onInterviewComplete, onGoBack }: A
   const [isLoading, setIsLoading] = useState(true);
   const [interviewFinished, setInterviewFinished] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -82,7 +82,6 @@ export default function AIInterviewer({ user, onInterviewComplete, onGoBack }: A
     try {
       // 1. Find the company's UID
       const companyQuery = query(collection(db, 'users'), where('role', '==', 'company'));
-      // --- FIX: Explicitly type the snapshot to match the error's expectation ---
       const companySnapshot: QuerySnapshot<DocumentData, DocumentData> = await getDocs(companyQuery);
       
       if (companySnapshot.empty) {
@@ -93,8 +92,8 @@ export default function AIInterviewer({ user, onInterviewComplete, onGoBack }: A
       // 2. Create the pending report object with the companyUid
       const pendingReport = {
         ...reportData,
-        studentUid: user.uid, // The anonymous user's ID
-        companyUid: companyUid, // The company's ID
+        studentUid: user.uid,
+        companyUid: companyUid,
         status: 'pending',
         createdAt: new Date().toISOString()
       };
@@ -139,7 +138,11 @@ export default function AIInterviewer({ user, onInterviewComplete, onGoBack }: A
     try {
       const response = await axios.post('/api/ai-interview', {
         conversationHistory,
-        studentProfile: { uid: user.uid, name: 'New Applicant', email: '' },
+        studentProfile: { 
+          uid: user.uid, 
+          name: user.displayName || 'New Applicant', 
+          email: user.email || '' 
+        },
         action: 'continue_interview',
       });
 
@@ -234,4 +237,3 @@ export default function AIInterviewer({ user, onInterviewComplete, onGoBack }: A
     </div>
   );
 }
-

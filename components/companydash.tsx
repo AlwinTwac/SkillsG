@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, UploadCloud, Search, BookOpen, MailPlus,Star, Briefcase,Loader2,Check ,Code ,X, FileText, Video, Users, ClipboardList, BarChart2, FileBarChart2, Award, Mail, UserCheck, CalendarDays, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { LogOut, UploadCloud, Search, BookOpen, MailPlus, Star, Briefcase, Loader2, Check, Code, X, FileText, Video, Users, ClipboardList, BarChart2, FileBarChart2, Award, Mail, UserCheck, CalendarDays, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { auth, db, storage } from '@/lib/firebase';
-import { collection, query, where, getDocs,getDoc, doc, setDoc,addDoc, onSnapshot,arrayUnion,  arrayRemove, orderBy, updateDoc, serverTimestamp, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc, setDoc, addDoc, onSnapshot, arrayUnion, arrayRemove, orderBy, updateDoc, serverTimestamp, writeBatch, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
-import {getFunctions, httpsCallable} from 'firebase/functions';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 interface CompanyDashboardProps {
   userDisplayName: string | null;
@@ -92,6 +92,7 @@ interface Enrollment {
   enrolledAt: string;
   status: 'active' | 'completed' | 'dropped';
 }
+
 interface PendingEnrollmentReport {
   id: string;
   studentUid: string;
@@ -109,20 +110,31 @@ interface PendingEnrollmentReport {
   goals?: string;
   status: 'pending' | 'approved' | 'rejected';
 }
+
 interface PendingReport {
-     id: string;
-    studentUid: string;
-    studentName: string;
-    studentEmail: string;
-    reportSummary: string;
-    interviewDate: string;
-    status: 'pending' | 'approved' | 'rejected';
-    interviewScore?: number;
-    experience?: string;
-    skills?: string[];
-    interests?: string[];
-    goals?: string;
-    recommendedLearningPath?: string[];
+  id: string;
+  studentUid: string;
+  studentName: string;
+  studentEmail: string;
+  reportSummary: string;
+  interviewDate: string;
+  status: 'pending' | 'approved' | 'rejected';
+  interviewScore?: number;
+  experience?: string;
+  skills?: string[];
+  interests?: string[];
+  goals?: string;
+  recommendedLearningPath?: string[];
+}
+
+interface Achievement {
+  id: string;
+  studentName: string;
+  description: string;
+  imageUrl: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  studentUid: string;
 }
 
 export default function CompanyDashboard({ userDisplayName, userEmail, userUid }: CompanyDashboardProps) {
@@ -169,7 +181,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [currentDateTime, setCurrentDateTime] = useState<string>('');
   const [inviteEmail, setInviteEmail] = useState('');
-  const [weather, setWeather] = useState<{temp: number, description: string} | null>(null);
+  const [weather, setWeather] = useState<{ temp: number, description: string } | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendanceRecords, setAttendanceRecords] = useState<Record<string, AttendanceRecord>>({});
   const [attendanceSearchTerm, setAttendanceSearchTerm] = useState('');
@@ -178,53 +190,70 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
   const [error, setError] = useState<string | null>(null);
   const [pendingReports, setPendingReports] = useState<PendingEnrollmentReport[]>([]);
   const [loadingPendingReports, setLoadingPendingReports] = useState(true);
+  const [pendingAchievements, setPendingAchievements] = useState<Achievement[]>([]);
+  const [processingAchievement, setProcessingAchievement] = useState<string | null>(null);
 
-  
+  const studentsLinkedToThisCompany = students.filter(student => student.companyUid === userUid);
+
   useEffect(() => {
     if (!userUid) return;
-    
+
+    const unsubscribers: (() => void)[] = [];
+
     const reportsQuery = query(collection(db, 'interviewReports'), where('companyUid', '==', userUid), orderBy('interviewDate', 'desc'));
     const reportsUnsub = onSnapshot(reportsQuery, (snapshot) => {
       setEnrollmentReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EnrollmentReport)));
       setLoading(prev => ({ ...prev, reports: false }));
     });
+    unsubscribers.push(reportsUnsub);
 
     const materialsQuery = query(collection(db, 'learningContent'), where('companyUid', '==', userUid));
     const materialsUnsub = onSnapshot(materialsQuery, (snapshot) => {
       setLearningMaterials(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LearningMaterial)));
       setLoading(prev => ({ ...prev, materials: false }));
     });
+    unsubscribers.push(materialsUnsub);
 
     const coursesQuery = query(collection(db, 'courses'), where('companyUid', '==', userUid));
     const coursesUnsub = onSnapshot(coursesQuery, (snapshot) => {
       setCourses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course)));
       setLoading(prev => ({ ...prev, courses: false }));
     });
+    unsubscribers.push(coursesUnsub);
+
     const pendingReportsQuery = query(collection(db, 'pendingInterviewReports'), where('status', '==', 'pending'));
     const pendingReportsUnsub = onSnapshot(pendingReportsQuery, (snapshot) => {
-     setPendingReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PendingEnrollmentReport)));
+      setPendingReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PendingEnrollmentReport)));
       setLoadingPendingReports(false);
-     });
+    });
+    unsubscribers.push(pendingReportsUnsub);
+
     const allEligibleStudentsQuery = query(collection(db, 'users'), where('role', '==', 'student'), where('profileCompleted', '==', true));
     const studentsUnsub = onSnapshot(allEligibleStudentsQuery, (snapshot) => {
       setStudents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student)));
       setLoading(prev => ({ ...prev, students: false }));
     });
+    unsubscribers.push(studentsUnsub);
 
     const certsQuery = query(collection(db, 'certificates'), where('companyUid', '==', userUid));
     const certsUnsub = onSnapshot(certsQuery, (snapshot) => {
       setCertificates(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Certificate)));
       setLoading(prev => ({ ...prev, certificates: false }));
     });
+    unsubscribers.push(certsUnsub);
+
     const pendingQuery = query(collection(db, 'pendingInterviewReports'), where('status', '==', 'pending'));
     const unsubscribePending = onSnapshot(pendingQuery, (snapshot) => {
-        setPendingReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PendingReport)));
+      setPendingReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PendingReport)));
     });
+    unsubscribers.push(unsubscribePending);
+
     const enrollmentsQuery = query(collection(db, 'enrollments'), where('companyUid', '==', userUid));
     const enrollmentsUnsub = onSnapshot(enrollmentsQuery, (snapshot) => {
       setEnrollments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Enrollment)));
       setLoading(prev => ({ ...prev, enrollments: false }));
     });
+    unsubscribers.push(enrollmentsUnsub);
 
     const timeInterval = setInterval(() => {
       setCurrentDateTime(new Date().toLocaleString());
@@ -261,69 +290,81 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
       where('date', '==', selectedDate)
     );
     const attendanceUnsub = onSnapshot(attendanceQuery, (snapshot) => {
-    const records: Record<string, AttendanceRecord> = {};
-    snapshot.forEach(doc => {
-      const data = doc.data() as AttendanceRecord;
-      records[data.studentUid] = { id: doc.id, ...data };
+      const records: Record<string, AttendanceRecord> = {};
+      snapshot.forEach(doc => {
+        const data = doc.data() as AttendanceRecord;
+        records[data.studentUid] = { id: doc.id, ...data };
+      });
+      setAttendanceRecords(records);
+
+      const summary = calculateAttendanceSummary(records, studentsLinkedToThisCompany);
+      setAttendanceSummary(summary);
+
+      setLoading(prev => ({ ...prev, attendance: false }));
+    }, (error) => {
+      console.error("Error fetching attendance:", error);
+      setUploadError("Failed to load attendance records.");
+      setLoading(prev => ({ ...prev, attendance: false }));
     });
-    setAttendanceRecords(records);
-    
-    // Add this calculation whenever records load
-    const summary = calculateAttendanceSummary(records, studentsLinkedToThisCompany);
-    setAttendanceSummary(summary);
-    
-    setLoading(prev => ({ ...prev, attendance: false }));
-  }, (error) => {
-    console.error("Error fetching attendance:", error);
-    setUploadError("Failed to load attendance records.");
-    setLoading(prev => ({ ...prev, attendance: false }));
-  });
+    unsubscribers.push(attendanceUnsub);
 
-  return () => {
-    reportsUnsub();
-    materialsUnsub();
-    coursesUnsub();
-    studentsUnsub();
-    unsubscribePending();
-    pendingReportsUnsub();
-    certsUnsub();
-    enrollmentsUnsub();
-    attendanceUnsub();
-    clearInterval(timeInterval);
-  };
-}, [userUid, selectedDate]);
+    const achievementsQuery = query(collection(db, 'achievements'), where('status', '==', 'pending'), orderBy('createdAt', 'asc'));
+    const unsubscribeAchievements = onSnapshot(achievementsQuery, (snapshot) => {
+      setPendingAchievements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Achievement)));
+    });
+    unsubscribers.push(unsubscribeAchievements);
 
-useEffect(() => {
-  if (activeTab === 'content') {
-    const verifyMaterials = async () => {
-      const verificationResults = await Promise.all(
-        learningMaterials.map(async material => {
-          try {
-            const fileRef = ref(storage, material.fileUrl);
-            await getDownloadURL(fileRef);
-            return { valid: true, material };
-          } catch {
-            return { valid: false, material };
-          }
-        })
-      );
-
-      // Filter out invalid materials and extract just the material objects
-      const validMaterials = verificationResults
-        .filter(result => result.valid)
-        .map(result => result.material);
-
-      // Only update state if some materials were invalid
-      if (validMaterials.length !== learningMaterials.length) {
-        setLearningMaterials(validMaterials);
-      }
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+      clearInterval(timeInterval);
     };
+  }, [userUid, selectedDate]);
 
-    if (learningMaterials.length > 0) {
-      verifyMaterials();
+  useEffect(() => {
+    if (activeTab === 'content') {
+      const verifyMaterials = async () => {
+        const verificationResults = await Promise.all(
+          learningMaterials.map(async material => {
+            try {
+              const fileRef = ref(storage, material.fileUrl);
+              await getDownloadURL(fileRef);
+              return { valid: true, material };
+            } catch {
+              return { valid: false, material };
+            }
+          })
+        );
+
+        const validMaterials = verificationResults
+          .filter(result => result.valid)
+          .map(result => result.material);
+
+        if (validMaterials.length !== learningMaterials.length) {
+          setLearningMaterials(validMaterials);
+        }
+      };
+
+      if (learningMaterials.length > 0) {
+        verifyMaterials();
+      }
     }
-  }
-}, [activeTab, learningMaterials]);
+  }, [activeTab, learningMaterials]);
+
+  const handleApproveAchievement = async (achievementId: string) => {
+    setProcessingAchievement(achievementId);
+    try {
+      const achievementRef = doc(db, 'achievements', achievementId);
+      await updateDoc(achievementRef, {
+        status: 'approved'
+      });
+      alert("Achievement approved and is now live on the main page!");
+    } catch (err: any) {
+      console.error("Error approving achievement:", err);
+      alert(`Error: ${err.message}`);
+    } finally {
+      setProcessingAchievement(null);
+    }
+  };
 
   const handleAttendanceChange = (studentId: string, studentName: string, status: 'Present' | 'Absent' | 'Late') => {
     setAttendanceRecords(prev => ({
@@ -338,108 +379,99 @@ useEffect(() => {
         reason: status !== 'Absent' ? '' : prev[studentId]?.reason || ''
       }
     }));
-  };  
+  };
+
   const handleDeleteMaterial = async (materialId: string, fileUrl: string): Promise<void> => {
-  if (!window.confirm("Are you sure you want to delete this learning material? This action cannot be undone.")) {
-    return;
-  }
-
-  try {
-    // Optimistically remove from UI
-    setLearningMaterials(prev => prev.filter(material => material.id !== materialId));
-    
-    // Delete from Firestore first
-    await deleteDoc(doc(db, 'learningContent', materialId));
-    
-    // Then delete from Storage
-    const fileRef = ref(storage, fileUrl);
-    await deleteObject(fileRef);
-
-    setUploadSuccess("Material deleted successfully!");
-  } catch (err: any) {
-    console.error("Error deleting material:", err);
-    
-    // Re-fetch materials if error occurs
-    const materialsQuery = query(collection(db, 'learningContent'), where('companyUid', '==', userUid));
-    const snapshot = await getDocs(materialsQuery);
-    setLearningMaterials(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LearningMaterial)));
-    
-    setError(`Failed to delete material: ${err.message}`);
-  }
-};
-
-const handleApprove = async (report: PendingReport) => {
-  setIsProcessing(report.id);
-  setUploadError(null);
-  setUploadSuccess(null);
-  
-  try {
-    const response = await fetch('/api/approve-applicant', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        reportId: report.id, 
-        reportData: report 
-      })
-    });
-
-    const result = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(result.error || 'Approval failed');
+    if (!window.confirm("Are you sure you want to delete this learning material? This action cannot be undone.")) {
+      return;
     }
 
-    setUploadSuccess(`${report.studentName} has been approved and an account creation email has been sent.`);
-    // Optionally refresh your pending reports list here
-    setPendingReports(prev => prev.filter(r => r.id !== report.id));
-    
-  } catch (err: any) {
-    console.error("Error approving applicant:", err);
-    setUploadError(`Failed to approve: ${err.message}`);
-  } finally {
-    setIsProcessing(null);
-  }
-};
-
-const handleReject = async (report: PendingReport) => {
-  if (!window.confirm("Are you sure you want to reject this applicant?")) return;
-  
-  setIsProcessing(report.id);
-  setUploadError(null);
-  setUploadSuccess(null);
-  
-  try {
-    const response = await fetch('/api/reject-applicant', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        reportId: report.id, 
-        reportData: report 
-      })
-    });
-
-    const result = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(result.error || 'Rejection failed');
+    try {
+      setLearningMaterials(prev => prev.filter(material => material.id !== materialId));
+      await deleteDoc(doc(db, 'learningContent', materialId));
+      const fileRef = ref(storage, fileUrl);
+      await deleteObject(fileRef);
+      setUploadSuccess("Material deleted successfully!");
+    } catch (err: any) {
+      console.error("Error deleting material:", err);
+      const materialsQuery = query(collection(db, 'learningContent'), where('companyUid', '==', userUid));
+      const snapshot = await getDocs(materialsQuery);
+      setLearningMaterials(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LearningMaterial)));
+      setError(`Failed to delete material: ${err.message}`);
     }
+  };
 
-    setUploadSuccess("Applicant has been rejected and notified.");
-    // Optionally refresh your pending reports list here
-    setPendingReports(prev => prev.filter(r => r.id !== report.id));
-    
-  } catch (err: any) {
-    console.error("Error rejecting applicant:", err);
-    setUploadError(`Failed to reject: ${err.message}`);
-  } finally {
-    setIsProcessing(null);
-  }
-};
-   const handleSaveAttendance = async () => {
+  const handleApprove = async (report: PendingReport) => {
+    setIsProcessing(report.id);
+    setUploadError(null);
+    setUploadSuccess(null);
+
+    try {
+      const response = await fetch('/api/approve-applicant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reportId: report.id,
+          reportData: report
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Approval failed');
+      }
+
+      setUploadSuccess(`${report.studentName} has been approved and an account creation email has been sent.`);
+      setPendingReports(prev => prev.filter(r => r.id !== report.id));
+
+    } catch (err: any) {
+      console.error("Error approving applicant:", err);
+      setUploadError(`Failed to approve: ${err.message}`);
+    } finally {
+      setIsProcessing(null);
+    }
+  };
+
+  const handleReject = async (report: PendingReport) => {
+    if (!window.confirm("Are you sure you want to reject this applicant?")) return;
+
+    setIsProcessing(report.id);
+    setUploadError(null);
+    setUploadSuccess(null);
+
+    try {
+      const response = await fetch('/api/reject-applicant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reportId: report.id,
+          reportData: report
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Rejection failed');
+      }
+
+      setUploadSuccess("Applicant has been rejected and notified.");
+      setPendingReports(prev => prev.filter(r => r.id !== report.id));
+
+    } catch (err: any) {
+      console.error("Error rejecting applicant:", err);
+      setUploadError(`Failed to reject: ${err.message}`);
+    } finally {
+      setIsProcessing(null);
+    }
+  };
+
+  const handleSaveAttendance = async () => {
     setSavingAttendance(true);
     setUploadSuccess(null);
     setError(null);
@@ -451,7 +483,7 @@ const handleReject = async (report: PendingReport) => {
         if (record.studentUid && record.date) {
           const docId = `${record.studentUid}_${record.date}`;
           const docRef = doc(db, 'attendance', docId);
-          const { id, ...dataToSave } = record; 
+          const { id, ...dataToSave } = record;
           batch.set(docRef, dataToSave, { merge: true });
         }
       });
@@ -480,7 +512,7 @@ const handleReject = async (report: PendingReport) => {
           }
         }
       });
-      
+
       setAttendanceSummary({
         totalStudents: studentsLinkedToThisCompany.length,
         present,
@@ -496,10 +528,11 @@ const handleReject = async (report: PendingReport) => {
       setSavingAttendance(false);
     }
   };
-   const handleUnenrollStudent = async (studentToUnenrollUid: string, courseToUnenrollId: string) => {
+
+  const handleUnenrollStudent = async (studentToUnenrollUid: string, courseToUnenrollId: string) => {
     if (!studentToUnenrollUid || !courseToUnenrollId) {
-        alert("Please select a student and a course to unenroll.");
-        return;
+      alert("Please select a student and a course to unenroll.");
+      return;
     }
 
     setUnEnrollingStudent(true);
@@ -507,34 +540,31 @@ const handleReject = async (report: PendingReport) => {
     setUploadSuccess(null);
 
     try {
-        const student = students.find(s => s.id === studentToUnenrollUid);
-        const course = courses.find(c => c.id === courseToUnenrollId);
-        const enrollmentDocId = `${studentToUnenrollUid}_${courseToUnenrollId}`;
-        const enrollmentRef = doc(db, 'enrollments', enrollmentDocId);
+      const student = students.find(s => s.id === studentToUnenrollUid);
+      const course = courses.find(c => c.id === courseToUnenrollId);
+      const enrollmentDocId = `${studentToUnenrollUid}_${courseToUnenrollId}`;
+      const enrollmentRef = doc(db, 'enrollments', enrollmentDocId);
 
-        // Check if the enrollment actually exists before trying to delete
-        const enrollmentSnap = await getDoc(enrollmentRef);
-        if (!enrollmentSnap.exists()) {
-            throw new Error(`Student is not enrolled in this specific course.`);
-        }
+      const enrollmentSnap = await getDoc(enrollmentRef);
+      if (!enrollmentSnap.exists()) {
+        throw new Error(`Student is not enrolled in this specific course.`);
+      }
 
-        // 1. Delete the enrollment document
-        await deleteDoc(enrollmentRef);
+      await deleteDoc(enrollmentRef);
 
-        // 2. Update the student's user document to remove the courseId from their array
-        const studentDocRef = doc(db, 'users', studentToUnenrollUid);
-        await updateDoc(studentDocRef, {
-            enrolledCourseIds: arrayRemove(courseToUnenrollId)
-        });
+      const studentDocRef = doc(db, 'users', studentToUnenrollUid);
+      await updateDoc(studentDocRef, {
+        enrolledCourseIds: arrayRemove(courseToUnenrollId)
+      });
 
-        setUploadSuccess(`Successfully unenrolled ${student?.name || 'student'} from ${course?.name || 'course'}.`);
-        setStudentToEnrollId('');
-        setCourseToEnrollId('');
+      setUploadSuccess(`Successfully unenrolled ${student?.name || 'student'} from ${course?.name || 'course'}.`);
+      setStudentToEnrollId('');
+      setCourseToEnrollId('');
     } catch (err: any) {
-        console.error("Error unenrolling student:", err);
-        setUploadError(`Failed to unenroll student: ${err.message}`);
+      console.error("Error unenrolling student:", err);
+      setUploadError(`Failed to unenroll student: ${err.message}`);
     } finally {
-        setUnEnrollingStudent(false);
+      setUnEnrollingStudent(false);
     }
   };
 
@@ -547,45 +577,47 @@ const handleReject = async (report: PendingReport) => {
       }
     }));
   };
-const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, students: Student[]) => {
-  let present = 0;
-  let absent = 0;
-  let late = 0;
-  const absentStudents: { name: string; reason?: string }[] = [];
 
-  students.forEach(student => {
-    const record = records[student.id];
-    if (record) {
-      switch (record.status) {
-        case 'Present':
-          present++;
-          break;
-        case 'Absent':
-          absent++;
-          absentStudents.push({ name: student.name, reason: record.reason });
-          break;
-        case 'Late':
-          late++;
-          break;
+  const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, students: Student[]) => {
+    let present = 0;
+    let absent = 0;
+    let late = 0;
+    const absentStudents: { name: string; reason?: string }[] = [];
+
+    students.forEach(student => {
+      const record = records[student.id];
+      if (record) {
+        switch (record.status) {
+          case 'Present':
+            present++;
+            break;
+          case 'Absent':
+            absent++;
+            absentStudents.push({ name: student.name, reason: record.reason });
+            break;
+          case 'Late':
+            late++;
+            break;
+        }
       }
-    }
-  });
+    });
 
-  return {
-    totalStudents: students.length,
-    present,
-    absent,
-    late,
-    absentStudents
+    return {
+      totalStudents: students.length,
+      present,
+      absent,
+      late,
+      absentStudents
+    };
   };
-};
+
   const handleSignOut = async () => {
     try {
       await auth.signOut();
       router.push('/');
     } catch (error) {
       console.error("Error signing out:", error);
-      alert("Failed to sign out. Please try again.");
+      setError(error instanceof Error ? error.message : "Failed to sign out");
     }
   };
 
@@ -700,6 +732,21 @@ const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, s
       setUploading(false);
     }
   };
+  const handleRejectAchievement = async (achievementId: string) => {
+  setProcessingAchievement(achievementId);
+  try {
+    const achievementRef = doc(db, 'achievements', achievementId);
+    await updateDoc(achievementRef, {
+      status: 'rejected'
+    });
+    alert("Achievement has been rejected");
+  } catch (err: any) {
+    console.error("Error rejecting achievement:", err);
+    alert(`Error: ${err.message}`);
+  } finally {
+    setProcessingAchievement(null);
+  }
+};
 
   const handleEnrollStudent = async (studentToEnrollUid: string, courseToEnrollId: string) => {
     if (!studentToEnrollUid || !courseToEnrollId || !userUid) {
@@ -730,7 +777,7 @@ const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, s
         companyUid: userUid,
         enrolledCourseIds: arrayUnion(courseToEnrollId)
       });
-      
+
       setUploadSuccess(`Successfully enrolled ${student?.name || 'student'} in ${course?.name || 'course'}!`);
       setStudentToEnrollId('');
       setCourseToEnrollId('');
@@ -760,8 +807,7 @@ const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, s
     }
   };
 
-  const studentsLinkedToThisCompany = students.filter(student => student.companyUid === userUid);
-  const filteredAttendanceStudents = studentsLinkedToThisCompany.filter(student => 
+  const filteredAttendanceStudents = studentsLinkedToThisCompany.filter(student =>
     student.name.toLowerCase().includes(attendanceSearchTerm.toLowerCase()) ||
     student.email.toLowerCase().includes(attendanceSearchTerm.toLowerCase())
   );
@@ -769,8 +815,8 @@ const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, s
   const filteredEnrollmentReports = enrollmentReports.filter(report => {
     const lowerSearchTerm = enrollmentReportSearchTerm.toLowerCase();
     return report.studentName.toLowerCase().includes(lowerSearchTerm) ||
-           report.studentEmail.toLowerCase().includes(lowerSearchTerm) ||
-           report.reportSummary?.toLowerCase().includes(lowerSearchTerm);
+      report.studentEmail.toLowerCase().includes(lowerSearchTerm) ||
+      report.reportSummary?.toLowerCase().includes(lowerSearchTerm);
   });
 
   const materialsByCourse = learningMaterials.reduce((acc, material) => {
@@ -786,61 +832,103 @@ const calculateAttendanceSummary = (records: Record<string, AttendanceRecord>, s
   }, {} as Record<string, { course?: Course; materials: LearningMaterial[] }>);
 
   return (
-  <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
-    <div className="max-w-7xl mx-auto bg-blue-900 rounded-2xl shadow-xl overflow-hidden">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-950 to-blue-600 p-6 text-white">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <ClipboardList className="w-8 h-8 mr-3" />
-            <div>
-              <h2 className="text-2xl font-bold">Kimtronix Global</h2>
-              <p className="text-blue-100">
-                Welcome back, {userDisplayName || userEmail?.split('@')[0] || 'Admin'}!
-              </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto bg-blue-900 rounded-2xl shadow-xl overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-950 to-blue-600 p-6 text-white">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center">
+              <ClipboardList className="w-8 h-8 mr-3" />
+              <div>
+                <h2 className="text-2xl font-bold">Kimtronix Global</h2>
+                <p className="text-blue-100">
+                  Welcome back, {userDisplayName || userEmail?.split('@')[0] || 'Admin'}!
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-blue-950 rounded-lg flex items-center transition-all duration-300"
+            >
+              <LogOut className="w-4 h-4 mr-2" /> Sign Out
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="border-b border-white-200 bg-blue-800 overflow-x-auto">
+          <nav className="flex space-x-8 px-6">
+            {['overview', 'content', 'reports', 'students', 'attendance', 'certificates', 'achievements', 'pending-reviews', 'courses'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === tab
+                    ? 'border-blue-500 text-blue-200'
+                    : 'border-transparent text-white hover:text-white-700 hover:border-white-300'
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-6">
+          {uploadError && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4">
+              {uploadError}
+            </div>
+          )}
+          {uploadSuccess && (
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-md mb-4">
+              {uploadSuccess}
+            </div>
+          )}
+          {activeTab === 'achievements' && (
+  <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+    <h3 className="text-xl font-semibold text-gray-800 mb-4">Approve Student Achievements</h3>
+    <div className="space-y-4">
+      {pendingAchievements.length === 0 ? (
+        <p className="text-center text-gray-500 py-4">No achievements pending approval.</p>
+      ) : (
+        pendingAchievements.map(ach => (
+          <div key={ach.id} className="border p-4 rounded-lg">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <img 
+                src={ach.imageUrl} 
+                alt="Achievement" 
+                className="w-full sm:w-32 h-32 object-cover rounded-md"
+              />
+              <div className="flex-1">
+                <p className="font-bold text-gray-900">{ach.studentName}</p>
+                <p className="text-gray-700 mt-2">{ach.description}</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Submitted: {new Date(ach.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button 
+                onClick={() => handleRejectAchievement(ach.id)}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+              >
+                Reject
+              </button>
+              <button 
+                onClick={() => handleApproveAchievement(ach.id)}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+              >
+                Approve
+              </button>
             </div>
           </div>
-          <button
-            onClick={handleSignOut}
-            className="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-blue-950 rounded-lg flex items-center transition-all duration-300"
-          >
-            <LogOut className="w-4 h-4 mr-2" /> Sign Out
-          </button>
-        </div>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="border-b border-white-200 bg-blue-800 overflow-x-auto">
-        <nav className="flex space-x-8 px-6">
-          {['overview', 'content', 'reports', 'students', 'attendance','certificates', 'pending-reviews','courses'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === tab
-                  ? 'border-blue-500 text-blue-200'
-                  : 'border-transparent text-white hover:text-white-700 hover:border-white-300'
-              }`}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      {/* Tab Content */}
-      <div className="p-6">
-        {uploadError && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4">
-            {uploadError}
-          </div>
-        )}
-        {uploadSuccess && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-md mb-4">
-            {uploadSuccess}
-          </div>
-        )}
-        
+        ))
+      )}
+    </div>
+  </div>
+)}
         {activeTab === 'overview' && (
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-xl shadow-sm border border-white-200">

@@ -2,107 +2,149 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // --- Admin Path (explicitly blocked) ---
+    match /{path=**}/admin/{document} {
+      allow read, write: if false;
+    }
+
+    // --- Helper Functions ---
+    function isCompany() {
+      return request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company';
+    }
+
+    function isStudent() {
+      return request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student';
+    }
+
+    function isRecruiter() {
+      return request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'recruiter';
+    }
+
+    // --- Achievements Collection ---
+    match /achievements/{achievementId} {
+      // Anyone can read an achievement IF it has been approved.
+      // The student who created it can always read their own.
+      allow read: if resource.data.status == 'approved' || 
+                   (request.auth != null && request.auth.uid == resource.data.studentUid);
+      
+      // A student can create a new achievement for themselves.
+      allow create: if request.auth != null && request.resource.data.studentUid == request.auth.uid;
+      
+      // A student can update their own achievement (e.g., description) IF it's still pending.
+      // The company can update any achievement (e.g., to change status to 'approved').
+      allow update: if request.auth != null && 
+                     ( (request.auth.uid == resource.data.studentUid && resource.data.status == 'pending') ||
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company' );
+    }
+
     // --- Users Collection ---
     match /users/{userId} {
       allow read: if (
-        resource.data.profileVisibility == 'public' ||
-        (request.auth != null && request.auth.uid == userId) ||
-        (request.auth != null && resource.data.role == 'student' && resource.data.companyUid == request.auth.uid) ||
-        resource.data.role == 'company' ||
-        (request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company' && resource.data.role == 'student' && resource.data.profileCompleted == true)
+        (request.auth != null && request.auth.uid == userId) || // 👈 allows recruiters to read their own document
+        (isRecruiter() && resource.data.role == 'student' && resource.data.profileVisibility == 'public') ||
+        (isCompany() && resource.data.role == 'student' && resource.data.companyUid == request.auth.uid) ||
+        resource.data.role == 'company'
       );
-      
+
+      allow list: if isRecruiter() || isCompany();
+
       allow create: if request.auth != null && (
-        request.resource.data.role != 'company' ||
-        !exists(/databases/$(database)/documents/platformConfig/singleton)
+        (request.resource.data.role != 'company' && request.resource.data.uid == request.auth.uid) ||
+        (!exists(/databases/$(database)/documents/platformConfig/singleton) && isCompany())
       );
-      
+
       allow update: if request.auth != null && (
         request.auth.uid == userId ||
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company' && get(/databases/$(database)/documents/users/$(userId)).data.role == 'student')
+        (isCompany() && get(/databases/$(database)/documents/users/$(userId)).data.role == 'student')
       );
-      
+
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
-    // --- Singleton Config Collection ---
+    // --- Platform Config ---
     match /platformConfig/singleton {
       allow read: if true;
-      allow create: if request.resource.data.companyAccountCreated == true;
+      allow create: if request.resource.data.companyAccountCreated == true && isCompany();
       allow write, delete: if false;
     }
 
-    // --- Courses Collection ---
+    // --- Courses ---
     match /courses/{courseId} {
       allow read: if request.auth != null && (
         resource.data.companyUid == request.auth.uid ||
-        (
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student' &&
-          resource.id in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.enrolledCourseIds
-        )
+        (isStudent() && resource.id in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.enrolledCourseIds)
       );
-      allow create, update, delete: if request.auth != null && request.resource.data.companyUid == request.auth.uid;
+      allow create, update, delete: if isCompany() && request.resource.data.companyUid == request.auth.uid;
     }
 
-    // --- Learning Content Collection ---
+    // --- Learning Content ---
     match /learningContent/{contentId} {
       allow read: if request.auth != null && (
         resource.data.companyUid == request.auth.uid ||
-        (
-          resource.data.courseId != null &&
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student' &&
-          resource.data.courseId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.enrolledCourseIds
-        )
+        (isStudent() && resource.data.courseId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.enrolledCourseIds)
       );
-      allow create, update, delete: if request.auth != null && request.resource.data.companyUid == request.auth.uid;
+      allow create, update, delete: if isCompany() && request.resource.data.companyUid == request.auth.uid;
     }
 
-    // --- Enrollments Collection ---
+    // --- Enrollments ---
     match /enrollments/{enrollmentId} {
-      // Create/Update uses request.resource.data which refers to the incoming document
-      allow create, update: if request.auth != null && request.resource.data.companyUid == request.auth.uid;
-      // Delete must use resource.data which refers to the existing document in the database
-      allow delete: if request.auth != null && resource.data.companyUid == request.auth.uid;
-      
+      allow create, update: if isCompany() && request.resource.data.companyUid == request.auth.uid;
+      allow delete: if isCompany() && resource.data.companyUid == request.auth.uid;
       allow read: if request.auth != null && (
         request.auth.uid == resource.data.studentUid || 
         request.auth.uid == resource.data.companyUid
       );
     }
-
-    // --- Tutorials Collection ---
+    
+    // --- Tutorials ---
     match /tutorials/{tutorialId} {
       allow read: if request.auth != null && (
         request.auth.uid == resource.data.studentUid ||
         get(/databases/$(database)/documents/users/$(resource.data.studentUid)).data.profileVisibility == 'public'
       );
-      allow create, update, delete: if request.auth != null && request.auth.uid == resource.data.studentUid;
-    }
-
-    // --- Interview Reports Collection ---
-    match /interviewReports/{reportId} {
-      allow read: if request.auth != null && (request.auth.uid == resource.data.companyUid || request.auth.uid == resource.data.studentUid);
       allow create: if request.auth != null && request.resource.data.studentUid == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.companyUid == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.studentUid == request.auth.uid;
     }
 
-    // --- Certificates Collection ---
+    // --- Interview Reports ---
+    match /interviewReports/{reportId} {
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.companyUid || 
+         request.auth.uid == resource.data.studentUid);
+      
+      allow create: if request.auth != null && 
+        (request.resource.data.studentUid == request.auth.uid ||
+         isCompany());
+      
+      allow update, delete: if isCompany() && resource.data.companyUid == request.auth.uid;
+    }
+
+    // --- Pending Interview Reports ---
+    match /pendingInterviewReports/{reportId} {
+      allow create: if request.auth != null && request.resource.data.studentUid == request.auth.uid;
+      allow read, update, delete: if isCompany();
+    }
+
+    // --- Certificates ---
     match /certificates/{certificateId} {
       allow read: if request.auth != null && (
         request.auth.uid == resource.data.studentUid || 
         request.auth.uid == resource.data.companyUid ||
         get(/databases/$(database)/documents/users/$(resource.data.studentUid)).data.profileVisibility == 'public'
       );
-      allow create, update, delete: if request.auth != null && request.resource.data.companyUid == request.auth.uid;
+      allow create, update, delete: if isCompany() && request.resource.data.companyUid == request.auth.uid;
     }
 
-    // --- Attendance Collection ---
+    // --- Attendance ---
     match /attendance/{attendanceId} {
       allow read: if request.auth != null && (
-          request.auth.uid == resource.data.studentUid ||
-          request.auth.uid == resource.data.companyUid
+        request.auth.uid == resource.data.studentUid ||
+        request.auth.uid == resource.data.companyUid
       );
-      allow write: if request.auth != null && request.auth.uid == request.resource.data.companyUid;
+      allow write: if isCompany() && request.auth.uid == request.resource.data.companyUid;
     }
   }
 }

@@ -3,11 +3,18 @@
     "dataconnect": {
       "dataDir": "dataconnect/.dataconnect/pgliteData"
     },
-   
-    "firestore": "8080",
-    "storage": "9199",
-    "hosting": "5000",
-    "auth": "9099"
+    "firestore": {
+      "port": 8080
+    },
+    "storage": {
+      "port": 9199
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "auth": {
+      "port": 9099
+    }
   },
   "dataconnect": {
     "source": "dataconnect"
@@ -20,17 +27,16 @@
     "rules": "storage.rules"
   },
   "hosting": {
-    "public": "out", 
+    "public": "out",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
-
     "rewrites": [
       {
         "source": "**",
-        "destination": "/index.html" 
+        "destination": "/index.html"
       }
     ],
     "headers": [
@@ -44,5 +50,18 @@
         ]
       }
     ]
-  }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
 }
