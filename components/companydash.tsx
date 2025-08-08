@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, UploadCloud, Search, BookOpen, MailPlus, Star, Briefcase, Loader2, Check, Code, X, FileText, Video, Users, ClipboardList, BarChart2, FileBarChart2, Award, Mail, UserCheck, CalendarDays, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { LogOut, Search, BookOpen, Star, Briefcase, Loader2, Check, Code, X, FileText, Video, Users, ClipboardList,  UserCheck, CalendarDays, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { auth, db, storage } from '@/lib/firebase';
-import { collection, query, where, getDocs, getDoc, doc, setDoc, addDoc, onSnapshot, arrayUnion, arrayRemove, orderBy, updateDoc, serverTimestamp, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc, setDoc,onSnapshot, arrayUnion, arrayRemove, orderBy, updateDoc, serverTimestamp, writeBatch, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 
 interface CompanyDashboardProps {
   userDisplayName: string | null;
@@ -969,12 +968,12 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
                     <p className="text-white-500">No recent reports</p>
                   )}
                 </div>
-                <div className="bg-blue-700 p-4 rounded-lg border border-white-900">
-                  <h3 className="font-medium text-blue-900 mb-3">Recent Learning Materials</h3>
+                <div className="bg-white p-4 rounded-lg border border-white-900">
+                  <h3 className="font-medium text-black mb-3">Recent Learning Materials</h3>
                   {learningMaterials.slice(0, 3).map(material => (
                     <div key={material.id} className="mb-3 pb-3 border-b border-white-100">
                       <p className="font-medium">{material.title}</p>
-                      <p className="text-sm text-blue-200">
+                      <p className="text-sm text-black">
                         {new Date(material.uploadedAt).toLocaleDateString()}
                       </p>
                     </div>
@@ -1550,18 +1549,18 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
           </div>
         )}
  {activeTab === 'pending-reviews' && (
-            <div className="bg-blue-900 p-6 rounded-xl shadow-sm border border-white-200">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-white-200">
               <h3 className="text-xl font-semibold text-blue-100 mb-4">Pending Student Reviews</h3>
               <div className="space-y-4">
                 {pendingReports.length === 0 ? (
-                  <p className="text-blue-100 text-center py-4">No pending reviews.</p>
+                  <p className="text-black text-center py-4">No pending reviews.</p>
                 ) : (
                   pendingReports.map(report => (
                     <div key={report.id} className="border border-white-200 rounded-lg p-4">
                       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                         
                         <div className="flex-grow">
-                          <p className="font-bold text-lg text-blue-100">{report.studentName}</p>
+                          <p className="font-bold text-lg text-black">{report.studentName}</p>
                           <p className="text-sm text-white-600">{report.studentEmail}</p>
                           
                           <div className="mt-3 flex items-center space-x-4 text-sm text-white-700">
@@ -1569,22 +1568,22 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
                                 <div className="flex items-center"><Star className="w-4 h-4 mr-1 text-yellow-500"/> <strong>Score:</strong><span className="ml-1">{report.interviewScore}/100</span></div>
                             )}
                             {report.experience && (
-                                <div className="flex items-center"><Briefcase className="w-4 h-4 mr-1 text-blue-200"/> <strong>Level:</strong><span className="ml-1">{report.experience}</span></div>
+                                <div className="flex items-center"><Briefcase className="w-4 h-4 mr-1 text-blue-900"/> <strong>Level:</strong><span className="ml-1">{report.experience}</span></div>
                             )}
                           </div>
 
                           {report.skills && report.skills.length > 0 && (
                             <div className="mt-3">
-                                <h4 className="text-xs font-semibold text-blue-100 mb-1 flex items-center"><Code className="w-4 h-4 mr-1"/>Skills</h4>
+                                <h4 className="text-xs font-semibold text-black mb-1 flex items-center"><Code className="w-4 h-4 mr-1"/>Skills</h4>
                                 <div className="flex flex-wrap gap-1">
-                                    {report.skills.map(skill => <span key={skill} className="text-xs bg-white-100 text-blue-100 px-2 py-0.5 rounded-full">{skill}</span>)}
+                                    {report.skills.map(skill => <span key={skill} className="text-xs bg-white-100 text-black px-2 py-0.5 rounded-full">{skill}</span>)}
                                 </div>
                             </div>
                           )}
                           
                           <div className="mt-3">
-                            <h4 className="text-xs font-semibold text-white-600 mb-1">AI Summary</h4>
-                            <p className="text-sm text-blue-100 bg-white-50 p-2 rounded-md">{report.reportSummary}</p>
+                            <h4 className="text-xs font-semibold text-black mb-1">AI Summary</h4>
+                            <p className="text-sm text-black bg-white-50 p-2 rounded-md">{report.reportSummary}</p>
                           </div>
                         </div>
 
@@ -1593,7 +1592,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
                           <button onClick={() => handleApprove(report)} disabled={!!isProcessing} className="p-2 bg-green-700 text-green-200 rounded-full hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed">
                             {isProcessing === report.id ? <Loader2 className="w-5 h-5 animate-spin"/> : <Check className="w-5 h-5"/>}
                           </button>
-                          <button onClick={() => handleReject(report)} disabled={!!isProcessing} className="p-2 bg-red-700 text-blue-200 rounded-full hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                          <button onClick={() => handleReject(report)} disabled={!!isProcessing} className="p-2 bg-red-700 text-black rounded-full hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed">
                             {isProcessing === report.id ? <Loader2 className="w-5 h-5 animate-spin"/> : <X className="w-5 h-5"/>}
                           </button>
                         </div>

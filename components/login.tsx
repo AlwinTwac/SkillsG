@@ -38,54 +38,63 @@ export default function AuthComponent({ onAuthSuccess, defaultRole, onBack }: Au
 
 
   const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    const roleToSet = defaultRole === 'learner' ? 'student' : defaultRole;
+  e.preventDefault();
+  setLoading(true);
+  setError('');
+  const roleToSet = defaultRole === 'learner' ? 'student' : defaultRole;
 
-    try {
-      if (isLogin) {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const userDocRef = doc(db, 'users', userCredential.user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists() && userDocSnap.data().role === roleToSet) {
-          onAuthSuccess(userCredential.user);
-        } else {
-          const existingRole = userDocSnap.exists() ? userDocSnap.data().role : 'another type of';
-          await signOut(auth);
-          throw new Error(`These credentials are for a ${existingRole} account. Please use the correct portal.`);
-        }
-      } else {
-        if (password !== confirmPassword) throw new Error('Passwords do not match');
-        if (roleToSet === 'company' && companyAccountExists) throw new Error('Only one company account is allowed.');
-        
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        
-        await setDoc(doc(db, 'users', userCredential.user.uid), {
-          uid: userCredential.user.uid,
-          email: userCredential.user.email,
-          createdAt: new Date().toISOString(),
-          authProvider: 'email',
-          profileCompleted: roleToSet === 'recruiter',
-          role: roleToSet,
-          ...(roleToSet === 'student' && { profileVisibility: 'private', paidForPublic: false }),
-          ...(roleToSet === 'company' && { companyName: 'kimtronix' }),
-          ...(roleToSet === 'recruiter' && { name: userCredential.user.email?.split('@')[0] || 'Recruiter' })
-        });
-        
-        if (roleToSet === 'company') {
-          await setDoc(doc(db, 'platformConfig', 'singleton'), { companyAccountCreated: true });
-          setCompanyAccountExists(true);
-        }
+  try {
+    if (isLogin) {
+      // Login flow
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userDocRef = doc(db, 'users', userCredential.user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists() && userDocSnap.data().role === roleToSet) {
         onAuthSuccess(userCredential.user);
+      } else {
+        const existingRole = userDocSnap.exists() ? userDocSnap.data().role : 'another type of';
+        await signOut(auth);
+        throw new Error(`These credentials are for a ${existingRole} account. Please use the correct portal.`);
       }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+
+    } else {
+      // Signup flow
+      if (password !== confirmPassword) {
+        throw new Error('Passwords do not match');
+      }
+      if (roleToSet === 'company' && companyAccountExists) {
+        throw new Error('Only one company account is allowed.');
+      }
+
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        createdAt: new Date().toISOString(),
+        authProvider: 'email',
+        profileCompleted: roleToSet === 'recruiter',
+        role: roleToSet,
+        ...(roleToSet === 'student' && { profileVisibility: 'private', paidForPublic: false }),
+        ...(roleToSet === 'company' && { companyName: 'kimtronix' }),
+        ...(roleToSet === 'recruiter' && { name: userCredential.user.email?.split('@')[0] || 'Recruiter' })
+      });
+
+      if (roleToSet === 'company') {
+        await setDoc(doc(db, 'platformConfig', 'singleton'), { companyAccountCreated: true });
+        setCompanyAccountExists(true);
+      }
+
+      onAuthSuccess(userCredential.user);
     }
-  };
-  
+  } catch (err: any) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
   const handleGoogleAuth = async () => {
     setLoading(true);
     setError('');

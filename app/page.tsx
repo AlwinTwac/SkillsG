@@ -148,31 +148,56 @@ const Home = () => {
   }, []);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+  const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+    setUser(currentUser);
+
+    // Clean up any previous Firestore listener
+    let unsubscribeFirestore: (() => void) | undefined;
+
+    try {
       if (currentUser && !currentUser.isAnonymous) {
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        const unsubscribeFirestore = onSnapshot(userDocRef, (docSnap) => {
-          if (docSnap.exists()) {
-            setUserProfile(docSnap.data() as UserProfile);
-            setFlowState('dashboard');
-          } else {
-            signOut(auth);
+        const userDocRef = doc(db, "users", currentUser.uid);
+
+        unsubscribeFirestore = onSnapshot(
+          userDocRef,
+          (docSnap) => {
+            if (docSnap.exists()) {
+              setUserProfile(docSnap.data() as UserProfile);
+              setFlowState("dashboard");
+            } else {
+              console.warn("User document not found. Signing out...");
+              signOut(auth);
+            }
+            setLoading(false);
+          },
+          (error) => {
+            console.error("Firestore listener error:", error);
+            setLoading(false);
           }
-          setLoading(false);
-        });
-        return unsubscribeFirestore;
+        );
       } else if (currentUser && currentUser.isAnonymous) {
-        setFlowState('interviewing');
+        setFlowState("interviewing");
         setLoading(false);
       } else {
         setUserProfile(null);
-        setFlowState('roleSelection');
+        setFlowState("roleSelection");
         setLoading(false);
       }
-    });
-    return () => unsubscribeAuth();
-  }, []);
+    } catch (error) {
+      console.error("Error in auth state handling:", error);
+      setLoading(false);
+    }
+
+    return () => {
+      if (unsubscribeFirestore) unsubscribeFirestore();
+    };
+  });
+
+  return () => {
+    unsubscribeAuth();
+  };
+}, []);
+
 
   const handleNewStudentStart = async () => {
     setLoading(true);
