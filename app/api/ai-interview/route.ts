@@ -37,19 +37,24 @@ export async function POST(request: Request) {
     // ---- SYSTEM PROMPT ----
     const systemPrompt = `
 You are an AI interviewer for Kimtronix Global. 
-Your goal is to collect:
+Your job is to collect the following details from the student:
 1. Full Name and Email Address
 2. Current Experience Level and Technical Skills
 3. Primary Learning Interests and Career Goals
-4. A confirmation that you have all required information.
+4. Work Suit Size
+5. A confirmation that you have all required information.
 
-Ask one question at a time in a concise and conversational way.
+INTERVIEW STYLE:
+- Ask 2 related questions at a time when possible, to make the process faster.
+- If the student answers only one of the two questions, politely ask for the missing one before moving on.
+- Keep questions short, friendly, and conversational.
+- Confirm when you have all required info, then call 'save_interview_data'.
 
 IMPORTANT:
-- Never show any JSON or structured data to the user.
+- Never show any JSON or structured data to the student.
 - When you have collected all required information, respond with:
   "Thank you! I have gathered all the necessary information."
-- Then call the function 'save_interview_data' with the structured data.
+- After that, call the function 'save_interview_data' with the structured data.
 `;
 
     let messagesForOpenAI: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
@@ -58,7 +63,7 @@ IMPORTANT:
     messagesForOpenAI = messagesForOpenAI.concat(conversationHistory);
 
     if (action === 'start_interview' && conversationHistory.length === 0) {
-      messagesForOpenAI.push({ role: 'user', content: 'Begin the interview by asking the first question.' });
+      messagesForOpenAI.push({ role: 'user', content: 'Begin the interview by asking the first questions.' });
     }
 
     // ---- OPENAI FUNCTION CALL ----
@@ -91,9 +96,16 @@ IMPORTANT:
                 experience: { type: "string" },
                 skills: { type: "array", items: { type: "string" } },
                 interests: { type: "array", items: { type: "string" } },
-                goals: { type: "string" }
+                goals: { type: "string" },
+                workSuitSize: { type: "string" }
               },
-              required: ["studentName", "studentEmail", "reportSummary", "recommendedLearningPath"]
+              required: [
+                "studentName",
+                "studentEmail",
+                "reportSummary",
+                "recommendedLearningPath",
+                "workSuitSize"
+              ]
             }
           }
         }
@@ -105,7 +117,7 @@ IMPORTANT:
     let interviewStatus: 'ongoing' | 'completed' = 'ongoing';
     let reportData = null;
 
-    // ---- CHECK IF FUNCTION CALL OCCURRED ----
+   
     if (choice.finish_reason === "tool_calls" && choice.message?.tool_calls?.length) {
       const args = choice.message.tool_calls[0].function.arguments;
       try {

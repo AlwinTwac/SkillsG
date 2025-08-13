@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, Search, BookOpen, Star, Briefcase, Loader2, Check, Code, X, FileText, Video, Users, ClipboardList,  UserCheck, CalendarDays, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { LogOut, Search, BookOpen, Star, Briefcase, Loader2, Check, Code, X,Shirt, FileText, Video, Users, ClipboardList,  UserCheck, CalendarDays, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { auth, db, storage } from '@/lib/firebase';
 import { collection, query, where, getDocs, getDoc, doc, setDoc,onSnapshot, arrayUnion, arrayRemove, orderBy, updateDoc, serverTimestamp, writeBatch, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -108,6 +108,7 @@ interface PendingEnrollmentReport {
   interests?: string[];
   goals?: string;
   status: 'pending' | 'approved' | 'rejected';
+  workSuitSize?: string; // <-- add here
 }
 
 interface PendingReport {
@@ -124,6 +125,7 @@ interface PendingReport {
   interests?: string[];
   goals?: string;
   recommendedLearningPath?: string[];
+  workSuitSize?: string; // <-- add here
 }
 
 interface Achievement {
@@ -1549,59 +1551,90 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
           </div>
         )}
  {activeTab === 'pending-reviews' && (
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-white-200">
-              <h3 className="text-xl font-semibold text-blue-100 mb-4">Pending Student Reviews</h3>
-              <div className="space-y-4">
-                {pendingReports.length === 0 ? (
-                  <p className="text-black text-center py-4">No pending reviews.</p>
-                ) : (
-                  pendingReports.map(report => (
-                    <div key={report.id} className="border border-white-200 rounded-lg p-4">
-                      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                        
-                        <div className="flex-grow">
-                          <p className="font-bold text-lg text-black">{report.studentName}</p>
-                          <p className="text-sm text-white-600">{report.studentEmail}</p>
-                          
-                          <div className="mt-3 flex items-center space-x-4 text-sm text-white-700">
-                            {report.interviewScore && (
-                                <div className="flex items-center"><Star className="w-4 h-4 mr-1 text-yellow-500"/> <strong>Score:</strong><span className="ml-1">{report.interviewScore}/100</span></div>
-                            )}
-                            {report.experience && (
-                                <div className="flex items-center"><Briefcase className="w-4 h-4 mr-1 text-blue-900"/> <strong>Level:</strong><span className="ml-1">{report.experience}</span></div>
-                            )}
-                          </div>
-
-                          {report.skills && report.skills.length > 0 && (
-                            <div className="mt-3">
-                                <h4 className="text-xs font-semibold text-black mb-1 flex items-center"><Code className="w-4 h-4 mr-1"/>Skills</h4>
-                                <div className="flex flex-wrap gap-1">
-                                    {report.skills.map(skill => <span key={skill} className="text-xs bg-white-100 text-black px-2 py-0.5 rounded-full">{skill}</span>)}
-                                </div>
-                            </div>
-                          )}
-                          
-                          <div className="mt-3">
-                            <h4 className="text-xs font-semibold text-black mb-1">AI Summary</h4>
-                            <p className="text-sm text-black bg-white-50 p-2 rounded-md">{report.reportSummary}</p>
-                          </div>
-                        </div>
-
-                        {/* Right side: Action Buttons */}
-                        <div className="flex space-x-2 flex-shrink-0">
-                          <button onClick={() => handleApprove(report)} disabled={!!isProcessing} className="p-2 bg-green-700 text-green-200 rounded-full hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                            {isProcessing === report.id ? <Loader2 className="w-5 h-5 animate-spin"/> : <Check className="w-5 h-5"/>}
-                          </button>
-                          <button onClick={() => handleReject(report)} disabled={!!isProcessing} className="p-2 bg-red-700 text-black rounded-full hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                            {isProcessing === report.id ? <Loader2 className="w-5 h-5 animate-spin"/> : <X className="w-5 h-5"/>}
-                          </button>
-                        </div>
-                      </div>
+  <div className="bg-white p-6 rounded-xl shadow-sm border border-white-200">
+    <h3 className="text-xl font-semibold text-blue-100 mb-4">Pending Student Reviews</h3>
+    <div className="space-y-4">
+      {pendingReports.length === 0 ? (
+        <p className="text-black text-center py-4">No pending reviews.</p>
+      ) : (
+        pendingReports.map(report => (
+          <div key={report.id} className="border border-white-200 rounded-lg p-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+              
+              <div className="flex-grow">
+                <p className="font-bold text-lg text-black">{report.studentName}</p>
+                <p className="text-sm text-white-600">{report.studentEmail}</p>
+                
+                <div className="mt-3 flex items-center space-x-4 text-sm text-white-700">
+                  {report.interviewScore && (
+                    <div className="flex items-center">
+                      <Star className="w-4 h-4 mr-1 text-yellow-500"/> 
+                      <strong>Score:</strong>
+                      <span className="ml-1">{report.interviewScore}/100</span>
                     </div>
-                  ))
+                  )}
+                  {report.experience && (
+                    <div className="flex items-center">
+                      <Briefcase className="w-4 h-4 mr-1 text-blue-900"/> 
+                      <strong>Level:</strong>
+                      <span className="ml-1">{report.experience}</span>
+                    </div>
+                  )}
+                  {report.workSuitSize && (
+                    <div className="flex items-center">
+                      <Shirt className="w-4 h-4 mr-1 text-green-700" /> 
+                      <strong>Work Suit Size:</strong>
+                      <span className="ml-1">{report.workSuitSize}</span>
+                    </div>
+                  )}
+                </div>
+
+                {report.skills && report.skills.length > 0 && (
+                  <div className="mt-3">
+                    <h4 className="text-xs font-semibold text-black mb-1 flex items-center">
+                      <Code className="w-4 h-4 mr-1"/>Skills
+                    </h4>
+                    <div className="flex flex-wrap gap-1">
+                      {report.skills.map(skill => (
+                        <span key={skill} className="text-xs bg-white-100 text-black px-2 py-0.5 rounded-full">
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
+                
+                <div className="mt-3">
+                  <h4 className="text-xs font-semibold text-black mb-1">AI Summary</h4>
+                  <p className="text-sm text-black bg-white-50 p-2 rounded-md">{report.reportSummary}</p>
+                </div>
               </div>
-            </div>)}
+
+              {/* Right side: Action Buttons */}
+              <div className="flex space-x-2 flex-shrink-0">
+                <button 
+                  onClick={() => handleApprove(report)} 
+                  disabled={!!isProcessing} 
+                  className="p-2 bg-green-700 text-green-200 rounded-full hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isProcessing === report.id ? <Loader2 className="w-5 h-5 animate-spin"/> : <Check className="w-5 h-5"/>}
+                </button>
+                <button 
+                  onClick={() => handleReject(report)} 
+                  disabled={!!isProcessing} 
+                  className="p-2 bg-red-700 text-black rounded-full hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isProcessing === report.id ? <Loader2 className="w-5 h-5 animate-spin"/> : <X className="w-5 h-5"/>}
+                </button>
+              </div>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  </div>
+)}
+
 {activeTab === 'courses' && (
   <div className="space-y-6">
     <div className="bg-blue-900 p-6 rounded-xl shadow-sm border border-white-200">
