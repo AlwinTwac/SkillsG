@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase';
 import { User as FirebaseAuthUser } from 'firebase/auth';
 import axios from 'axios';
 
+
 // --- Interfaces ---
 interface Message {
   id: string;
@@ -176,8 +177,8 @@ export default function AIInterviewer({ user, onInterviewComplete, onGoBack }: A
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
       <button 
         onClick={onGoBack}
-        className="absolute top-4 left-4 flex items-center text-sm text-gray-500 hover:text-gray-800 transition-colors"
-      >
+          className="inline-flex items-center px-4 py-2 mb-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+>
         <ArrowLeft className="w-4 h-4 mr-1" />
         Back
       </button>
