@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signInAnonymously, signOut, User as FirebaseAuthUser } from 'firebase/auth';
 import { doc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { User, Building2, Briefcase, ArrowLeft, Loader2, CheckCircle, Star, Rocket, School, Search, Newspaper, Megaphone, ChevronLeft, ChevronRight, Trophy, GraduationCap } from 'lucide-react';
+import { User, Building2, Briefcase, ArrowLeft, Loader2, CheckCircle, Star, Rocket, School, Search, Newspaper, Megaphone, ChevronLeft, ChevronRight, Trophy, GraduationCap, Mail, Phone, MapPin } from 'lucide-react';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import AuthComponent from '@/components/login';
@@ -148,56 +148,31 @@ const Home = () => {
   }, []);
 
   useEffect(() => {
-  const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
-    setUser(currentUser);
-
-    // Clean up any previous Firestore listener
-    let unsubscribeFirestore: (() => void) | undefined;
-
-    try {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
       if (currentUser && !currentUser.isAnonymous) {
-        const userDocRef = doc(db, "users", currentUser.uid);
-
-        unsubscribeFirestore = onSnapshot(
-          userDocRef,
-          (docSnap) => {
-            if (docSnap.exists()) {
-              setUserProfile(docSnap.data() as UserProfile);
-              setFlowState("dashboard");
-            } else {
-              console.warn("User document not found. Signing out...");
-              signOut(auth);
-            }
-            setLoading(false);
-          },
-          (error) => {
-            console.error("Firestore listener error:", error);
-            setLoading(false);
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const unsubscribeFirestore = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setUserProfile(docSnap.data() as UserProfile);
+            setFlowState('dashboard');
+          } else {
+            signOut(auth);
           }
-        );
+          setLoading(false);
+        });
+        return unsubscribeFirestore;
       } else if (currentUser && currentUser.isAnonymous) {
-        setFlowState("interviewing");
+        setFlowState('interviewing');
         setLoading(false);
       } else {
         setUserProfile(null);
-        setFlowState("roleSelection");
+        setFlowState('roleSelection');
         setLoading(false);
       }
-    } catch (error) {
-      console.error("Error in auth state handling:", error);
-      setLoading(false);
-    }
-
-    return () => {
-      if (unsubscribeFirestore) unsubscribeFirestore();
-    };
-  });
-
-  return () => {
-    unsubscribeAuth();
-  };
-}, []);
-
+    });
+    return () => unsubscribeAuth();
+  }, []);
 
   const handleNewStudentStart = async () => {
     setLoading(true);
@@ -255,15 +230,15 @@ const Home = () => {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <div className="min-h-screen bg-white">
         {/* Navigation Bar */}
-        <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-            <div className="text-xl font-bold text-blue-800">KG LEARNING PLATFORM</div>
+        <header className="sticky top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+          <div className="w-full px-4 py-2 flex justify-between items-center">
+            <div className="text-lg font-bold text-blue-800">KG LEARNING PLATFORM</div>
             <ThemeSwitcher />
           </div>
         </header>
 
         {/* Main Content */}
-        <main className="pt-16">
+        <main className="pt-0 bg-gradient-to-b from-white to-blue-50 w-full">
           {flowState === 'dashboard' && user && userProfile ? (
             <>
               {userProfile.role === 'student' && <StudentDashboard userDisplayName={userProfile.name || user.displayName || ''} userEmail={user.email || ''} userUid={user.uid} />}
@@ -322,30 +297,38 @@ const Home = () => {
               </div>
             </div>
           ) : (
-            <div className="max-w-7xl mx-auto px-4 py-12">
+            <div className="w-full px-0 py-0">
               {/* Hero Section */}
-              <section className="mb-20">
-                <div className="relative h-96 w-full rounded-2xl overflow-hidden shadow-lg bg-gray-100">
+              <section className="mb-16">
+                <div className="relative h-[500px] w-full overflow-hidden shadow-lg bg-gray-100">
                   {carouselImages.map((image, index) => (
                     <div 
                       key={image.id}
-                      className={`absolute inset-0 transition-opacity duration-1000 flex items-center justify-center ${
+                      className={`absolute inset-0 transition-opacity duration-1000 ${
                         index === currentSlide ? 'opacity-100' : 'opacity-0'
                       }`}
                       style={{ 
                         backgroundImage: `url(${image.image})`,
                         backgroundSize: 'cover',
-                        backgroundPosition: 'center'
+                        backgroundPosition: 'center',
+                        width: '100%',
+                        height: '100%'
                       }}
                     >
                       <div className="absolute inset-0 bg-black/30"></div>
-                      <div className="relative z-10 text-center px-8 text-white max-w-2xl">
-                        <h2 className="text-4xl md:text-5xl font-extrabold mb-4 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                      
+                      {/* Text Content - Bottom Left */}
+                      <div className="absolute bottom-8 left-8 z-10 text-white max-w-md">
+                        <h2 className="text-3xl md:text-4xl font-extrabold mb-3 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
                           {image.title}
                         </h2>
-                        <p className="text-xl md:text-2xl mb-6 font-medium text-white/90 bg-black/20 backdrop-blur-sm px-4 py-2 rounded-lg inline-block">
+                        <p className="text-lg md:text-xl font-medium text-white/90 bg-black/20 backdrop-blur-sm px-4 py-2 rounded-lg">
                           {image.description}
                         </p>
+                      </div>
+                      
+                      {/* Get Started Button - Bottom Right */}
+                      <div className="absolute bottom-8 right-8 z-10">
                         <button 
                           onClick={() => setFlowState('learnerChoice')}
                           className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
@@ -384,15 +367,16 @@ const Home = () => {
               </section>
 
               {/* Content Sections */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 px-4">
                 {/* Achievements Container */}
-                <section className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-                  <h3 className="text-2xl font-bold text-blue-800 mb-6 flex items-center">
-                    <Trophy className="w-6 h-6 mr-2 text-blue-600" />
+                <section className="bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg transition-all duration-300 group hover:border-blue-300 relative overflow-hidden h-[500px]">
+                  <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300"></div>
+                  <h3 className="text-xl font-bold text-blue-800 mb-4 flex items-center">
+                    <Trophy className="w-5 h-5 mr-2 text-blue-600" />
                     Student Success Stories
                   </h3>
                   {achievements.length > 0 ? (
-                    <div className="relative h-full">
+                    <div className="relative h-[calc(100%-2rem)]">
                       {achievements.map((achievement, index) => (
                         <div 
                           key={achievement.id}
@@ -400,26 +384,26 @@ const Home = () => {
                             index === currentAchievementIndex ? 'opacity-100' : 'opacity-0'
                           }`}
                         >
-                          <div className="relative h-40 w-full rounded-lg overflow-hidden">
+                          <div className="relative w-full h-64 overflow-hidden rounded-lg">
                             <img 
                               src={achievement.imageUrl} 
                               alt={achievement.description}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover object-center"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
                           </div>
-                          <div className="mt-4 p-2">
-                            <p className="text-gray-700 mb-3 line-clamp-3">"{achievement.description}"</p>
-                            <div className="flex items-center justify-between">
+                          <div className="mt-4 p-2 bg-white rounded-lg">
+                            <p className="text-gray-700 mb-4 line-clamp-3">"{achievement.description}"</p>
+                            <div className="flex items-center justify-between bg-blue-50 p-2 rounded-lg">
                               <div className="flex items-center">
-                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-2 border-2 border-blue-200">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-2 border-2 border-blue-200 shadow-sm">
                                   <span className="text-sm font-medium text-blue-800">
                                     {achievement.studentName.split(' ').map(n => n[0]).join('').toUpperCase()}
                                   </span>
                                 </div>
                                 <p className="font-medium text-blue-800">{achievement.studentName}</p>
                               </div>
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-md shadow-sm">
                                 {new Date(achievement.createdAt).toLocaleDateString()}
                               </span>
                             </div>
@@ -455,61 +439,135 @@ const Home = () => {
                 </section>
 
                 {/* News Container */}
-                <section className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-                  <h3 className="text-2xl font-bold text-blue-800 mb-6 flex items-center">
-                    <Newspaper className="w-6 h-6 mr-2 text-blue-600" />
+                <section className="bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg transition-all duration-300 group hover:border-blue-300 relative overflow-hidden h-[500px]">
+                  <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300"></div>
+                  <h3 className="text-xl font-bold text-blue-800 mb-4 flex items-center">
+                    <Newspaper className="w-5 h-5 mr-2 text-blue-600" />
                     Latest Updates
                   </h3>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {companyNews.map(news => (
-                      <div key={news.id} className="p-4 rounded-lg bg-blue-50 hover:bg-blue-100 transition-all cursor-pointer group">
+                      <div key={news.id} className="p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-all cursor-pointer group hover:shadow-md hover:-translate-y-1 duration-300 border border-transparent hover:border-blue-200 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-0 h-1 bg-blue-400 group-hover:w-full transition-all duration-500"></div>
                         <div className="flex items-start">
-                          <div className="mr-3 mt-0.5">
+                          <div className="mr-2 mt-0.5">
                             {news.icon}
                           </div>
                           <div>
-                            <h4 className="font-bold text-blue-800 group-hover:text-blue-700">{news.title}</h4>
-                            <p className="text-sm text-gray-700">{news.content}</p>
+                            <h4 className="font-bold text-blue-800 group-hover:text-blue-700 text-sm">{news.title}</h4>
+                            <p className="text-xs text-gray-700">{news.content}</p>
                           </div>
                         </div>
                       </div>
                     ))}
+                    
+                    {/* New Square Panels */}
+                    <div className="grid grid-cols-3 gap-4 mt-6">
+                      {/* News Panel */}
+                      <div className="aspect-square rounded-lg p-4 hover:shadow-lg hover:scale-105 duration-300 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
+                        {/* Background Image */}
+                        <div className="absolute inset-0 w-full h-full z-0">
+                          <img 
+                            src="/images/news_image.png" 
+                            alt="News" 
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20 transition-all duration-300"></div>
+                        </div>
+                        {/* Icon - Top Left */}
+                        <div className="absolute top-4 left-4 z-10">
+                          <div className="bg-white/70 p-2 rounded-full w-max group-hover:bg-white/80 transition-all duration-300 transform group-hover:scale-110">
+                            <Newspaper className="w-6 h-6 text-blue-600/80 group-hover:text-blue-700" />
+                          </div>
+                        </div>
+                        {/* Title - Bottom Center */}
+                        <div className="absolute bottom-8 left-0 right-0 z-10 flex justify-center">
+                          <h4 className="font-bold text-white text-sm bg-blue-800/70 px-3 py-1 rounded-md group-hover:bg-blue-900/80">News</h4>
+                        </div>
+                      </div>
+                      
+                      {/* Outstanding Panel */}
+                      <div className="aspect-square rounded-lg p-4 hover:shadow-lg hover:scale-105 duration-300 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
+                        {/* Background Image */}
+                        <div className="absolute inset-0 w-full h-full z-0">
+                          <img 
+                            src="/images/outstanding.png" 
+                            alt="Outstanding" 
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20 transition-all duration-300"></div>
+                        </div>
+                        {/* Icon - Top Left */}
+                        <div className="absolute top-4 left-4 z-10">
+                          <div className="bg-white/70 p-2 rounded-full w-max group-hover:bg-white/80 transition-all duration-300 transform group-hover:scale-110">
+                            <Star className="w-6 h-6 text-blue-600/80 group-hover:text-blue-700" />
+                          </div>
+                        </div>
+                        {/* Title - Bottom Center */}
+                        <div className="absolute bottom-8 left-0 right-0 z-10 flex justify-center">
+                          <h4 className="font-bold text-white text-sm bg-blue-800/70 px-3 py-1 rounded-md group-hover:bg-blue-900/80">Outstanding</h4>
+                        </div>
+                      </div>
+                      
+                      {/* Success Stories Panel */}
+                      <div className="aspect-square rounded-lg p-4 hover:shadow-lg hover:scale-105 duration-300 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
+                        {/* Background Image */}
+                        <div className="absolute inset-0 w-full h-full z-0">
+                          <img 
+                            src="/images/success_stories.png" 
+                            alt="Success Stories" 
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20 transition-all duration-300"></div>
+                        </div>
+                        {/* Icon - Top Left */}
+                        <div className="absolute top-4 left-4 z-10">
+                          <div className="bg-white/70 p-2 rounded-full w-max group-hover:bg-white/80 transition-all duration-300 transform group-hover:scale-110">
+                            <Trophy className="w-6 h-6 text-blue-600/80 group-hover:text-blue-700" />
+                          </div>
+                        </div>
+                        {/* Title - Bottom Center */}
+                        <div className="absolute bottom-8 left-0 right-0 z-10 flex justify-center">
+                          <h4 className="font-bold text-white text-sm bg-blue-800/70 px-3 py-1 rounded-md group-hover:bg-blue-900/80">Success Stories</h4>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </section>
               </div>
 
               {/* Call to Action */}
-              <section className="text-center mb-16">
-                <div className="inline-flex items-center justify-center bg-blue-100 text-blue-800 px-6 py-2 rounded-full mb-4 shadow-sm">
-                  <Rocket className="w-5 h-5 mr-2" />
-                  <span className="font-medium">START YOUR JOURNEY TODAY</span>
-                </div>
-                <h1 className="text-4xl md:text-5xl font-bold text-blue-800 mb-4">
-                  Discover Your <span className="text-blue-600">Perfect</span> Path
-                </h1>
-                <p className="text-xl text-blue-700 max-w-2xl mx-auto">
-                  Join our platform today to become an ISD.
-                </p>
-              </section>
+              <div className="bg-gradient-to-b from-white via-blue-100 to-white text-blue-800 rounded-xl p-8 text-center mb-16 px-4 shadow-md hover:shadow-lg transition-all duration-300 group relative overflow-hidden mx-4 border border-blue-200">
+                <div className="absolute top-0 left-0 right-0 h-0 bg-blue-200/50 group-hover:h-1 transition-all duration-300"></div>
+                <h2 className="text-2xl font-bold mb-4">Start Your Journey Today</h2>
+                <p className="mb-6 max-w-2xl mx-auto">Join thousands of learners who have transformed their careers through our platform</p>
+                <button 
+                  className="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5"
+                  onClick={() => setFlowState('learnerChoice')}
+                >
+                  Get Started
+                </button>
+              </div>
 
               {/* Role Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 px-4 mb-16 mt-8">
                 {/* Learner Card */}
                 <div 
                   onClick={() => setFlowState('learnerChoice')}
-                  className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-blue-300 hover:-translate-y-1"
+                  className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-blue-300 hover:-translate-y-1 group relative overflow-hidden"
                 >
-                  <div className="bg-blue-100 p-4 rounded-full w-max mb-6">
-                    <User className="w-8 h-8 text-blue-600" />
+                  <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300"></div>
+                  <div className="bg-blue-100 p-3 rounded-full w-max mb-4">
+                    <User className="w-6 h-6 text-blue-600" />
                   </div>
-                  <h3 className="text-2xl font-bold text-blue-800 mb-3">Learner</h3>
-                  <p className="text-gray-700 mb-6">
+                  <h3 className="text-xl font-bold text-blue-800 mb-2">Learner</h3>
+                  <p className="text-gray-700 text-sm mb-4">
                     Start your personalized learning journey with our AI-powered platform.
                   </p>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-blue-600">Get Started</span>
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                      <ArrowLeft className="w-4 h-4 text-white rotate-180" />
+                    <div className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center">
+                      <ArrowLeft className="w-3.5 h-3.5 text-white rotate-180" />
                     </div>
                   </div>
                 </div>
@@ -517,19 +575,20 @@ const Home = () => {
                 {/* Company Card */}
                 <div 
                   onClick={() => handlePortalSelection('company')}
-                  className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-blue-300 hover:-translate-y-1"
+                  className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-blue-300 hover:-translate-y-1 group relative overflow-hidden"
                 >
-                  <div className="bg-blue-100 p-4 rounded-full w-max mb-6">
-                    <Building2 className="w-8 h-8 text-blue-600" />
+                  <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300"></div>
+                  <div className="bg-blue-100 p-3 rounded-full w-max mb-4">
+                    <Building2 className="w-6 h-6 text-blue-600" />
                   </div>
-                  <h3 className="text-2xl font-bold text-blue-800 mb-3">Company</h3>
-                  <p className="text-gray-700 mb-6">
+                  <h3 className="text-xl font-bold text-blue-800 mb-2">Company</h3>
+                  <p className="text-gray-700 text-sm mb-4">
                     Access top talent and manage your organization's learning programs.
                   </p>
                   <div className="flex justify-between items-center">
-                    <span className="text-blue-600">Company Portal</span>
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                      <ArrowLeft className="w-4 h-4 text-white rotate-180" />
+                    <span className="text-sm text-blue-600">Company Portal</span>
+                    <div className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center">
+                      <ArrowLeft className="w-3.5 h-3.5 text-white rotate-180" />
                     </div>
                   </div>
                 </div>
@@ -537,28 +596,72 @@ const Home = () => {
                 {/* Recruiter Card */}
                 <div 
                   onClick={() => handlePortalSelection('recruiter')}
-                  className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-blue-300 hover:-translate-y-1"
+                  className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-blue-300 hover:-translate-y-1 group relative overflow-hidden"
                 >
-                  <div className="bg-blue-100 p-4 rounded-full w-max mb-6">
-                    <Search className="w-8 h-8 text-blue-600" />
+                  <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300"></div>
+                  <div className="bg-blue-100 p-3 rounded-full w-max mb-4">
+                    <Search className="w-6 h-6 text-blue-600" />
                   </div>
-                  <h3 className="text-2xl font-bold text-blue-800 mb-3">Recruiter</h3>
-                  <p className="text-gray-700 mb-6">
+                  <h3 className="text-xl font-bold text-blue-800 mb-2">Recruiter</h3>
+                  <p className="text-gray-700 text-sm mb-4">
                     Find and connect with exceptional talent in our growing network.
                   </p>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-blue-600">Recruiter Portal</span>
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                      <ArrowLeft className="w-4 h-4 text-white rotate-180" />
+                    <div className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center">
+                      <ArrowLeft className="w-3.5 h-3.5 text-white rotate-180" />
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Footer */}
-              <div className="min-h-[200px] flex items-center justify-center bg-blue-100 rounded-2xl p-8">
-                <p className="text-lg text-blue-800">Join thousands of learners and organizations transforming their futures</p>
-              </div>
+              <footer className="bg-blue-900 text-white p-8 w-full mx-4 rounded-xl mt-8 shadow-md">
+                <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+                  <div>
+                    <h3 className="text-xl font-bold mb-4">KG Learning Platform</h3>
+                    <p className="text-blue-200">Empowering careers through skills-based learning and industry connections.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-3">Quick Links</h4>
+                    <ul className="space-y-2">
+                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">About Us</a></li>
+                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Courses</a></li>
+                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">For Companies</a></li>
+                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">For Recruiters</a></li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-3">Resources</h4>
+                    <ul className="space-y-2">
+                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Blog</a></li>
+                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Webinars</a></li>
+                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Success Stories</a></li>
+                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">FAQ</a></li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-3">Contact</h4>
+                    <ul className="space-y-2">
+                      <li className="flex items-center text-blue-200">
+                        <Mail className="w-4 h-4 mr-2" />
+                        <span>support@kimtronixglobal.com</span>
+                      </li>
+                      <li className="flex items-center text-blue-200">
+                        <Phone className="w-4 h-4 mr-2" />
+                        <span>+263 77 488 2645</span>
+                      </li>
+                      <li className="flex items-center text-blue-200">
+                        <MapPin className="w-4 h-4 mr-2" />
+                        <span>53, Karigamombe Centre, 4th Floor</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="border-t border-blue-800 mt-8 pt-6 text-center text-blue-300">
+                  <p>© {new Date().getFullYear()} KG Learning Platform. All rights reserved.</p>
+                </div>
+              </footer>
             </div>
           )}
         </main>
