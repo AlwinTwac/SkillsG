@@ -204,58 +204,121 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     const unsubscribers: (() => void)[] = [];
 
     const reportsQuery = query(collection(db, 'interviewReports'), where('companyUid', '==', userUid), orderBy('interviewDate', 'desc'));
-    const reportsUnsub = onSnapshot(reportsQuery, (snapshot) => {
-      setEnrollmentReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EnrollmentReport)));
-      setLoading(prev => ({ ...prev, reports: false }));
-    });
+    const reportsUnsub = onSnapshot(
+      reportsQuery,
+      (snapshot) => {
+        setEnrollmentReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EnrollmentReport)));
+        setLoading(prev => ({ ...prev, reports: false }));
+      },
+      (err) => {
+        console.error('Error listening to interviewReports:', err);
+        setError('Failed to load interview reports.');
+        setLoading(prev => ({ ...prev, reports: false }));
+      }
+    );
     unsubscribers.push(reportsUnsub);
 
     const materialsQuery = query(collection(db, 'learningContent'), where('companyUid', '==', userUid));
-    const materialsUnsub = onSnapshot(materialsQuery, (snapshot) => {
-      setLearningMaterials(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LearningMaterial)));
-      setLoading(prev => ({ ...prev, materials: false }));
-    });
+    const materialsUnsub = onSnapshot(
+      materialsQuery,
+      (snapshot) => {
+        setLearningMaterials(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LearningMaterial)));
+        setLoading(prev => ({ ...prev, materials: false }));
+      },
+      (err) => {
+        console.error('Error listening to learningContent:', err);
+        setError('Failed to load learning materials.');
+        setLoading(prev => ({ ...prev, materials: false }));
+      }
+    );
     unsubscribers.push(materialsUnsub);
 
     const coursesQuery = query(collection(db, 'courses'), where('companyUid', '==', userUid));
-    const coursesUnsub = onSnapshot(coursesQuery, (snapshot) => {
-      setCourses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course)));
-      setLoading(prev => ({ ...prev, courses: false }));
-    });
+    const coursesUnsub = onSnapshot(
+      coursesQuery,
+      (snapshot) => {
+        setCourses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course)));
+        setLoading(prev => ({ ...prev, courses: false }));
+      },
+      (err) => {
+        console.error('Error listening to courses:', err);
+        setError('Failed to load courses.');
+        setLoading(prev => ({ ...prev, courses: false }));
+      }
+    );
     unsubscribers.push(coursesUnsub);
 
     const pendingReportsQuery = query(collection(db, 'pendingInterviewReports'), where('status', '==', 'pending'));
-    const pendingReportsUnsub = onSnapshot(pendingReportsQuery, (snapshot) => {
-      setPendingReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PendingEnrollmentReport)));
-      setLoadingPendingReports(false);
-    });
+    const pendingReportsUnsub = onSnapshot(
+      pendingReportsQuery,
+      (snapshot) => {
+        setPendingReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PendingEnrollmentReport)));
+        setLoadingPendingReports(false);
+      },
+      (err) => {
+        console.error('Error listening to pending interview reports:', err);
+        setError('Failed to load pending reports.');
+        setLoadingPendingReports(false);
+      }
+    );
     unsubscribers.push(pendingReportsUnsub);
 
     const allEligibleStudentsQuery = query(collection(db, 'users'), where('role', '==', 'student'), where('profileCompleted', '==', true));
-    const studentsUnsub = onSnapshot(allEligibleStudentsQuery, (snapshot) => {
-      setStudents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student)));
-      setLoading(prev => ({ ...prev, students: false }));
-    });
+    const studentsUnsub = onSnapshot(
+      allEligibleStudentsQuery,
+      (snapshot) => {
+        setStudents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student)));
+        setLoading(prev => ({ ...prev, students: false }));
+      },
+      (err) => {
+        console.error('Error listening to students:', err);
+        setError('Failed to load students.');
+        setLoading(prev => ({ ...prev, students: false }));
+      }
+    );
     unsubscribers.push(studentsUnsub);
 
     const certsQuery = query(collection(db, 'certificates'), where('companyUid', '==', userUid));
-    const certsUnsub = onSnapshot(certsQuery, (snapshot) => {
-      setCertificates(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Certificate)));
-      setLoading(prev => ({ ...prev, certificates: false }));
-    });
+    const certsUnsub = onSnapshot(
+      certsQuery,
+      (snapshot) => {
+        setCertificates(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Certificate)));
+        setLoading(prev => ({ ...prev, certificates: false }));
+      },
+      (err) => {
+        console.error('Error listening to certificates:', err);
+        setError('Failed to load certificates.');
+        setLoading(prev => ({ ...prev, certificates: false }));
+      }
+    );
     unsubscribers.push(certsUnsub);
 
     const pendingQuery = query(collection(db, 'pendingInterviewReports'), where('status', '==', 'pending'));
-    const unsubscribePending = onSnapshot(pendingQuery, (snapshot) => {
-      setPendingReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PendingReport)));
-    });
+    const unsubscribePending = onSnapshot(
+      pendingQuery,
+      (snapshot) => {
+        setPendingReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PendingReport)));
+      },
+      (err) => {
+        console.error('Error listening to pending reports (duplicate):', err);
+        setError('Failed to load pending reports.');
+      }
+    );
     unsubscribers.push(unsubscribePending);
 
     const enrollmentsQuery = query(collection(db, 'enrollments'), where('companyUid', '==', userUid));
-    const enrollmentsUnsub = onSnapshot(enrollmentsQuery, (snapshot) => {
-      setEnrollments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Enrollment)));
-      setLoading(prev => ({ ...prev, enrollments: false }));
-    });
+    const enrollmentsUnsub = onSnapshot(
+      enrollmentsQuery,
+      (snapshot) => {
+        setEnrollments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Enrollment)));
+        setLoading(prev => ({ ...prev, enrollments: false }));
+      },
+      (err) => {
+        console.error('Error listening to enrollments:', err);
+        setError('Failed to load enrollments.');
+        setLoading(prev => ({ ...prev, enrollments: false }));
+      }
+    );
     unsubscribers.push(enrollmentsUnsub);
 
     const timeInterval = setInterval(() => {
@@ -312,12 +375,19 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     unsubscribers.push(attendanceUnsub);
 
     const achievementsQuery = query(collection(db, 'achievements'), orderBy('createdAt', 'asc'));
-    const unsubscribeAchievements = onSnapshot(achievementsQuery, (snapshot) => {
-      const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Achievement));
-      setCompanyAchievements(all);
-      // Keep backward-compat: pendingAchievements contains only pending ones
-      setPendingAchievements(all.filter(a => a.status === 'pending'));
-    });
+    const unsubscribeAchievements = onSnapshot(
+      achievementsQuery,
+      (snapshot) => {
+        const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Achievement));
+        setCompanyAchievements(all);
+        // Keep backward-compat: pendingAchievements contains only pending ones
+        setPendingAchievements(all.filter(a => a.status === 'pending'));
+      },
+      (err) => {
+        console.error('Error listening to achievements:', err);
+        setError('Failed to load achievements.');
+      }
+    );
     unsubscribers.push(unsubscribeAchievements);
 
     return () => {

@@ -129,15 +129,31 @@ export default function StudentDashboard({
 
           if (courseIds.length > 0) {
             const coursesQuery = query(collection(db, 'courses'), where(documentId(), 'in', courseIds));
-            const coursesUnsub = onSnapshot(coursesQuery, (snapshot) => {
-              setEnrolledCourses(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Course)));
-            });
+            const coursesUnsub = onSnapshot(
+              coursesQuery,
+              (snapshot) => {
+                setEnrolledCourses(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Course)));
+              },
+              (err) => {
+                console.error('Error listening to courses:', err);
+                setError('Failed to load enrolled courses.');
+                setLoading(false);
+              }
+            );
             unsubscribers.push(coursesUnsub);
 
             const materialsQuery = query(collection(db, 'learningContent'), where('courseId', 'in', courseIds));
-            const materialsUnsub = onSnapshot(materialsQuery, (snapshot) => {
-              setLearningMaterials(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as LearningMaterial)));
-            });
+            const materialsUnsub = onSnapshot(
+              materialsQuery,
+              (snapshot) => {
+                setLearningMaterials(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as LearningMaterial)));
+              },
+              (err) => {
+                console.error('Error listening to learning materials:', err);
+                setError('Failed to load learning materials.');
+                setLoading(false);
+              }
+            );
             unsubscribers.push(materialsUnsub);
           } else {
             setEnrolledCourses([]);
@@ -155,15 +171,31 @@ export default function StudentDashboard({
     unsubscribers.push(userUnsub);
 
     const tutorialsQuery = query(collection(db, 'tutorials'), where('studentUid', '==', userUid));
-    const tutorialsUnsub = onSnapshot(tutorialsQuery, (snapshot) => {
-      setTutorials(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Tutorial)));
-    });
+    const tutorialsUnsub = onSnapshot(
+      tutorialsQuery,
+      (snapshot) => {
+        setTutorials(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Tutorial)));
+      },
+      (err) => {
+        console.error('Error listening to tutorials:', err);
+        setError('Failed to load tutorials.');
+        setLoading(false);
+      }
+    );
     unsubscribers.push(tutorialsUnsub);
 
     const certsQuery = query(collection(db, 'certificates'), where('studentUid', '==', userUid));
-    const certsUnsub = onSnapshot(certsQuery, (snapshot) => {
-      setCertificates(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Certificate)));
-    });
+    const certsUnsub = onSnapshot(
+      certsQuery,
+      (snapshot) => {
+        setCertificates(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Certificate)));
+      },
+      (err) => {
+        console.error('Error listening to certificates:', err);
+        setError('Failed to load certificates.');
+        setLoading(false);
+      }
+    );
     unsubscribers.push(certsUnsub);
 
     const achievementsQuery = query(
@@ -171,18 +203,56 @@ export default function StudentDashboard({
       where('studentUid', '==', userUid),
       orderBy('createdAt', 'desc')
     );
-    const unsubscribeAchievements = onSnapshot(achievementsQuery, (snapshot) => {
-      setAchievements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Achievement)));
-    });
+    const unsubscribeAchievements = onSnapshot(
+      achievementsQuery,
+      (snapshot) => {
+        setAchievements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Achievement)));
+      },
+      (err) => {
+        console.error('Error listening to achievements:', err);
+        setError('Failed to load achievements.');
+        setLoading(false);
+      }
+    );
     unsubscribers.push(unsubscribeAchievements);
 
     const todayStr = new Date().toISOString().split('T')[0];
-    const attendanceDocId = `${userUid}_${todayStr}`;
-    const attendanceDocRef = doc(db, 'attendance', attendanceDocId);
-    const attendanceUnsub = onSnapshot(attendanceDocRef, (docSnap) => {
-      setTodaysAttendance(docSnap.exists() ? docSnap.data() as AttendanceRecord : null);
-    });
-    unsubscribers.push(attendanceUnsub);
+    // Only listen to the attendance doc if the currently signed-in user matches the dashboard user
+    try {
+      const currentUser = auth.currentUser;
+      if (currentUser && currentUser.uid === userUid) {
+        // Attach realtime attendance listener. If the user lacks permission, handle quietly.
+        try {
+          const attendanceDocId = `${userUid}_${todayStr}`;
+          const attendanceDocRef = doc(db, 'attendance', attendanceDocId);
+          const attendanceUnsub = onSnapshot(
+            attendanceDocRef,
+            (docSnap) => {
+              setTodaysAttendance(docSnap.exists() ? docSnap.data() as AttendanceRecord : null);
+            },
+            (err: any) => {
+              // Permission-denied is expected in some setups; warn and skip attendance UI.
+              if (err && err.code === 'permission-denied') {
+                console.warn('No permission to read attendance; skipping attendance realtime updates.');
+              } else {
+                console.warn('Error listening to attendance (non-fatal):', err);
+              }
+              setTodaysAttendance(null);
+            }
+          );
+          unsubscribers.push(attendanceUnsub);
+        } catch (err) {
+          console.warn('Unexpected error while attaching attendance listener (non-fatal):', err);
+          setTodaysAttendance(null);
+        }
+      } else {
+        // Not the same user signed in – skip listening to attendance to avoid permission errors
+        setTodaysAttendance(null);
+      }
+    } catch (err) {
+      console.error('Unexpected error while setting attendance listener:', err);
+      setTodaysAttendance(null);
+    }
 
     return () => {
       unsubscribers.forEach(unsub => unsub());

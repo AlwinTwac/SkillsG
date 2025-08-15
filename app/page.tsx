@@ -118,6 +118,7 @@ const Home = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [currentAchievementIndex, setCurrentAchievementIndex] = useState(0);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [featuredIndex, setFeaturedIndex] = useState(0);
 
   useEffect(() => {
     if (flowState === 'roleSelection') {
@@ -137,37 +138,85 @@ const Home = () => {
     }
   }, [achievements.length]);
 
+  // Auto-advance featured success stories (the small panel)
+  useEffect(() => {
+    const featured = achievements.filter(a => a.isFeatured);
+    if (featured.length <= 1) {
+      setFeaturedIndex(0);
+      return;
+    }
+    const t = setInterval(() => {
+      setFeaturedIndex((prev) => (prev + 1) % featured.length);
+    }, 4000);
+    return () => clearInterval(t);
+  }, [achievements]);
+
   useEffect(() => {
     const achievementsQuery = query(
-      collection(db, 'achievements'), 
+      collection(db, 'achievements'),
       where('status', '==', 'approved'),
       orderBy('createdAt', 'desc')
     );
-    const unsubscribe = onSnapshot(achievementsQuery, (snapshot) => {
-      const fetchedAchievements = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Achievement));
-      setAchievements(fetchedAchievements);
-    });
+    const unsubscribe = onSnapshot(
+      achievementsQuery,
+      (snapshot) => {
+        const fetchedAchievements = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as Achievement));
+        setAchievements(fetchedAchievements);
+      },
+      (err) => {
+        console.error('Error listening to public achievements:', err);
+        // Do not throw; surface a minimal UI signal if needed
+      }
+    );
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
+    let firestoreUnsub: (() => void) | null = null;
+
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+
+      // If there is an existing firestore listener, detach it when auth state changes
+      if (firestoreUnsub) {
+        try {
+          firestoreUnsub();
+        } catch (e) {
+          console.warn('Error while unsubscribing from previous user doc listener', e);
+        }
+        firestoreUnsub = null;
+      }
+
       if (currentUser && !currentUser.isAnonymous) {
         const userDocRef = doc(db, 'users', currentUser.uid);
-        const unsubscribeFirestore = onSnapshot(userDocRef, (docSnap) => {
-          if (docSnap.exists()) {
-            setUserProfile(docSnap.data() as UserProfile);
-            setFlowState('dashboard');
-          } else {
-            signOut(auth);
+        firestoreUnsub = onSnapshot(
+          userDocRef,
+          (docSnap) => {
+            if (docSnap.exists()) {
+              setUserProfile(docSnap.data() as UserProfile);
+              setFlowState('dashboard');
+            } else {
+              // If no user document, sign the user out to reset state
+              signOut(auth);
+            }
+            setLoading(false);
+          },
+          (err) => {
+            console.error('Error listening to current user document:', err);
+            // Permission denied likely — sign out to reset and avoid uncaught errors
+            setLoading(false);
+            setUserProfile(null);
+            setFlowState('roleSelection');
+            try {
+              signOut(auth);
+            } catch (e) {
+              console.warn('Failed to sign out after firestore error', e);
+            }
           }
-          setLoading(false);
-        });
-        return unsubscribeFirestore;
+        );
       } else if (currentUser && currentUser.isAnonymous) {
         setFlowState('interviewing');
         setLoading(false);
@@ -177,7 +226,13 @@ const Home = () => {
         setLoading(false);
       }
     });
-    return () => unsubscribeAuth();
+
+    return () => {
+      unsubscribeAuth();
+      if (firestoreUnsub) {
+        try { firestoreUnsub(); } catch (e) { /* ignore */ }
+      }
+    };
   }, []);
 
   const handleNewStudentStart = async () => {
@@ -514,88 +569,69 @@ const Home = () => {
           <h4 className="font-bold text-white text-sm bg-blue-800/70 px-3 py-1 rounded-md group-hover:bg-blue-900/80">Outstanding</h4>
         </div>
       </div>
-      
-      {/* Success Stories Panel with Functionality */}
-      <div className="aspect-square rounded-lg p-4 hover:shadow-lg hover:scale-105 duration-300 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
-        {/* Background Image */}
-        <div className="absolute inset-0 w-full h-full z-0">
-          <img 
-            src="/images/success_stories.png" 
-            alt="Success Stories" 
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20 transition-all duration-300"></div>
-        </div>
+    
+ <div className="aspect-square rounded-lg hover:shadow-lg hover:scale-105 duration-300 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
+  
+         
 
-        {/* Hover Top Bar */}
-        <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300 z-20"></div>
+          {(() => {
+            const featured = achievements.filter(a => a.isFeatured);
+            if (featured.length === 0) {
+              return (
+                <div className="flex-1 rounded-lg bg-blue-100 flex flex-col items-center justify-center p-4">
+                  <Trophy className="w-10 h-10 text-blue-500 mb-3" />
+                  <h4 className="text-sm font-bold text-blue-800 mb-1">No featured stories yet</h4>
+                  <p className="text-xs text-blue-700 max-w-[12rem]">When students post achievements and they get approved and featured, they'll appear here.</p>
+                </div>
+              );
+            }
 
-        {/* Icon - Top Left */}
-        <div className="absolute top-4 left-4 z-20">
-          <div className="bg-white/70 p-2 rounded-full w-max group-hover:bg-white/80 transition-all duration-300 transform group-hover:scale-110">
-            <Trophy className="w-6 h-6 text-blue-600/80 group-hover:text-blue-700" />
-          </div>
-        </div>
+            const item = featured[featuredIndex % featured.length];
+            return (
+              <div className="flex-1 flex flex-col justify-between">
+                {/* full-bleed image that fills the panel */}
+                <div className="relative rounded-lg overflow-hidden h-full shadow-sm">
+                  <img src={item.imageUrl} alt={item.description} className="w-full h-full object-cover" />
+                  {/* subtle dark gradient to improve text contrast */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-        {/* Scrollable Achievements Content */}
-        <div className="absolute inset-0 flex flex-col z-20 p-4">
-          <h3 className="text-sm font-bold text-white mb-2 flex items-center">
-           
-            Featured Success Stories
-          </h3>
-
-          {achievements.filter(a => a.isFeatured).length > 0 ? (
-            <div className="overflow-y-auto flex-1 space-y-2">
-              {achievements
-                .filter(a => a.isFeatured)
-                .map(achievement => (
-                  <div 
-                    key={achievement.id} 
-                    className="bg-white/80 rounded-lg p-2 hover:shadow-md transition-all"
-                  >
-                    <div className="relative h-16 overflow-hidden rounded-lg mb-1">
-                      <img 
-                        src={achievement.imageUrl} 
-                        alt={achievement.description}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
-                    </div>
-                    <p className="text-xs text-gray-800 line-clamp-2">
-                      "{achievement.description}"
-                    </p>
-                    <div className="flex items-center justify-between mt-1">
+                  {/* bottom overlay with text and metadata */}
+                  <div className="absolute bottom-0 left-0 right-0 p-0 bg-gradient-to-t from-black/70 to-transparent">
+                    <p className="text-xs text-white line-clamp-9">"{item.description}"</p>
+                    <div className="mt-2 flex items-center justify-between">
                       <div className="flex items-center">
-                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center mr-1">
-                          <span className="text-[10px] font-medium text-blue-800">
-                            {achievement.studentName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center mr-2">
+                          <span className="text-xs font-sm text-white">
+                            {item.studentName.split(' ').map(n => n[0]).join('').toUpperCase()}
                           </span>
                         </div>
-                        <p className="text-xs font-medium text-blue-800">
-                          {achievement.studentName}
-                        </p>
+                        <p className="text-xs font-sm text-white">{item.studentName}</p>
                       </div>
-                      <span className="text-[10px] text-gray-500">
-                        {new Date(achievement.createdAt).toLocaleDateString()}
-                      </span>
+                      <span className="text-[11px] text-white/80">{new Date(item.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
-                ))}
-            </div>
-          ) : (
-            <p className="text-xs text-white/80">No featured stories yet.</p>
-          )}
-        </div>
+                </div>
 
-        {/* Bottom Title */}
-        <div className="absolute bottom-9 left-0 right-0 z-20 flex justify-center">
-          <h4 className="font-bold text-white text-sm bg-blue-800/70 px-2 py-0.5 rounded-md group-hover:bg-blue-900/80">
-            Success Stories
-          </h4>
+                {/* dots */}
+                {featured.length > 1 && (
+                  <div className="flex justify-center gap-2 mt-3">
+                    {featured.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setFeaturedIndex(i)}
+                        className={`w-2 h-2 rounded-full ${i === (featuredIndex % featured.length) ? 'bg-blue-600' : 'bg-blue-200'}`}
+                        aria-label={`Show featured ${i + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
+
     </div>
-  </div>
 </section>
               </div>
 
