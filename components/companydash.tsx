@@ -5,6 +5,7 @@ import { LogOut, Search, BookOpen, Star, Briefcase, Loader2, Check, Code, X,Shir
 import { auth, db, storage } from '@/lib/firebase';
 import { collection, query, where, getDocs, getDoc, doc, setDoc,onSnapshot, arrayUnion, arrayRemove, orderBy, updateDoc, serverTimestamp, writeBatch, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useRouter } from 'next/navigation';
 
 interface CompanyDashboardProps {
@@ -125,8 +126,7 @@ interface PendingReport {
   interests?: string[];
   goals?: string;
   recommendedLearningPath?: string[];
-  workSuitSize?: string; // <-- add here
-}
+  workSuitSize?: string; }
 
 interface Achievement {
   id: string;
@@ -136,6 +136,7 @@ interface Achievement {
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
   studentUid: string;
+  isFeatured?: boolean; // Add this line
 }
 
 export default function CompanyDashboard({ userDisplayName, userEmail, userUid }: CompanyDashboardProps) {
@@ -192,6 +193,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
   const [pendingReports, setPendingReports] = useState<PendingEnrollmentReport[]>([]);
   const [loadingPendingReports, setLoadingPendingReports] = useState(true);
   const [pendingAchievements, setPendingAchievements] = useState<Achievement[]>([]);
+  const [companyAchievements, setCompanyAchievements] = useState<Achievement[]>([]);
   const [processingAchievement, setProcessingAchievement] = useState<string | null>(null);
 
   const studentsLinkedToThisCompany = students.filter(student => student.companyUid === userUid);
@@ -309,9 +311,12 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     });
     unsubscribers.push(attendanceUnsub);
 
-    const achievementsQuery = query(collection(db, 'achievements'), where('status', '==', 'pending'), orderBy('createdAt', 'asc'));
+    const achievementsQuery = query(collection(db, 'achievements'), orderBy('createdAt', 'asc'));
     const unsubscribeAchievements = onSnapshot(achievementsQuery, (snapshot) => {
-      setPendingAchievements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Achievement)));
+      const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Achievement));
+      setCompanyAchievements(all);
+      // Keep backward-compat: pendingAchievements contains only pending ones
+      setPendingAchievements(all.filter(a => a.status === 'pending'));
     });
     unsubscribers.push(unsubscribeAchievements);
 
@@ -351,21 +356,73 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     }
   }, [activeTab, learningMaterials]);
 
-  const handleApproveAchievement = async (achievementId: string) => {
-    setProcessingAchievement(achievementId);
-    try {
-      const achievementRef = doc(db, 'achievements', achievementId);
+ const handleApproveAchievement = async (achievementId: string, makeFeatured: boolean = false) => {
+  setProcessingAchievement(achievementId);
+  try {
+    // quick debug - check auth and user doc before attempting update
+    const currentUser = auth.currentUser;
+    console.log('approving achievement, currentUser:', currentUser?.uid, currentUser);
+    if (!currentUser) {
+      console.error('No signed-in user. update will fail due to rules.');
+      setProcessingAchievement(null);
+      return;
+    }
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    const userSnap = await getDoc(userDocRef);
+    console.log('user doc exists?', userSnap.exists(), 'data:', userSnap.data());
+    console.log('will update achievement id=', achievementId, 'with', { status: 'approved', isFeatured: makeFeatured, companyApprover: userUid });
+
+    const achievementRef = doc(db, 'achievements', achievementId);
+    // If featuring is requested, include those keys. Our rules allow
+    // ['status','isFeatured','companyApprover'] for a company update.
+    if (makeFeatured) {
+      await updateDoc(achievementRef, {
+        status: 'approved',
+        isFeatured: true,
+        companyApprover: currentUser.uid
+      });
+    } else {
       await updateDoc(achievementRef, {
         status: 'approved'
       });
-      alert("Achievement approved and is now live on the main page!");
-    } catch (err: any) {
-      console.error("Error approving achievement:", err);
-      alert(`Error: ${err.message}`);
-    } finally {
-      setProcessingAchievement(null);
     }
-  };
+    alert(`Achievement approved${makeFeatured ? ' and featured' : ''}!`);
+  } catch (err: any) {
+    console.error("Error approving achievement:", err);
+    alert(`Error: ${err.message}`);
+  } finally {
+    setProcessingAchievement(null);
+  }
+};
+
+const handleToggleFeature = async (achievementId: string, currentlyFeatured: boolean) => {
+  setProcessingAchievement(achievementId);
+  try {
+    const functions = getFunctions();
+    const toggleFeature = httpsCallable(functions, 'toggleFeature');
+    // Prefer server-side callable so server can set companyApprover securely
+    try {
+      await toggleFeature({ achievementId, isFeatured: !currentlyFeatured });
+      setUploadSuccess('Featured state updated');
+    } catch (fnErr) {
+      console.warn('Callable toggleFeature failed, falling back to client update:', fnErr);
+      // Fallback: attempt client-side update (will only work if rules allow)
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw fnErr;
+      const achievementRef = doc(db, 'achievements', achievementId);
+      await updateDoc(achievementRef, {
+        isFeatured: !currentlyFeatured,
+        companyApprover: currentUser.uid
+      });
+      setUploadSuccess('Featured state updated (client fallback)');
+    }
+  } catch (err: any) {
+    console.error('Error toggling featured:', err);
+    setUploadError(err.message || 'Failed to update featured state');
+  } finally {
+    setProcessingAchievement(null);
+  }
+};
 
   const handleAttendanceChange = (studentId: string, studentName: string, status: 'Present' | 'Absent' | 'Late') => {
     setAttendanceRecords(prev => ({
@@ -736,9 +793,12 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
   const handleRejectAchievement = async (achievementId: string) => {
   setProcessingAchievement(achievementId);
   try {
+    const currentUser = auth.currentUser;
     const achievementRef = doc(db, 'achievements', achievementId);
     await updateDoc(achievementRef, {
-      status: 'rejected'
+      status: 'rejected',
+      isFeatured: false,
+      companyApprover: currentUser ? currentUser.uid : null
     });
     alert("Achievement has been rejected");
   } catch (err: any) {
@@ -891,10 +951,10 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
     <h3 className="text-xl font-semibold text-gray-800 mb-4">Approve Student Achievements</h3>
     <div className="space-y-4">
-      {pendingAchievements.length === 0 ? (
-        <p className="text-center text-gray-500 py-4">No achievements pending approval.</p>
+      {companyAchievements.length === 0 ? (
+        <p className="text-center text-gray-500 py-4">No achievements available.</p>
       ) : (
-        pendingAchievements.map(ach => (
+        companyAchievements.map(ach => (
           <div key={ach.id} className="border p-4 rounded-lg">
             <div className="flex flex-col sm:flex-row gap-4">
               <img 
@@ -908,21 +968,40 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
                 <p className="text-sm text-gray-500 mt-2">
                   Submitted: {new Date(ach.createdAt).toLocaleDateString()}
                 </p>
+                <div className="mt-2">
+                  <span className={`px-2 py-1 text-xs rounded ${ach.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : ach.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {ach.status.toUpperCase()}
+                  </span>
+                  {ach.isFeatured && (
+                    <span className="ml-2 px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">FEATURED</span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-4">
-              <button 
+              <button
                 onClick={() => handleRejectAchievement(ach.id)}
                 className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
               >
                 Reject
               </button>
-              <button 
-                onClick={() => handleApproveAchievement(ach.id)}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-              >
-                Approve
-              </button>
+              {ach.status !== 'approved' && (
+                <button
+                  onClick={() => handleApproveAchievement(ach.id, false)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  Approve
+                </button>
+              )}
+              {ach.status === 'approved' && (
+                <button
+                  onClick={() => handleToggleFeature(ach.id, !!ach.isFeatured)}
+                  disabled={processingAchievement === ach.id}
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                >
+                  {ach.isFeatured ? 'Unfeature' : 'Feature'}
+                </button>
+              )}
             </div>
           </div>
         ))
@@ -939,7 +1018,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
                   <h3 className="font-medium text-blue-800">Date & Time</h3>
                   <p className="text-white-700">{currentDateTime || 'Loading...'}</p>
                 </div>
-                <div className="bg-green-50 p-4 rounded-lg">
+                <div className="bg-[url('/images/wewe.png')] bg-cover bg-right p-4 rounded-lg">
                   <h3 className="font-medium text-green-900">Weather</h3>
                   {weather ? (
                     <p className="text-white-700">
@@ -1552,7 +1631,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
         )}
  {activeTab === 'pending-reviews' && (
   <div className="bg-white p-6 rounded-xl shadow-sm border border-white-200">
-    <h3 className="text-xl font-semibold text-blue-100 mb-4">Pending Student Reviews</h3>
+    <h3 className="text-xl font-semibold text-black mb-4">Pending Student Reviews</h3>
     <div className="space-y-4">
       {pendingReports.length === 0 ? (
         <p className="text-black text-center py-4">No pending reviews.</p>
@@ -1637,11 +1716,11 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
 
 {activeTab === 'courses' && (
   <div className="space-y-6">
-    <div className="bg-blue-900 p-6 rounded-xl shadow-sm border border-white-200">
-      <h3 className="text-xl font-semibold text-blue-100 mb-4">Create New Course</h3>
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-white-200">
+      <h3 className="text-xl font-semibold text-black mb-4">Create New Course</h3>
       <form onSubmit={handleCreateCourse} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-blue-100 mb-1">Course Name</label>
+          <label className="block text-sm font-medium text-black mb-1">Course Name</label>
           <input
             type="text"
             value={newCourse.name || ''}
@@ -1651,7 +1730,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-blue-100 mb-1">Description</label>
+          <label className="block text-sm font-medium text-black mb-1">Description</label>
           <textarea
             value={newCourse.description || ''}
             onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
@@ -1662,15 +1741,15 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
         <button
           type="submit"
           disabled={uploading}
-          className="px-4 py-2 bg-blue-300 text-black rounded-lg hover:bg-blue-500 disabled:opacity-50"
+          className="px-4 py-2 bg-blue-900 text-black rounded-lg hover:bg-blue-500 disabled:opacity-50"
         >
           {uploading ? 'Creating...' : 'Create Course'}
         </button>
       </form>
     </div>
 
-    <div className="bg-blue-900 p-6 rounded-xl shadow-sm border border-white-200">
-      <h3 className="text-xl font-semibold text-white mb-4">Available Courses</h3>
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-white-200">
+      <h3 className="text-xl font-semibold text-black mb-4">Available Courses</h3>
       {loading.courses ? (
         <div>Loading...</div>
       ) : (
@@ -1679,7 +1758,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
             <div key={course.id} className="border rounded-lg p-4">
               <h4 className="font-medium text-lg mb-2">{course.name}</h4>
               <p className="text-sm text-black mb-3">{course.description}</p>
-              <div className="flex justify-between items-center text-xs text-black">
+              <div className="flex justify-between items-center text-xs text-white">
                 <span>Created: {new Date(course.createdDate).toLocaleDateString()}</span>
               </div>
             </div>

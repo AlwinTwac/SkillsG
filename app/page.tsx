@@ -31,8 +31,14 @@ interface Achievement {
   description: string;
   imageUrl: string;
   createdAt: string;
-  status: 'approved';
+  status: 'approved' | 'pending' | 'rejected'; 
+  studentUid: string; 
+  isFeatured?: boolean; 
+  category?: string;
+  skillsDemonstrated?: string[];
+  companyApprover?: string; 
 }
+
 
 type FlowState = 'roleSelection' | 'learnerChoice' | 'interviewing' | 'interviewComplete' | 'auth' | 'dashboard';
 type InitialRole = 'learner' | 'company' | 'recruiter';
@@ -439,104 +445,162 @@ const Home = () => {
                 </section>
 
                 {/* News Container */}
-                <section className="bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg transition-all duration-300 group hover:border-blue-300 relative overflow-hidden h-[500px]">
-                  <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300"></div>
-                  <h3 className="text-xl font-bold text-blue-800 mb-4 flex items-center">
-                    <Newspaper className="w-5 h-5 mr-2 text-blue-600" />
-                    Latest Updates
-                  </h3>
-                  <div className="space-y-3">
-                    {companyNews.map(news => (
-                      <div key={news.id} className="p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-all cursor-pointer group hover:shadow-md hover:-translate-y-1 duration-300 border border-transparent hover:border-blue-200 relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-0 h-1 bg-blue-400 group-hover:w-full transition-all duration-500"></div>
-                        <div className="flex items-start">
-                          <div className="mr-2 mt-0.5">
-                            {news.icon}
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-blue-800 group-hover:text-blue-700 text-sm">{news.title}</h4>
-                            <p className="text-xs text-gray-700">{news.content}</p>
-                          </div>
+<section className="bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg transition-all duration-300 group hover:border-blue-300 relative overflow-hidden h-[500px]">
+  <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300"></div>
+  <h3 className="text-xl font-bold text-blue-800 mb-4 flex items-center">
+    <Newspaper className="w-5 h-5 mr-2 text-blue-600" />
+    Latest Updates
+  </h3>
+  <div className="space-y-3">
+    {companyNews.map(news => (
+      <div key={news.id} className="p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-all cursor-pointer group hover:shadow-md hover:-translate-y-1 duration-300 border border-transparent hover:border-blue-200 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-0 h-1 bg-blue-400 group-hover:w-full transition-all duration-500"></div>
+        <div className="flex items-start">
+          <div className="mr-2 mt-0.5">
+            {news.icon}
+          </div>
+          <div>
+            <h4 className="font-bold text-blue-800 group-hover:text-blue-700 text-sm">{news.title}</h4>
+            <p className="text-xs text-gray-700">{news.content}</p>
+          </div>
+        </div>
+      </div>
+    ))}
+    
+    {/* New Square Panels */}
+    <div className="grid grid-cols-3 gap-4 mt-6">
+      {/* News Panel */}
+      <div className="aspect-square rounded-lg p-4 hover:shadow-lg hover:scale-105 duration-300 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
+        {/* Background Image */}
+        <div className="absolute inset-0 w-full h-full z-0">
+          <img 
+            src="/images/news_image.png" 
+            alt="News" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20 transition-all duration-300"></div>
+        </div>
+        {/* Icon - Top Left */}
+        <div className="absolute top-4 left-4 z-10">
+          <div className="bg-white/70 p-2 rounded-full w-max group-hover:bg-white/80 transition-all duration-300 transform group-hover:scale-110">
+            <Newspaper className="w-6 h-6 text-blue-600/80 group-hover:text-blue-700" />
+          </div>
+        </div>
+        {/* Title - Bottom Center */}
+        <div className="absolute bottom-8 left-0 right-0 z-10 flex justify-center">
+          <h4 className="font-bold text-white text-sm bg-blue-800/70 px-3 py-1 rounded-md group-hover:bg-blue-900/80">News</h4>
+        </div>
+      </div>
+      
+      {/* Outstanding Panel */}
+      <div className="aspect-square rounded-lg p-4 hover:shadow-lg hover:scale-105 duration-300 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
+        {/* Background Image */}
+        <div className="absolute inset-0 w-full h-full z-0">
+          <img 
+            src="/images/outstanding.png" 
+            alt="Outstanding" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20 transition-all duration-300"></div>
+        </div>
+        {/* Icon - Top Left */}
+        <div className="absolute top-4 left-4 z-10">
+          <div className="bg-white/70 p-2 rounded-full w-max group-hover:bg-white/80 transition-all duration-300 transform group-hover:scale-110">
+            <Star className="w-6 h-6 text-blue-600/80 group-hover:text-blue-700" />
+          </div>
+        </div>
+        {/* Title - Bottom Center */}
+        <div className="absolute bottom-8 left-0 right-0 z-10 flex justify-center">
+          <h4 className="font-bold text-white text-sm bg-blue-800/70 px-3 py-1 rounded-md group-hover:bg-blue-900/80">Outstanding</h4>
+        </div>
+      </div>
+      
+      {/* Success Stories Panel with Functionality */}
+      <div className="aspect-square rounded-lg p-4 hover:shadow-lg hover:scale-105 duration-300 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
+        {/* Background Image */}
+        <div className="absolute inset-0 w-full h-full z-0">
+          <img 
+            src="/images/success_stories.png" 
+            alt="Success Stories" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20 transition-all duration-300"></div>
+        </div>
+
+        {/* Hover Top Bar */}
+        <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300 z-20"></div>
+
+        {/* Icon - Top Left */}
+        <div className="absolute top-4 left-4 z-20">
+          <div className="bg-white/70 p-2 rounded-full w-max group-hover:bg-white/80 transition-all duration-300 transform group-hover:scale-110">
+            <Trophy className="w-6 h-6 text-blue-600/80 group-hover:text-blue-700" />
+          </div>
+        </div>
+
+        {/* Scrollable Achievements Content */}
+        <div className="absolute inset-0 flex flex-col z-20 p-4">
+          <h3 className="text-sm font-bold text-white mb-2 flex items-center">
+           
+            Featured Success Stories
+          </h3>
+
+          {achievements.filter(a => a.isFeatured).length > 0 ? (
+            <div className="overflow-y-auto flex-1 space-y-2">
+              {achievements
+                .filter(a => a.isFeatured)
+                .map(achievement => (
+                  <div 
+                    key={achievement.id} 
+                    className="bg-white/80 rounded-lg p-2 hover:shadow-md transition-all"
+                  >
+                    <div className="relative h-16 overflow-hidden rounded-lg mb-1">
+                      <img 
+                        src={achievement.imageUrl} 
+                        alt={achievement.description}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+                    </div>
+                    <p className="text-xs text-gray-800 line-clamp-2">
+                      "{achievement.description}"
+                    </p>
+                    <div className="flex items-center justify-between mt-1">
+                      <div className="flex items-center">
+                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center mr-1">
+                          <span className="text-[10px] font-medium text-blue-800">
+                            {achievement.studentName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                          </span>
                         </div>
+                        <p className="text-xs font-medium text-blue-800">
+                          {achievement.studentName}
+                        </p>
                       </div>
-                    ))}
-                    
-                    {/* New Square Panels */}
-                    <div className="grid grid-cols-3 gap-4 mt-6">
-                      {/* News Panel */}
-                      <div className="aspect-square rounded-lg p-4 hover:shadow-lg hover:scale-105 duration-300 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
-                        {/* Background Image */}
-                        <div className="absolute inset-0 w-full h-full z-0">
-                          <img 
-                            src="/images/news_image.png" 
-                            alt="News" 
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20 transition-all duration-300"></div>
-                        </div>
-                        {/* Icon - Top Left */}
-                        <div className="absolute top-4 left-4 z-10">
-                          <div className="bg-white/70 p-2 rounded-full w-max group-hover:bg-white/80 transition-all duration-300 transform group-hover:scale-110">
-                            <Newspaper className="w-6 h-6 text-blue-600/80 group-hover:text-blue-700" />
-                          </div>
-                        </div>
-                        {/* Title - Bottom Center */}
-                        <div className="absolute bottom-8 left-0 right-0 z-10 flex justify-center">
-                          <h4 className="font-bold text-white text-sm bg-blue-800/70 px-3 py-1 rounded-md group-hover:bg-blue-900/80">News</h4>
-                        </div>
-                      </div>
-                      
-                      {/* Outstanding Panel */}
-                      <div className="aspect-square rounded-lg p-4 hover:shadow-lg hover:scale-105 duration-300 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
-                        {/* Background Image */}
-                        <div className="absolute inset-0 w-full h-full z-0">
-                          <img 
-                            src="/images/outstanding.png" 
-                            alt="Outstanding" 
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20 transition-all duration-300"></div>
-                        </div>
-                        {/* Icon - Top Left */}
-                        <div className="absolute top-4 left-4 z-10">
-                          <div className="bg-white/70 p-2 rounded-full w-max group-hover:bg-white/80 transition-all duration-300 transform group-hover:scale-110">
-                            <Star className="w-6 h-6 text-blue-600/80 group-hover:text-blue-700" />
-                          </div>
-                        </div>
-                        {/* Title - Bottom Center */}
-                        <div className="absolute bottom-8 left-0 right-0 z-10 flex justify-center">
-                          <h4 className="font-bold text-white text-sm bg-blue-800/70 px-3 py-1 rounded-md group-hover:bg-blue-900/80">Outstanding</h4>
-                        </div>
-                      </div>
-                      
-                      {/* Success Stories Panel */}
-                      <div className="aspect-square rounded-lg p-4 hover:shadow-lg hover:scale-105 duration-300 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
-                        {/* Background Image */}
-                        <div className="absolute inset-0 w-full h-full z-0">
-                          <img 
-                            src="/images/success_stories.png" 
-                            alt="Success Stories" 
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20 transition-all duration-300"></div>
-                        </div>
-                        {/* Icon - Top Left */}
-                        <div className="absolute top-4 left-4 z-10">
-                          <div className="bg-white/70 p-2 rounded-full w-max group-hover:bg-white/80 transition-all duration-300 transform group-hover:scale-110">
-                            <Trophy className="w-6 h-6 text-blue-600/80 group-hover:text-blue-700" />
-                          </div>
-                        </div>
-                        {/* Title - Bottom Center */}
-                        <div className="absolute bottom-8 left-0 right-0 z-10 flex justify-center">
-                          <h4 className="font-bold text-white text-sm bg-blue-800/70 px-3 py-1 rounded-md group-hover:bg-blue-900/80">Success Stories</h4>
-                        </div>
-                      </div>
+                      <span className="text-[10px] text-gray-500">
+                        {new Date(achievement.createdAt).toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
-                </section>
+                ))}
+            </div>
+          ) : (
+            <p className="text-xs text-white/80">No featured stories yet.</p>
+          )}
+        </div>
+
+        {/* Bottom Title */}
+        <div className="absolute bottom-9 left-0 right-0 z-20 flex justify-center">
+          <h4 className="font-bold text-white text-sm bg-blue-800/70 px-2 py-0.5 rounded-md group-hover:bg-blue-900/80">
+            Success Stories
+          </h4>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
               </div>
 
-              {/* Call to Action */}
+
+             
               <div className="bg-gradient-to-b from-white via-blue-100 to-white text-blue-800 rounded-xl p-8 text-center mb-16 px-4 shadow-md hover:shadow-lg transition-all duration-300 group relative overflow-hidden mx-4 border border-blue-200">
                 <div className="absolute top-0 left-0 right-0 h-0 bg-blue-200/50 group-hover:h-1 transition-all duration-300"></div>
                 <h2 className="text-2xl font-bold mb-4">Start Your Journey Today</h2>
@@ -549,9 +613,9 @@ const Home = () => {
                 </button>
               </div>
 
-              {/* Role Cards */}
+              
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 px-4 mb-16 mt-8">
-                {/* Learner Card */}
+               
                 <div 
                   onClick={() => setFlowState('learnerChoice')}
                   className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-blue-300 hover:-translate-y-1 group relative overflow-hidden"
@@ -615,7 +679,7 @@ const Home = () => {
                 </div>
               </div>
 
-              {/* Footer */}
+              
               <footer className="bg-blue-900 text-white p-8 w-full mx-4 rounded-xl mt-8 shadow-md">
                 <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
                   <div>
@@ -625,10 +689,24 @@ const Home = () => {
                   <div>
                     <h4 className="font-semibold mb-3">Quick Links</h4>
                     <ul className="space-y-2">
-                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">About Us</a></li>
+                      <li><a href="https://www.kimtronix.com/" className="text-blue-200 hover:text-white transition-colors">About Us</a></li>
                       <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Courses</a></li>
-                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">For Companies</a></li>
-                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">For Recruiters</a></li>
+                      <li>
+  <a 
+    href="#" 
+    onClick={(e) => {
+      e.preventDefault(); 
+      handlePortalSelection('company');
+    }}
+    className="text-blue-200 hover:text-white transition-colors cursor-pointer"
+  >
+    For Companies
+  </a>
+</li>
+                      <li><a href="#" onClick={(e) => {
+      e.preventDefault(); 
+      handlePortalSelection('recruiter');
+    }} className="text-blue-200 hover:text-white transition-colors">For Recruiters</a></li>
                     </ul>
                   </div>
                   <div>

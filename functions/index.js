@@ -59,3 +59,54 @@ functions.storage.object().onFinalize(async (object) => {
     return null;
   }
 });
+
+
+exports.toggleFeature = functions.https.onCall(async (data, context) => {
+  const uid = context.auth && context.auth.uid;
+  if (!uid) {
+    throw new functions.https.HttpsError(
+        "unauthenticated",
+        "The function must be called while authenticated.");
+  }
+
+  // Verify caller's role server-side
+  const userDoc = await admin.firestore().doc(`users/${uid}`).get();
+  if (!userDoc.exists || userDoc.data().role !== "company") {
+    throw new functions.https.HttpsError(
+        "permission-denied",
+        "Only company accounts may toggle featured state");
+  }
+
+  const achievementId = data && data.achievementId;
+  const isFeatured = !!data && !!data.isFeatured;
+  if (!achievementId) {
+    throw new functions.https.HttpsError(
+        "invalid-argument", "Missing achievementId");
+  }
+
+  const achRef = admin.firestore().doc(`achievements/${achievementId}`);
+  const achSnap = await achRef.get();
+  if (!achSnap.exists) {
+    throw new functions.https.HttpsError("not-found", "Achievement not found");
+  }
+
+  const achData = achSnap.data();
+  if (isFeatured && achData.status !== "approved") {
+    throw new functions.https.HttpsError(
+        "failed-precondition", "Achievement must be approved before featuring");
+  }
+
+  try {
+    await achRef.update({
+      isFeatured: isFeatured,
+      companyApprover: uid,
+      featuredAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return {success: true};
+  } catch (err) {
+    throw new functions.https.HttpsError(
+        "internal",
+        "Failed to update achievement: " +
+          (err.message || String(err)));
+  }
+});
