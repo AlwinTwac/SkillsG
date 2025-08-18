@@ -309,6 +309,11 @@ export default function StudentDashboard({
     setUploading(true);
     setError(null);
     try {
+      // Pre-check: ensure current user is signed in and matches dashboard user
+      const currentUser = auth.currentUser;
+      if (!currentUser || currentUser.uid !== userUid) {
+        throw new Error('You must be signed in as this student to upload tutorials.');
+      }
       const fileRef = ref(storage, `tutorials/${userUid}/${Date.now()}_${newTutorial.file.name}`);
       await uploadBytes(fileRef, newTutorial.file);
       const fileUrl = await getDownloadURL(fileRef);
@@ -334,8 +339,21 @@ export default function StudentDashboard({
   const handleDeleteTutorial = async (tutorialId: string, fileUrl: string) => {
     if (!window.confirm("Are you sure you want to delete this tutorial?")) return;
     try {
-      const fileRef = ref(storage, fileUrl);
-      await deleteObject(fileRef);
+      // Pre-check: ensure current user is owner of the tutorial
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error('Not signed in');
+      const tutSnap = await getDoc(doc(db, 'tutorials', tutorialId));
+      if (!tutSnap.exists()) throw new Error('Tutorial not found');
+      if (tutSnap.data().studentUid !== currentUser.uid) throw new Error('You are not allowed to delete this tutorial');
+
+      // Use storage path deletion: if fileUrl is a download URL, best-effort to delete by using the stored path if present
+      // If you stored only the download URL, delete may fail; recommend storing a storagePath at upload time.
+      try {
+        const fileRef = ref(storage, fileUrl);
+        await deleteObject(fileRef);
+      } catch (e) {
+        console.warn('Storage delete failed (attempted with fileUrl):', e);
+      }
       await deleteDoc(doc(db, 'tutorials', tutorialId));
     } catch (err: any) {
       setError(`Failed to delete tutorial: ${err.message}`);

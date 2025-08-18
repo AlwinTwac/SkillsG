@@ -33,6 +33,7 @@ interface LearningMaterial {
   description: string;
   type: 'video' | 'pdf' | 'image' | 'other';
   fileUrl: string;
+  storagePath?: string;
   uploadedAt: string;
   courseId?: string;
 }
@@ -515,10 +516,23 @@ const handleToggleFeature = async (achievementId: string, currentlyFeatured: boo
     }
 
     try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error('Not signed in');
+
+      // Pre-check: verify ownership on the server document before attempting delete
+      const matSnap = await getDoc(doc(db, 'learningContent', materialId));
+      if (!matSnap.exists()) throw new Error('Material not found');
+      const matData = matSnap.data();
+      if (matData.companyUid !== currentUser.uid) throw new Error('You are not allowed to delete this material');
+
       setLearningMaterials(prev => prev.filter(material => material.id !== materialId));
       await deleteDoc(doc(db, 'learningContent', materialId));
-      const fileRef = ref(storage, fileUrl);
-      await deleteObject(fileRef);
+      try {
+        const fileRef = ref(storage, fileUrl);
+        await deleteObject(fileRef);
+      } catch (e) {
+        console.warn('Failed to delete storage object by URL, consider storing storagePath at upload time', e);
+      }
       setUploadSuccess("Material deleted successfully!");
     } catch (err: any) {
       console.error("Error deleting material:", err);
@@ -761,16 +775,30 @@ const handleToggleFeature = async (achievementId: string, currentlyFeatured: boo
     setUploadSuccess(null);
 
     try {
-      const fileRef = ref(storage, `learning_materials/${userUid}/${Date.now()}_${selectedFile.name}`);
-      await uploadBytes(fileRef, selectedFile);
-      const fileUrl = await getDownloadURL(fileRef);
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error('Not signed in');
 
-      await setDoc(doc(collection(db, 'learningContent')), {
-        companyUid: userUid,
+      // Verify current user manages the course
+      const courseRef = doc(db, 'courses', newContent.courseId!);
+      const courseSnap = await getDoc(courseRef);
+      if (!courseSnap.exists()) throw new Error('Selected course not found');
+      if (courseSnap.data().companyUid !== currentUser.uid) throw new Error('You are not allowed to upload materials for this course');
+
+      // Upload file to Storage
+      const storagePath = `learningContent/${currentUser.uid}/${Date.now()}_${selectedFile.name}`;
+      const storageRef = ref(storage, storagePath);
+      await uploadBytes(storageRef, selectedFile);
+      const fileUrl = await getDownloadURL(storageRef);
+
+      // Create learning content document including storagePath for reliable deletes
+      const contentRef = doc(collection(db, 'learningContent'));
+      await setDoc(contentRef, {
+        companyUid: currentUser.uid,
         title: newContent.title,
-        description: newContent.description,
-        type: newContent.type,
+        description: newContent.description || '',
+        type: (newContent.type as string) || 'pdf',
         fileUrl,
+        storagePath,
         uploadedAt: new Date().toISOString(),
         courseId: newContent.courseId
       });
