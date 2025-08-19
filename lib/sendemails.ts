@@ -5,7 +5,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function sendApprovalEmail(toEmail: string, studentName: string, passwordResetLink: string) {
   try {
     await resend.emails.send({
-      from: 'Kimtronix Onboarding <onboarding@kimtronix.com>',
+      from: 'Kimtronix ISD SCHOLAR <isdsupport@kimtronix.com>',
       to: [toEmail],
       subject: 'Your SkillsG Account has been Approved!',
       replyTo: 'support@kimtronix.com',
@@ -28,7 +28,7 @@ export async function sendApprovalEmail(toEmail: string, studentName: string, pa
 export async function sendRejectionEmail(toEmail: string, studentName: string) {
   try {
     await resend.emails.send({
-      from: 'Kimtronix Onboarding <onboarding@kimtronix.com>',
+      from: 'Kimtronix ISD SCHOLAR <isdsupport@kimtronix.com>',
       to: [toEmail],
       subject: 'Your Application Status',
       replyTo: 'support@kimtronix.com',
