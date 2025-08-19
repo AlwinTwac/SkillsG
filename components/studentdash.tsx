@@ -829,7 +829,7 @@ export default function StudentDashboard({
                         </form>
                     </div>
 
-                    <h4 className="text-lg font-semibold text-gray-800 mb-4">Your Submissions</h4>
+                    <h4 className="text-lg font-semibold text-gray-800 dark:text-white  mb-4">Your Submissions</h4>
                     <div className="space-y-4">
                         {achievements.map(ach => (
                         <div key={ach.id} className="border p-4 rounded-lg flex items-center justify-between">
