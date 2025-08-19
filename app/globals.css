@@ -19,17 +19,19 @@
   }
 }
 
-/* Keep only necessary resets */
+/* Body should only handle background */
 body {
   background: var(--background);
-  color: var(--foreground);
-  /* don’t override font-family here — let Tailwind handle it */
+  /* let Tailwind handle text colors */
 }
 
-/* Safer input overrides */
+/* Inputs → set defaults, but don’t kill Tailwind utilities */
 input,
 textarea,
 select {
   background-color: var(--input-bg);
   color: var(--input-text);
+  font: inherit; /* keep Tailwind font styles */
+  padding: inherit; /* don’t remove Tailwind padding */
+  border-radius: inherit; /* don’t kill rounded-md etc. */
 }
