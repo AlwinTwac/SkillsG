@@ -17,13 +17,13 @@ interface Message {
 }
 
 interface AIInterviewerProps {
-  user: FirebaseAuthUser; // This will be the anonymous user
+  user: FirebaseAuthUser; 
   onInterviewComplete: (reportData: any) => void;
   isAnonymous?: boolean;
   onGoBack: () => void;
 }
 
-// --- Component ---
+
 export default function AIInterviewer({ user, onInterviewComplete, onGoBack }: AIInterviewerProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState('');
@@ -37,7 +37,7 @@ export default function AIInterviewer({ user, onInterviewComplete, onGoBack }: A
 
   useEffect(() => {
     const startInterview = async () => {
-      if (messages.length > 0) return; // Prevents re-triggering
+      if (messages.length > 0) return; 
       setIsLoading(true);
       try {
         const response = await axios.post('/api/ai-interview', {
@@ -81,7 +81,7 @@ export default function AIInterviewer({ user, onInterviewComplete, onGoBack }: A
     }
     
     try {
-      // 1. Find the company's UID
+      
       const companyQuery = query(collection(db, 'users'), where('role', '==', 'company'));
       const companySnapshot: QuerySnapshot<DocumentData, DocumentData> = await getDocs(companyQuery);
       
@@ -90,7 +90,6 @@ export default function AIInterviewer({ user, onInterviewComplete, onGoBack }: A
       }
       const companyUid = companySnapshot.docs[0].id;
 
-      // 2. Create the pending report object with the companyUid
       const pendingReport = {
         ...reportData,
         studentUid: user.uid,
@@ -99,10 +98,8 @@ export default function AIInterviewer({ user, onInterviewComplete, onGoBack }: A
         createdAt: new Date().toISOString()
       };
 
-      // 3. Save the document to the 'pendingInterviewReports' collection
       await addDoc(collection(db, 'pendingInterviewReports'), pendingReport);
       
-      // 4. Only call onInterviewComplete AFTER the save is successful
       onInterviewComplete(reportData);
 
     } catch (error) {
