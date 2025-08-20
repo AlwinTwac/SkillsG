@@ -570,68 +570,54 @@ const Home = () => {
         </div>
       </div>
     
- <div className="aspect-square rounded-lg hover:shadow-lg hover:scale-105 duration-300 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
-  
-         
+{/* Featured Stories Panel */}
+<div className="aspect-square rounded-lg bg-gray-900 p-4 hover:shadow-lg hover:scale-105 duration-300 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
+  {(() => {
+    const featured = achievements.filter(a => a.isFeatured);
+    if (featured.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center w-full h-full bg-blue-100 rounded-lg p-4">
+          <Trophy className="w-10 h-10 text-blue-500 mb-3" />
+          <h4 className="text-sm font-bold text-blue-800">No featured stories yet</h4>
+        </div>
+      );
+    }
 
-          {(() => {
-            const featured = achievements.filter(a => a.isFeatured);
-            if (featured.length === 0) {
-              return (
-                <div className="flex-1 rounded-lg bg-blue-100 flex flex-col items-center justify-center p-4">
-                  <Trophy className="w-10 h-10 text-blue-500 mb-3" />
-                  <h4 className="text-sm font-bold text-blue-800 mb-1">No featured stories yet</h4>
-                  <p className="text-xs text-blue-700 max-w-[12rem]">When students post achievements and they get approved and featured, they'll appear here.</p>
-                </div>
-              );
-            }
+    const item = featured[featuredIndex % featured.length];
+    return (
+      <div className="relative w-full h-full flex flex-col bg-blue-900 justify-end rounded-lg overflow-hidden">
+        {/* Image */}
+        <img
+          src={item.imageUrl}
+          alt={item.description}
+          className="w-full h-full object-contain bg-gray-900"
+        />
 
-            const item = featured[featuredIndex % featured.length];
-            return (
-              <div className="flex-1 flex flex-col justify-between">
-                {/* full-bleed image that fills the panel */}
-                <div className="relative rounded-lg overflow-hidden h-full shadow-sm">
-                  <img src={item.imageUrl} alt={item.description} className="w-full h-full object-cover" />
-                  {/* subtle dark gradient to improve text contrast */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        {/* Gradient for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-                  {/* bottom overlay with text and metadata */}
-                  <div className="absolute bottom-0 left-0 right-0 p-0 bg-gradient-to-t from-black/70 to-transparent">
-                    <p className="text-xs text-white line-clamp-9">"{item.description}"</p>
-                    <div className="mt-2 flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center mr-2">
-                          <span className="text-xs font-sm text-white">
-                            {item.studentName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                          </span>
-                        </div>
-                        <p className="text-xs font-sm text-white">{item.studentName}</p>
-                      </div>
-                      <span className="text-[11px] text-white/80">{new Date(item.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                </div>
+        {/* Bottom overlay with description + student info */}
+        <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent">
+          <p className="text-xs text-white line-clamp-3 mb-1">"{item.description}"</p>
 
-                {/* dots */}
-                {featured.length > 1 && (
-                  <div className="flex justify-center gap-2 mt-3">
-                    {featured.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setFeaturedIndex(i)}
-                        className={`w-2 h-2 rounded-full ${i === (featuredIndex % featured.length) ? 'bg-blue-600' : 'bg-blue-200'}`}
-                        aria-label={`Show featured ${i + 1}`}
-                      />
-                    ))}
-                  </div>
-                )}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center mr-2">
+                <span className="text-[10px] font-bold text-white">
+                  {item.studentName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                </span>
               </div>
-            );
-          })()}
+              <p className="text-[11px] text-white">{item.studentName}</p>
+            </div>
+          </div>
         </div>
       </div>
+    );
+  })()}
+</div>
 
     </div>
+  </div>  
 </section>
               </div>
 
