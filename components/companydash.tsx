@@ -14,7 +14,15 @@ interface CompanyDashboardProps {
   userEmail: string | null;
   userUid: string;
 }
-
+interface NewsItem {
+  id: string;
+  title: string;
+  content: string;
+  type: 'partnership' | 'event' | 'outstanding' | 'news';
+  companyUid: string;
+  createdAt: string;
+  companyName: string;
+}
 interface EnrollmentReport {
   id: string;
   studentUid: string;
@@ -197,6 +205,14 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
   const [pendingAchievements, setPendingAchievements] = useState<Achievement[]>([]);
   const [companyAchievements, setCompanyAchievements] = useState<Achievement[]>([]);
   const [processingAchievement, setProcessingAchievement] = useState<string | null>(null);
+  const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
+const [newNewsItem, setNewNewsItem] = useState<Partial<NewsItem>>({
+  title: '',
+  content: '',
+  type: 'partnership', // partnership, event, outstanding, news
+});
+const [loadingNews, setLoadingNews] = useState(true);
+
 
   const studentsLinkedToThisCompany = students.filter(student => student.companyUid === userUid);
 
@@ -397,7 +413,29 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
       clearInterval(timeInterval);
     };
   }, [userUid, selectedDate]);
-
+  useEffect(() => {
+  if (!userUid) return;
+  
+  const newsQuery = query(
+    collection(db, 'news'), 
+    where('companyUid', '==', userUid),
+    orderBy('createdAt', 'desc')
+  );
+  
+  const newsUnsub = onSnapshot(
+    newsQuery,
+    (snapshot) => {
+      setNewsItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as NewsItem)));
+      setLoadingNews(false);
+    },
+    (err) => {
+      console.error('Error listening to news:', err);
+      setLoadingNews(false);
+    }
+  );
+  
+  return () => newsUnsub();
+}, [userUid]);
   useEffect(() => {
     if (activeTab === 'content') {
       const verifyMaterials = async () => {
@@ -543,6 +581,52 @@ const handleToggleFeature = async (achievementId: string, currentlyFeatured: boo
       setError(`Failed to delete material: ${err.message}`);
     }
   };
+  const handleCreateNews = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!newNewsItem.title || !newNewsItem.content || !newNewsItem.type) {
+    setUploadError("Please provide title, content, and type");
+    return;
+  }
+
+  setUploading(true);
+  setUploadError(null);
+
+  try {
+    await setDoc(doc(collection(db, 'news')), {
+      title: newNewsItem.title,
+      content: newNewsItem.content,
+      type: newNewsItem.type,
+      companyUid: userUid,
+      companyName: userDisplayName || "Company",
+      createdAt: new Date().toISOString()
+    });
+
+    setUploadSuccess("News item created successfully!");
+    setNewNewsItem({
+      title: '',
+      content: '',
+      type: 'partnership'
+    });
+  } catch (err: any) {
+    console.error("Error creating news:", err);
+    setUploadError(`Failed to create news: ${err.message || 'Unknown error'}`);
+  } finally {
+    setUploading(false);
+  }
+};
+
+// Add the news deletion handler
+const handleDeleteNews = async (newsId: string) => {
+  if (!window.confirm("Are you sure you want to delete this news item?")) return;
+  
+  try {
+    await deleteDoc(doc(db, 'news', newsId));
+    setUploadSuccess("News item deleted successfully!");
+  } catch (err: any) {
+    console.error("Error deleting news:", err);
+    setUploadError(`Failed to delete news: ${err.message}`);
+  }
+};
 
   const handleApprove = async (report: PendingReport) => {
     setIsProcessing(report.id);
@@ -1018,7 +1102,7 @@ const handleToggleFeature = async (achievementId: string, currentlyFeatured: boo
         {/* Tab Navigation */}
         <div className="border-b border-white-200 bg-blue-800 overflow-x-auto">
           <nav className="flex space-x-8 px-6">
-            {['overview', 'content', 'reports', 'students', 'attendance', 'certificates', 'achievements', 'pending-reviews', 'courses'].map((tab) => (
+            {['overview', 'content', 'reports', 'students', 'attendance', 'certificates', 'achievements', 'pending-reviews', 'courses', 'news'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -1416,6 +1500,90 @@ const handleToggleFeature = async (achievementId: string, currentlyFeatured: boo
               ? "Try a different search term" 
               : "There are currently no enrollment reports to display"}
           </p>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+   {activeTab === 'news' && (
+  <div className="space-y-6">
+    <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+      <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Create News Announcement</h3>
+      <form onSubmit={handleCreateNews} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
+          <input
+            type="text"
+            value={newNewsItem.title || ''}
+            onChange={(e) => setNewNewsItem({...newNewsItem, title: e.target.value})}
+            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Content</label>
+          <textarea
+            value={newNewsItem.content || ''}
+            onChange={(e) => setNewNewsItem({...newNewsItem, content: e.target.value})}
+            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            rows={3}
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
+          <select
+            value={newNewsItem.type || 'partnership'}
+            onChange={(e) => setNewNewsItem({...newNewsItem, type: e.target.value as any})}
+            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            required
+          >
+            <option value="partnership">Partnership Announcement</option>
+            <option value="event">Upcoming Event</option>
+            <option value="outstanding">Outstanding Student</option>
+            <option value="news">General News</option>
+          </select>
+        </div>
+        <button
+          type="submit"
+          disabled={uploading}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        >
+          {uploading ? 'Creating...' : 'Create News Item'}
+        </button>
+      </form>
+    </div>
+
+    <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+      <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Your News Items</h3>
+      {loadingNews ? (
+        <div>Loading news...</div>
+      ) : newsItems.length === 0 ? (
+        <p className="text-center text-gray-500 dark:text-gray-400 py-4">No news items yet.</p>
+      ) : (
+        <div className="space-y-4">
+          {newsItems.map(news => (
+            <div key={news.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100">{news.title}</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{news.content}</p>
+                  <span className="inline-block mt-2 px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    {news.type}
+                  </span>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    Created: {new Date(news.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleDeleteNews(news.id)}
+                  className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-500 text-sm font-medium"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

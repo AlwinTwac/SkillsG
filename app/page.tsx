@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signInAnonymously, signOut, User as FirebaseAuthUser } from 'firebase/auth';
-import { doc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { doc, collection, limit, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { User, Building2, Briefcase, ArrowLeft, Loader2, CheckCircle, Star, Rocket, School, Search, Newspaper, Megaphone, ChevronLeft, ChevronRight, Trophy, GraduationCap, Mail, Phone, MapPin } from 'lucide-react';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -119,7 +119,7 @@ const Home = () => {
   const [currentAchievementIndex, setCurrentAchievementIndex] = useState(0);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [featuredIndex, setFeaturedIndex] = useState(0);
-
+  const [companyNews, setCompanyNews] = useState<any[]>([]);
   useEffect(() => {
     if (flowState === 'roleSelection') {
       const carouselInterval = setInterval(() => {
@@ -128,7 +128,29 @@ const Home = () => {
       return () => clearInterval(carouselInterval);
     }
   }, [flowState]);
-
+  useEffect(() => {
+  const newsQuery = query(
+    collection(db, 'news'), 
+    orderBy('createdAt', 'desc'),
+    limit(3) // Only show the 3 most recent news items
+  );
+  
+  const unsubscribe = onSnapshot(
+    newsQuery,
+    (snapshot) => {
+      const fetchedNews = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setCompanyNews(fetchedNews);
+    },
+    (err) => {
+      console.error('Error listening to news:', err);
+    }
+  );
+  
+  return () => unsubscribe();
+}, []);
   useEffect(() => {
     if (achievements.length > 1) {
       const interval = setInterval(() => {
@@ -500,6 +522,7 @@ const Home = () => {
                 </section>
 
                 {/* News Container */}
+{/* News Container */}
 <section className="bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg transition-all duration-300 group hover:border-blue-300 relative overflow-hidden h-[500px]">
   <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300"></div>
   <h3 className="text-xl font-bold text-blue-800 mb-4 flex items-center">
@@ -512,15 +535,24 @@ const Home = () => {
         <div className="absolute top-0 left-0 w-0 h-1 bg-blue-400 group-hover:w-full transition-all duration-500"></div>
         <div className="flex items-start">
           <div className="mr-2 mt-0.5">
-            {news.icon}
+            <Newspaper className="w-5 h-5 text-blue-600" />
           </div>
           <div>
             <h4 className="font-bold text-blue-800 group-hover:text-blue-700 text-sm">{news.title}</h4>
             <p className="text-xs text-gray-700">{news.content}</p>
+            <span className="text-xs text-blue-600 mt-1 block">By {news.companyName}</span>
           </div>
         </div>
       </div>
     ))}
+    
+    {/* Show a message if there are no news items */}
+    {companyNews.length === 0 && (
+      <div className="text-center py-8 text-gray-500">
+        <Newspaper className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+        <p>No news updates yet</p>
+      </div>
+    )}
     
     {/* New Square Panels */}
     <div className="grid grid-cols-3 gap-4 mt-6">
