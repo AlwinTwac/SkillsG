@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, Search, BookOpen, Star, Briefcase, Loader2, Check, Code, X,Shirt, FileText, Video, Users, ClipboardList,  UserCheck, CalendarDays, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Combobox } from "@headlessui/react";
+import { LogOut, Search, BookOpen, Star, Briefcase,Loader2, Check, Code, X,Shirt, FileText, Video, Users, ClipboardList,  UserCheck, CalendarDays, CheckCircle, XCircle, Clock,ChevronsUpDown } from 'lucide-react';
 import { auth, db, storage } from '@/lib/firebase';
 import { collection, query, where, getDocs, getDoc, doc, setDoc,onSnapshot, arrayUnion, arrayRemove, orderBy, updateDoc, serverTimestamp, writeBatch, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -1421,7 +1422,7 @@ const handleToggleFeature = async (achievementId: string, currentlyFeatured: boo
   </div>
 )}
 
-      {activeTab === 'students' && (
+     {activeTab === 'students' && (
   <div className="space-y-6">
     <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
       <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Student Management</h3>
@@ -1433,24 +1434,69 @@ const handleToggleFeature = async (achievementId: string, currentlyFeatured: boo
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Searchable student listbox */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Select Student (AI Interview Completed)
             </label>
-            <select
-              value={studentToEnrollId}
-              onChange={(e) => setStudentToEnrollId(e.target.value)}
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-            >
-              <option value="">Choose Student</option>
-              {students.map(student => (
-                <option key={student.id} value={student.id}>
-                  {student.name} ({student.email})
-                </option>
-              ))}
-            </select>
+            <Combobox value={studentToEnrollId} onChange={(id: string) => setStudentToEnrollId(id)}>
+              <div className="relative">
+                <Combobox.Input
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  placeholder="Search student..."
+                  onChange={(e) => setEnrollmentReportSearchTerm(e.target.value)}
+                  displayValue={(id: string) => {
+                    const student = students.find((s) => s.id === id);
+                    return student ? `${student.name} (${student.email})` : "";
+                  }}
+                />
+                <Combobox.Button className="absolute inset-y-0 right-0 flex items-center pr-2">
+                  <ChevronsUpDown className="h-5 w-5 text-gray-400" />
+                </Combobox.Button>
+              </div>
+              <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white dark:bg-gray-800 py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm">
+                {students
+                  .filter((student) =>
+                    enrollmentReportSearchTerm === ""
+                      ? true
+                      : student.name.toLowerCase().includes(enrollmentReportSearchTerm.toLowerCase()) ||
+                        student.email.toLowerCase().includes(enrollmentReportSearchTerm.toLowerCase())
+                  )
+                  .map((student) => (
+                    <Combobox.Option
+                      key={student.id}
+                      value={student.id}
+                      className={({ active }) =>
+                        `relative cursor-pointer select-none py-2 pl-10 pr-4 ${
+                          active
+                            ? "bg-blue-600 text-white"
+                            : "text-gray-900 dark:text-gray-100"
+                        }`
+                      }
+                    >
+                      {({ selected }) => (
+                        <>
+                          <span
+                            className={`block truncate ${
+                              selected ? "font-medium" : "font-normal"
+                            }`}
+                          >
+                            {student.name} ({student.email})
+                          </span>
+                          {selected ? (
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600 dark:text-blue-400">
+                              <Check className="h-5 w-5" />
+                            </span>
+                          ) : null}
+                        </>
+                      )}
+                    </Combobox.Option>
+                  ))}
+              </Combobox.Options>
+            </Combobox>
           </div>
 
+          {/* Course dropdown (unchanged) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Course</label>
             <select
@@ -1469,6 +1515,7 @@ const handleToggleFeature = async (achievementId: string, currentlyFeatured: boo
         </div>
       </div>
 
+      {/* Action buttons */}
       <div className="mt-4 flex space-x-4">
         <button
           onClick={() => handleEnrollStudent(studentToEnrollId, courseToEnrollId)}
@@ -1487,6 +1534,7 @@ const handleToggleFeature = async (achievementId: string, currentlyFeatured: boo
         </button>
       </div>
 
+      {/* Enrolled Students List (unchanged) */}
       <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4 mt-8">Students Enrolled with Your Company</h3>
 
       {loading.students ? (
@@ -1552,6 +1600,7 @@ const handleToggleFeature = async (achievementId: string, currentlyFeatured: boo
     </div>
   </div>
 )}
+
 {activeTab === 'attendance' && (
   <div className="space-y-6">
     <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
