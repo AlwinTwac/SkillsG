@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signInAnonymously, signOut, User as FirebaseAuthUser } from 'firebase/auth';
-import { doc, collection, limit, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { doc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { User, Building2, Briefcase, ArrowLeft, Loader2, CheckCircle, Star, Rocket, School, Search, Newspaper, Megaphone, ChevronLeft, ChevronRight, Trophy, GraduationCap, Mail, Phone, MapPin } from 'lucide-react';
+import { User, Building2, Search, ArrowLeft, Loader2, CheckCircle, Trophy, Newspaper, Mail, Phone, MapPin } from 'lucide-react';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import AuthComponent from '@/components/login';
@@ -24,6 +24,17 @@ interface UserProfile {
   name?: string;
 }
 
+interface NewsItem {
+  id: string;
+  title?: string;
+  content?: string;
+  description?: string;
+  createdAt?: any;
+  companyName?: string;
+  imageUrl?: string;
+  type?: 'news' | 'event' | 'outstanding' | 'partnership';
+}
+
 interface Achievement {
   id: string;
   studentName: string;
@@ -38,7 +49,6 @@ interface Achievement {
   skillsDemonstrated?: string[];
   companyApprover?: string; 
 }
-
 
 type FlowState = 'roleSelection' | 'learnerChoice' | 'interviewing' | 'interviewComplete' | 'auth' | 'dashboard';
 type InitialRole = 'learner' | 'company' | 'recruiter';
@@ -67,48 +77,6 @@ const carouselImages = [
   }
 ];
 
-const companyNews = [
-  {
-    id: 1,
-    title: "New Partnership Announcement",
-    content: "We've partnered with leading tech companies to provide exclusive opportunities.",
-    icon: <Newspaper className="w-5 h-5 text-blue-600" />
-  },
-  {
-    id: 2,
-    title: "Platform Update",
-    content: "New dashboard features released for company accounts.",
-    icon: <Megaphone className="w-5 h-5 text-blue-600" />
-  },
-  {
-    id: 3,
-    title: "Upcoming Events",
-    content: "Join our virtual career fair next month - registration now open.",
-    icon: <Newspaper className="w-5 h-5 text-blue-600" />
-  }
-];
-
-const studentAnnouncements = [
-  {
-    id: 1,
-    title: "sign up for our upcoming class",
-    content: "Register now for our class.",
-    icon: <Megaphone className="w-5 h-5 text-blue-600" />
-  },
-  {
-    id: 2,
-    title: "New Courses Added",
-    content: "Check out our latest course offerings.",
-    icon: <Newspaper className="w-5 h-5 text-blue-600" />
-  },
-  {
-    id: 3,
-    title: "Career Workshop",
-    content: "Sign up for our resume and interview preparation workshop.",
-    icon: <Megaphone className="w-5 h-5 text-blue-600" />
-  }
-];
-
 const Home = () => {
   const [user, setUser] = useState<FirebaseAuthUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -119,7 +87,16 @@ const Home = () => {
   const [currentAchievementIndex, setCurrentAchievementIndex] = useState(0);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [featuredIndex, setFeaturedIndex] = useState(0);
-  const [companyNews, setCompanyNews] = useState<any[]>([]);
+  const [generalNews, setGeneralNews] = useState<NewsItem[]>([]);
+  const [events, setEvents] = useState<NewsItem[]>([]);
+  const [outstanding, setOutstanding] = useState<NewsItem[]>([]);
+  const [partnerships, setPartnerships] = useState<NewsItem[]>([]);
+  const [newsIndex, setNewsIndex] = useState(0);
+  const [outIndex, setOutIndex] = useState(0);
+  const [partIndex, setPartIndex] = useState(0);
+  const [pauseNews, setPauseNews] = useState(false);
+  const [pauseOut, setPauseOut] = useState(false);
+
   useEffect(() => {
     if (flowState === 'roleSelection') {
       const carouselInterval = setInterval(() => {
@@ -128,39 +105,87 @@ const Home = () => {
       return () => clearInterval(carouselInterval);
     }
   }, [flowState]);
+
   useEffect(() => {
-  const newsQuery = query(
-    collection(db, 'news'), 
-    orderBy('createdAt', 'desc'),
-    limit(3) // Only show the 3 most recent news items
-  );
-  
-  const unsubscribe = onSnapshot(
-    newsQuery,
-    (snapshot) => {
-      const fetchedNews = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setCompanyNews(fetchedNews);
-    },
-    (err) => {
-      console.error('Error listening to news:', err);
+    const newsQuery = query(
+      collection(db, "news"),
+      where("type", "==", "news"),
+      orderBy("createdAt", "desc")
+    );
+    return onSnapshot(newsQuery, (snapshot) =>
+      setGeneralNews(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as NewsItem))
+    );
+  }, []);
+
+  useEffect(() => {
+    const eventsQuery = query(
+      collection(db, "news"),
+      where("type", "==", "event"),
+      orderBy("createdAt", "desc")
+    );
+    return onSnapshot(eventsQuery, (snapshot) =>
+      setEvents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as NewsItem))
+    );
+  }, []);
+
+  useEffect(() => {
+    const outQuery = query(
+      collection(db, "news"),
+      where("type", "==", "outstanding"),
+      orderBy("createdAt", "desc")
+    );
+    return onSnapshot(outQuery, (snapshot) =>
+      setOutstanding(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as NewsItem))
+    );
+  }, []);
+
+  useEffect(() => {
+    const partQuery = query(
+      collection(db, "news"),
+      where("type", "==", "partnership"),
+      orderBy("createdAt", "desc")
+    );
+    return onSnapshot(partQuery, (snapshot) =>
+      setPartnerships(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as NewsItem))
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!pauseNews && generalNews.length > 1) {
+      const interval = setInterval(() => {
+        setNewsIndex((prev) => (prev + 1) % generalNews.length);
+      }, 5000);
+      return () => clearInterval(interval);
     }
-  );
-  
-  return () => unsubscribe();
-}, []);
+  }, [generalNews, pauseNews]);
+
+  useEffect(() => {
+    if (!pauseOut && outstanding.length > 1) {
+      const interval = setInterval(() => {
+        setOutIndex((prev) => (prev + 1) % outstanding.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [outstanding, pauseOut]);
+
+  useEffect(() => {
+    if (partnerships.length > 1) {
+      const interval = setInterval(() => {
+        setPartIndex((prev) => (prev + 1) % partnerships.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [partnerships]);
+
   useEffect(() => {
     if (achievements.length > 1) {
       const interval = setInterval(() => {
         setCurrentAchievementIndex((prev) => (prev + 1) % achievements.length);
-      }, 5000); 
+      }, 5000);
       return () => clearInterval(interval);
     }
   }, [achievements.length]);
 
-  // Auto-advance featured success stories (the small panel)
   useEffect(() => {
     const featured = achievements.filter(a => a.isFeatured);
     if (featured.length <= 1) {
@@ -190,7 +215,6 @@ const Home = () => {
       },
       (err) => {
         console.error('Error listening to public achievements:', err);
-        // Do not throw; surface a minimal UI signal if needed
       }
     );
     return () => unsubscribe();
@@ -202,7 +226,6 @@ const Home = () => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
 
-      // If there is an existing firestore listener, detach it when auth state changes
       if (firestoreUnsub) {
         try {
           firestoreUnsub();
@@ -221,14 +244,12 @@ const Home = () => {
               setUserProfile(docSnap.data() as UserProfile);
               setFlowState('dashboard');
             } else {
-              // If no user document, sign the user out to reset state
               signOut(auth);
             }
             setLoading(false);
           },
           (err) => {
             console.error('Error listening to current user document:', err);
-            // Permission denied likely — sign out to reset and avoid uncaught errors
             setLoading(false);
             setUserProfile(null);
             setFlowState('roleSelection');
@@ -312,7 +333,6 @@ const Home = () => {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <div className="min-h-screen bg-white">
-        {/* Navigation Bar */}
         <header className="sticky top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
           <div className="w-full px-4 py-2 flex justify-between items-center">
             <div className="text-lg font-bold text-blue-800">KG LEARNING PLATFORM</div>
@@ -320,7 +340,6 @@ const Home = () => {
           </div>
         </header>
 
-        {/* Main Content */}
         <main className="pt-0 bg-gradient-to-b from-white to-blue-50 w-full">
           {flowState === 'dashboard' && user && userProfile ? (
             <>
@@ -361,7 +380,6 @@ const Home = () => {
                 <ArrowLeft className="w-4 h-4 mr-1"/> Back
               </button>
               <div className="text-center">
-                <School className="w-12 h-12 text-blue-600 mx-auto mb-4" />
                 <h2 className="text-3xl font-bold text-blue-800 mb-6">Welcome, Learner!</h2>
                 <div className="space-y-4">
                   <button 
@@ -381,7 +399,6 @@ const Home = () => {
             </div>
           ) : (
             <div className="w-full px-0 py-0">
-              {/* Hero Section */}
               <section className="mb-16">
                 <div className="relative h-[500px] w-full overflow-hidden shadow-lg bg-gray-100">
                   {carouselImages.map((image, index) => (
@@ -400,7 +417,6 @@ const Home = () => {
                     >
                       <div className="absolute inset-0 bg-black/30"></div>
                       
-                      {/* Text Content - Bottom Left */}
                       <div className="absolute bottom-8 left-8 z-10 text-white max-w-md">
                         <h2 className="text-3xl md:text-4xl font-extrabold mb-3 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
                           {image.title}
@@ -410,7 +426,6 @@ const Home = () => {
                         </p>
                       </div>
                       
-                      {/* Get Started Button - Bottom Right */}
                       <div className="absolute bottom-8 right-8 z-10">
                         <button 
                           onClick={() => setFlowState('learnerChoice')}
@@ -426,13 +441,13 @@ const Home = () => {
                     onClick={prevSlide}
                     className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/30 text-white p-2 rounded-full hover:bg-white/50 transition-all"
                   >
-                    <ChevronLeft className="w-6 h-6" />
+                    <ArrowLeft className="w-6 h-6" />
                   </button>
                   <button 
                     onClick={nextSlide}
                     className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/30 text-white p-2 rounded-full hover:bg-white/50 transition-all"
                   >
-                    <ChevronRight className="w-6 h-6" />
+                    <ArrowLeft className="w-6 h-6 rotate-180" />
                   </button>
                   <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
                     {carouselImages.map((_, index) => (
@@ -449,9 +464,7 @@ const Home = () => {
                 </div>
               </section>
 
-              {/* Content Sections */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 px-4">
-                {/* Achievements Container */}
                 <section className="bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg transition-all duration-300 group hover:border-blue-300 relative overflow-hidden h-[500px]">
                   <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300"></div>
                   <h3 className="text-xl font-bold text-blue-800 mb-4 flex items-center">
@@ -494,7 +507,6 @@ const Home = () => {
                         </div>
                       ))}
                       
-                      {/* Navigation dots */}
                       {achievements.length > 1 && (
                         <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
                           {achievements.map((_, index) => (
@@ -521,140 +533,143 @@ const Home = () => {
                   )}
                 </section>
 
-                {/* News Container */}
-{/* News Container */}
-<section className="bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg transition-all duration-300 group hover:border-blue-300 relative overflow-hidden h-[500px]">
-  <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300"></div>
-  <h3 className="text-xl font-bold text-blue-800 mb-4 flex items-center">
-    <Newspaper className="w-5 h-5 mr-2 text-blue-600" />
-    Latest Updates
-  </h3>
-  <div className="space-y-3">
-    {companyNews.map(news => (
-      <div key={news.id} className="p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-all cursor-pointer group hover:shadow-md hover:-translate-y-1 duration-300 border border-transparent hover:border-blue-200 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-0 h-1 bg-blue-400 group-hover:w-full transition-all duration-500"></div>
-        <div className="flex items-start">
-          <div className="mr-2 mt-0.5">
-            <Newspaper className="w-5 h-5 text-blue-600" />
-          </div>
-          <div>
-            <h4 className="font-bold text-blue-800 group-hover:text-blue-700 text-sm">{news.title}</h4>
-            <p className="text-xs text-gray-700">{news.content}</p>
-            <span className="text-xs text-blue-600 mt-1 block">By {news.companyName}</span>
-          </div>
-        </div>
-      </div>
-    ))}
-    
-    {/* Show a message if there are no news items */}
-    {companyNews.length === 0 && (
-      <div className="text-center py-8 text-gray-500">
-        <Newspaper className="w-12 h-12 mx-auto text-gray-400 mb-2" />
-        <p>No news updates yet</p>
-      </div>
-    )}
-    
-    {/* New Square Panels */}
-    <div className="grid grid-cols-3 gap-4 mt-6">
-      {/* News Panel */}
-      <div className="aspect-square rounded-lg p-4 hover:shadow-lg hover:scale-105 duration-300 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
-        {/* Background Image */}
-        <div className="absolute inset-0 w-full h-full z-0">
-          <img 
-            src="/images/news_image.png" 
-            alt="News" 
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20 transition-all duration-300"></div>
-        </div>
-        {/* Icon - Top Left */}
-        <div className="absolute top-4 left-4 z-10">
-          <div className="bg-white/70 p-2 rounded-full w-max group-hover:bg-white/80 transition-all duration-300 transform group-hover:scale-110">
-            <Newspaper className="w-6 h-6 text-blue-600/80 group-hover:text-blue-700" />
-          </div>
-        </div>
-        {/* Title - Bottom Center */}
-        <div className="absolute bottom-8 left-0 right-0 z-10 flex justify-center">
-          <h4 className="font-bold text-white text-sm bg-blue-800/70 px-3 py-1 rounded-md group-hover:bg-blue-900/80">News</h4>
-        </div>
-      </div>
-      
-      {/* Outstanding Panel */}
-      <div className="aspect-square rounded-lg p-4 hover:shadow-lg hover:scale-105 duration-300 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
-        {/* Background Image */}
-        <div className="absolute inset-0 w-full h-full z-0">
-          <img 
-            src="/images/outstanding.png" 
-            alt="Outstanding" 
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20 transition-all duration-300"></div>
-        </div>
-        {/* Icon - Top Left */}
-        <div className="absolute top-4 left-4 z-10">
-          <div className="bg-white/70 p-2 rounded-full w-max group-hover:bg-white/80 transition-all duration-300 transform group-hover:scale-110">
-            <Star className="w-6 h-6 text-blue-600/80 group-hover:text-blue-700" />
-          </div>
-        </div>
-        {/* Title - Bottom Center */}
-        <div className="absolute bottom-8 left-0 right-0 z-10 flex justify-center">
-          <h4 className="font-bold text-white text-sm bg-blue-800/70 px-3 py-1 rounded-md group-hover:bg-blue-900/80">Outstanding</h4>
-        </div>
-      </div>
-    
-{/* Featured Stories Panel */}
-<div className="aspect-square rounded-lg bg-gray-900 p-4 hover:shadow-lg hover:scale-105 duration-300 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
-  {(() => {
-    const featured = achievements.filter(a => a.isFeatured);
-    if (featured.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center w-full h-full bg-blue-100 rounded-lg p-4">
-          <Trophy className="w-10 h-10 text-blue-500 mb-3" />
-          <h4 className="text-sm font-bold text-blue-800">No featured stories yet</h4>
-        </div>
-      );
-    }
+                <section className="bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg transition-all duration-300 group hover:border-blue-300 relative overflow-hidden h-[500px]">
+                  <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300"></div>
+                  <h3 className="text-xl font-bold text-blue-800 mb-4 flex items-center">
+                    <Newspaper className="w-5 h-5 mr-2 text-blue-600" />
+                    Latest Updates
+                  </h3>
 
-    const item = featured[featuredIndex % featured.length];
-    return (
-      <div className="relative w-full h-full flex flex-col bg-blue-900 justify-end rounded-lg overflow-hidden">
-        {/* Image */}
-        <img
-          src={item.imageUrl}
-          alt={item.description}
-          className="w-full h-full object-contain bg-gray-900"
-        />
+                  <div className="space-y-3">
+                    {partnerships.map(news => (
+                      <div
+                        key={news.id}
+                        className="p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-all cursor-pointer group hover:shadow-md hover:-translate-y-1 duration-300 border border-transparent hover:border-blue-200 relative overflow-hidden"
+                      >
+                        <div className="absolute top-0 left-0 w-0 h-1 bg-blue-400 group-hover:w-full transition-all duration-500"></div>
+                        <div className="flex items-start">
+                          <div className="mr-2 mt-0.5">
+                            <Newspaper className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-blue-800 group-hover:text-blue-700 text-sm">
+                              {news.title}
+                            </h4>
+                            <p className="text-xs text-gray-700">{news.content}</p>
+                            <span className="text-xs text-blue-600 mt-1 block">
+                              By {news.companyName}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
 
-        {/* Gradient for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    {partnerships.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <Newspaper className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+                        <p>No news updates yet</p>
+                      </div>
+                    )}
 
-        {/* Bottom overlay with description + student info */}
-        <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent">
-          <p className="text-xs text-white line-clamp-3 mb-1">"{item.description}"</p>
+                    <div className="grid grid-cols-3 gap-4 mt-6">
+                      <div
+                        className="aspect-square rounded-lg p-4 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative"
+                        onMouseEnter={() => setPauseNews(true)}
+                        onMouseLeave={() => setPauseNews(false)}
+                      >
+                        <div className="absolute inset-0">
+                          <img src="/images/news_image.png" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20"></div>
+                        </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center mr-2">
-                <span className="text-[10px] font-bold text-white">
-                  {item.studentName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                </span>
+                        {generalNews.length > 0 ? (
+                          <div className="absolute inset-0 flex items-center justify-center p-3 z-10">
+                            <div className="bg-white/80 p-2 rounded-md max-h-full overflow-hidden">
+                              <h4 className="font-bold text-blue-800 text-xs mb-1">
+                                {generalNews[newsIndex].title}
+                              </h4>
+                              <p className="text-xs text-gray-700 line-clamp-4">
+                                {generalNews[newsIndex].content}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <h4 className="text-white bg-blue-800/70 px-3 py-1 rounded-md">
+                              No News
+                            </h4>
+                          </div>
+                        )}
+                      </div>
+
+                      <div
+                        className="aspect-square rounded-lg p-4 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative"
+                        onMouseEnter={() => setPauseOut(true)}
+                        onMouseLeave={() => setPauseOut(false)}
+                      >
+                        <div className="absolute inset-0">
+                          <img src="/images/outstanding.png" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20"></div>
+                        </div>
+
+                        {outstanding.length > 0 ? (
+                          <div className="absolute inset-0 flex items-center justify-center p-3 z-10">
+                            <div className="bg-white/80 p-2 rounded-md max-h-full overflow-hidden">
+                              <h4 className="font-bold text-blue-800 text-xs mb-1">
+                                {outstanding[outIndex].title}
+                              </h4>
+                              <p className="text-xs text-gray-700 line-clamp-4">
+                                {outstanding[outIndex].content}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <h4 className="text-white bg-blue-800/70 px-3 py-1 rounded-md">
+                              No Outstanding Students
+                            </h4>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="aspect-square rounded-lg bg-gray-900 p-4 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
+                        {(() => {
+                          const featured = achievements.filter(a => a.isFeatured);
+                          if (featured.length === 0) {
+                            return (
+                              <div className="flex flex-col items-center justify-center w-full h-full bg-blue-100 rounded-lg p-4">
+                                <Trophy className="w-10 h-10 text-blue-500 mb-3" />
+                                <h4 className="text-sm font-bold text-blue-800">
+                                  No featured stories yet
+                                </h4>
+                              </div>
+                            );
+                          }
+                          const item = featured[featuredIndex % featured.length];
+                          return (
+                            <div className="relative w-full h-full flex flex-col bg-blue-900 justify-end rounded-lg overflow-hidden">
+                              <img src={item.imageUrl} alt={item.description} className="w-full h-full object-contain bg-gray-900" />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                              <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent">
+                                <p className="text-xs text-white line-clamp-3 mb-1">"{item.description}"</p>
+                                <div className="flex items-center">
+                                  <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center mr-2">
+                                    <span className="text-[10px] font-bold text-white">
+                                      {item.studentName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-white">{item.studentName}</p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                </section>
               </div>
-              <p className="text-[11px] text-white">{item.studentName}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  })()}
-</div>
 
-    </div>
-  </div>  
-</section>
-              </div>
-
-
-             
               <div className="bg-gradient-to-b from-white via-blue-100 to-white text-blue-800 rounded-xl p-8 text-center mb-16 px-4 shadow-md hover:shadow-lg transition-all duration-300 group relative overflow-hidden mx-4 border border-blue-200">
                 <div className="absolute top-0 left-0 right-0 h-0 bg-blue-200/50 group-hover:h-1 transition-all duration-300"></div>
                 <h2 className="text-2xl font-bold mb-4">Start Your Journey Today</h2>
@@ -667,9 +682,7 @@ const Home = () => {
                 </button>
               </div>
 
-              
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 px-4 mb-16 mt-8">
-               
                 <div 
                   onClick={() => setFlowState('learnerChoice')}
                   className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-blue-300 hover:-translate-y-1 group relative overflow-hidden"
@@ -690,7 +703,6 @@ const Home = () => {
                   </div>
                 </div>
                 
-                {/* Company Card */}
                 <div 
                   onClick={() => handlePortalSelection('company')}
                   className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-blue-300 hover:-translate-y-1 group relative overflow-hidden"
@@ -711,7 +723,6 @@ const Home = () => {
                   </div>
                 </div>
                 
-                {/* Recruiter Card */}
                 <div 
                   onClick={() => handlePortalSelection('recruiter')}
                   className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-blue-300 hover:-translate-y-1 group relative overflow-hidden"
@@ -733,7 +744,6 @@ const Home = () => {
                 </div>
               </div>
 
-              
               <footer className="bg-blue-900 text-white p-8 w-full mx-4 rounded-xl mt-8 shadow-md">
                 <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
                   <div>
@@ -746,21 +756,21 @@ const Home = () => {
                       <li><a href="https://www.kimtronix.com/" className="text-blue-200 hover:text-white transition-colors">About Us</a></li>
                       <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Courses</a></li>
                       <li>
-  <a 
-    href="#" 
-    onClick={(e) => {
-      e.preventDefault(); 
-      handlePortalSelection('company');
-    }}
-    className="text-blue-200 hover:text-white transition-colors cursor-pointer"
-  >
-    For Companies
-  </a>
-</li>
+                        <a 
+                          href="#" 
+                          onClick={(e) => {
+                            e.preventDefault(); 
+                            handlePortalSelection('company');
+                          }}
+                          className="text-blue-200 hover:text-white transition-colors cursor-pointer"
+                        >
+                          For Companies
+                        </a>
+                      </li>
                       <li><a href="#" onClick={(e) => {
-      e.preventDefault(); 
-      handlePortalSelection('recruiter');
-    }} className="text-blue-200 hover:text-white transition-colors">For Recruiters</a></li>
+                        e.preventDefault(); 
+                        handlePortalSelection('recruiter');
+                      }} className="text-blue-200 hover:text-white transition-colors">For Recruiters</a></li>
                     </ul>
                   </div>
                   <div>
