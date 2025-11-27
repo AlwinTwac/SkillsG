@@ -219,6 +219,11 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     studentName: '',
   });
   const [loadingNews, setLoadingNews] = useState(true);
+  const [hollacallerSubscribers, setHollacallerSubscribers] = useState<any[]>([]);
+  const [loadingHollacaller, setLoadingHollacaller] = useState(true);
+  const [subscribingUser, setSubscribingUser] = useState<string | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [showSubscriptionDialog, setShowSubscriptionDialog] = useState(false);
 
 
   const studentsLinkedToThisCompany = students.filter(student => student.companyUid === userUid);
@@ -420,6 +425,13 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
       clearInterval(timeInterval);
     };
   }, [userUid, selectedDate]);
+
+  // Fetch hollacaller subscribers when component mounts
+  useEffect(() => {
+    if (userUid) {
+      fetchHollacallerSubscribers();
+    }
+  }, [userUid]);
  useEffect(() => {
     if (!userUid) return;
     
@@ -1065,6 +1077,155 @@ const handleToggleFeature = async (achievementId: string, currentlyFeatured: boo
     }
   };
 
+  const subscribeToHollacaller = async (studentUid: string) => {
+    setSubscribingUser(studentUid);
+    try {
+      // Get the current user's ID token
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        setUploadError('You must be logged in to subscribe users');
+        return;
+      }
+
+      const idToken = await currentUser.getIdToken(true);
+
+      const response = await fetch('/api/hollacaller/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ userUid: studentUid }),
+      });
+
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get('content-type');
+
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Non-JSON response:', text);
+        setUploadError(`Server returned non-JSON response: ${text.substring(0, 200)}...`);
+        return;
+      }
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setUploadSuccess(result.message);
+        // Refresh hollacaller subscribers list
+        fetchHollacallerSubscribers();
+      } else {
+        setUploadError(result.error);
+      }
+    } catch (err: any) {
+      console.error("Error subscribing to hollacaller:", err);
+      setUploadError(`Failed to subscribe: ${err.message}`);
+    } finally {
+      setSubscribingUser(null);
+    }
+  };
+
+  const unsubscribeFromHollacaller = async (studentUid: string) => {
+    setSubscribingUser(studentUid);
+    try {
+      // Get the current user's ID token
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        setUploadError('You must be logged in to unsubscribe users');
+        return;
+      }
+
+      const idToken = await currentUser.getIdToken(true);
+
+      const response = await fetch('/api/hollacaller/unsubscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ userUid: studentUid }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setUploadSuccess(result.message);
+        // Refresh hollacaller subscribers list
+        fetchHollacallerSubscribers();
+      } else {
+        setUploadError(result.error);
+      }
+    } catch (err: any) {
+      console.error("Error unsubscribing from hollacaller:", err);
+      setUploadError(`Failed to unsubscribe: ${err.message}`);
+    } finally {
+      setSubscribingUser(null);
+    }
+  };
+
+  const fetchHollacallerSubscribers = async () => {
+    try {
+      setLoadingHollacaller(true);
+      
+      // Get the current user's ID token
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        console.error('User not authenticated');
+        setHollacallerSubscribers([]);
+        return;
+      }
+
+      const idToken = await currentUser.getIdToken(true);
+
+      const response = await fetch('/api/hollacaller/subscribe', {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setHollacallerSubscribers(result.subscribers || []);
+      } else {
+        console.error('Failed to fetch hollacaller subscribers');
+        setHollacallerSubscribers([]);
+      }
+    } catch (err) {
+      console.error('Error fetching hollacaller subscribers:', err);
+      setHollacallerSubscribers([]);
+    } finally {
+      setLoadingHollacaller(false);
+    }
+  };
+
+  const getEnrolledStudents = () => {
+    return studentsLinkedToThisCompany.filter(student => 
+      enrollments.some(enrollment => enrollment.studentUid === student.id)
+    );
+  };
+
+  const getStudentCourses = (studentUid: string) => {
+    const studentEnrollments = enrollments.filter(e => e.studentUid === studentUid);
+    return studentEnrollments.map(enrollment => {
+      const course = courses.find(c => c.id === enrollment.courseId);
+      return {
+        ...enrollment,
+        courseName: course?.name || 'Unknown Course',
+        status: enrollment.status || 'active'
+      };
+    });
+  };
+
+  const openSubscriptionDialog = (student: Student) => {
+    setSelectedStudent(student);
+    setShowSubscriptionDialog(true);
+  };
+
+  const closeSubscriptionDialog = () => {
+    setSelectedStudent(null);
+    setShowSubscriptionDialog(false);
+  };
+
   const filteredAttendanceStudents = studentsLinkedToThisCompany.filter(student =>
     student.name.toLowerCase().includes(attendanceSearchTerm.toLowerCase()) ||
     student.email.toLowerCase().includes(attendanceSearchTerm.toLowerCase())
@@ -1116,7 +1277,7 @@ const handleToggleFeature = async (achievementId: string, currentlyFeatured: boo
         {/* Tab Navigation */}
         <div className="border-b border-white-200 bg-blue-800 overflow-x-auto">
           <nav className="flex space-x-8 px-6">
-            {['overview', 'content', 'reports', 'students', 'attendance', 'certificates', 'achievements', 'pending-reviews', 'courses', 'news'].map((tab) => (
+            {['overview', 'content', 'reports', 'students', 'attendance', 'certificates', 'achievements', 'pending-reviews', 'courses', 'news', 'subscriptions'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -1628,6 +1789,223 @@ const handleToggleFeature = async (achievementId: string, currentlyFeatured: boo
             </div>
           </div>
         )}
+        {activeTab === 'subscriptions' && (
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Student Subscriptions Management</h3>
+              
+              <div className="mb-6">
+                <h4 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-3">Enrolled Students</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Click on any student to manage their subscription services.
+                </p>
+
+                {getEnrolledStudents().length === 0 ? (
+                  <div className="text-center py-8 text-gray-600 dark:text-gray-400">
+                    <Users className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
+                    <p>No students are currently enrolled. Enroll students first to see them here.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      <thead className="bg-gray-50 dark:bg-gray-800">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Student</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Enrolled Courses</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Subscriptions</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                        {getEnrolledStudents().map(student => {
+                          const studentCourses = getStudentCourses(student.id);
+                          const isSubscribedToHollacaller = hollacallerSubscribers.some(sub => sub.userUid === student.id);
+                          
+                          return (
+                            <tr key={student.id}>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="flex-shrink-0 h-10 w-10">
+                                    <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
+                                      <span className="text-white font-medium">
+                                        {student.name.charAt(0).toUpperCase()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="ml-4">
+                                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                      {student.name}
+                                    </div>
+                                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                                      {student.profileVisibility}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                {student.email}
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {studentCourses.map((course, index) => (
+                                    <span
+                                      key={index}
+                                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                        course.status === 'active' 
+                                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                          : course.status === 'completed'
+                                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                          : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                                      }`}
+                                    >
+                                      {course.courseName}
+                                    </span>
+                                  ))}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {isSubscribedToHollacaller && (
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                                      Hollacaller
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button
+                                  onClick={() => openSubscriptionDialog(student)}
+                                  className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-200"
+                                >
+                                  Manage Subscriptions
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Subscription Dialog */}
+        {showSubscriptionDialog && selectedStudent && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-900">
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                    Manage Subscriptions
+                  </h3>
+                  <button
+                    onClick={closeSubscriptionDialog}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                
+                <div className="mb-4">
+                  <div className="flex items-center mb-4">
+                    <div className="flex-shrink-0 h-12 w-12">
+                      <div className="h-12 w-12 rounded-full bg-blue-500 flex items-center justify-center">
+                        <span className="text-white font-medium text-lg">
+                          {selectedStudent.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="ml-4">
+                      <div className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                        {selectedStudent.name}
+                      </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        {selectedStudent.email}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Enrolled Courses:</h4>
+                    <div className="flex flex-wrap gap-1">
+                      {getStudentCourses(selectedStudent.id).map((course, index) => (
+                        <span
+                          key={index}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            course.status === 'active' 
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                              : course.status === 'completed'
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                          }`}
+                        >
+                          {course.courseName}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Available Services:</h4>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <div>
+                        <h5 className="font-medium text-gray-900 dark:text-gray-100">Hollacaller</h5>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Professional calling service</p>
+                      </div>
+                      <div>
+                        {(() => {
+                          const isSubscribed = hollacallerSubscribers.some(sub => sub.userUid === selectedStudent.id);
+                          return (
+                            <button
+                              onClick={() => {
+                                isSubscribed 
+                                  ? unsubscribeFromHollacaller(selectedStudent.id)
+                                  : subscribeToHollacaller(selectedStudent.id);
+                              }}
+                              disabled={subscribingUser === selectedStudent.id}
+                              className={`px-3 py-1 rounded text-sm font-medium ${
+                                isSubscribed
+                                  ? 'bg-red-600 hover:bg-red-700 text-white disabled:opacity-50'
+                                  : 'bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50'
+                              }`}
+                            >
+                              {subscribingUser === selectedStudent.id 
+                                ? 'Processing...' 
+                                : isSubscribed 
+                                  ? 'Unsubscribe' 
+                                  : 'Subscribe'
+                              }
+                            </button>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 text-sm text-gray-500 dark:text-gray-400 text-center">
+                    More services coming soon...
+                  </div>
+                </div>
+
+                <div className="mt-6 flex justify-end">
+                  <button
+                    onClick={closeSubscriptionDialog}
+                    className="px-4 py-2 bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-600"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
      {activeTab === 'students' && (
   <div className="space-y-6">
     <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
@@ -1796,6 +2174,24 @@ const handleToggleFeature = async (achievementId: string, currentlyFeatured: boo
                     >
                       <UserCheck className="inline mr-1" /> Recommend
                     </button>
+                    {(() => {
+                      const isSubscribed = hollacallerSubscribers.some(sub => sub.userUid === student.id);
+                      return (
+                        <button
+                          onClick={() => isSubscribed ? unsubscribeFromHollacaller(student.id) : subscribeToHollacaller(student.id)}
+                          disabled={subscribingUser === student.id}
+                          className={`mr-3 ${isSubscribed ? 'text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-200' : 'text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-200'} disabled:opacity-50`}
+                        >
+                          {subscribingUser === student.id ? (
+                            <><Loader2 className="inline mr-1 w-4 h-4 animate-spin" /> Processing...</>
+                          ) : isSubscribed ? (
+                            <><XCircle className="inline mr-1" /> Unsubscribe</>
+                          ) : (
+                            <><CheckCircle className="inline mr-1" /> Subscribe</>
+                          )}
+                        </button>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}

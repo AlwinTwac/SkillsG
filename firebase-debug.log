@@ -1,217 +1,51 @@
-[debug] [2025-08-06T12:42:25.113Z] ----------------------------------------------------------------------
-[debug] [2025-08-06T12:42:25.116Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\User\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js init
-[debug] [2025-08-06T12:42:25.117Z] CLI Version:   14.11.2
-[debug] [2025-08-06T12:42:25.117Z] Platform:      win32
-[debug] [2025-08-06T12:42:25.117Z] Node Version:  v22.17.0
-[debug] [2025-08-06T12:42:25.118Z] Time:          Wed Aug 06 2025 14:42:25 GMT+0200 (Central Africa Time)
-[debug] [2025-08-06T12:42:25.118Z] ----------------------------------------------------------------------
+[debug] [2025-11-27T11:50:42.515Z] ----------------------------------------------------------------------
+[debug] [2025-11-27T11:50:42.518Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\USER\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only firestore:rules --debug
+[debug] [2025-11-27T11:50:42.518Z] CLI Version:   14.14.0
+[debug] [2025-11-27T11:50:42.518Z] Platform:      win32
+[debug] [2025-11-27T11:50:42.519Z] Node Version:  v22.14.0
+[debug] [2025-11-27T11:50:42.519Z] Time:          Thu Nov 27 2025 13:50:42 GMT+0200 (Central Africa Time)
+[debug] [2025-11-27T11:50:42.519Z] ----------------------------------------------------------------------
 [debug] 
-[debug] [2025-08-06T12:42:25.120Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
-[debug] [2025-08-06T12:42:25.431Z] Field "/emulators/auth" in "firebase.json" is possibly invalid: must be object
-[debug] [2025-08-06T12:42:25.438Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
-[debug] [2025-08-06T12:42:25.438Z] > authorizing via signed-in user (innocentmafusire@gmail.com)
-[debug] [2025-08-06T12:42:25.439Z] Field "/emulators/auth" in "firebase.json" is possibly invalid: must be object
-[info] 
-     ######## #### ########  ######## ########     ###     ######  ########
-     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
-     ######    ##  ########  ######   ########  #########  ######  ######
-     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
-     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+[debug] [2025-11-27T11:50:42.883Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-11-27T11:50:42.885Z] > authorizing via signed-in user (optimusprimetwac@gmail.com)
+[debug] [2025-11-27T11:50:42.886Z] [iam] checking project skillsg-44ea6 for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]
+[debug] [2025-11-27T11:50:42.888Z] Checked if tokens are valid: true, expires at: 1764247783790
+[debug] [2025-11-27T11:50:42.889Z] Checked if tokens are valid: true, expires at: 1764247783790
+[debug] [2025-11-27T11:50:42.892Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillsg-44ea6:testIamPermissions [none]
+[debug] [2025-11-27T11:50:42.893Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillsg-44ea6:testIamPermissions x-goog-quota-user=projects/skillsg-44ea6
+[debug] [2025-11-27T11:50:42.894Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillsg-44ea6:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[debug] [2025-11-27T11:50:45.047Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillsg-44ea6:testIamPermissions 200
+[debug] [2025-11-27T11:50:45.048Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillsg-44ea6:testIamPermissions {}
+[debug] [2025-11-27T11:50:45.048Z] [iam] error while checking permissions, command may fail: Authorization failed. This account is missing the following required permissions on project skillsg-44ea6:
 
-You're about to initialize a Firebase project in this directory:
-
-  C:\Users\User\Desktop\platform project\skillsg
-
-Before we get started, keep in mind:
-
-  * You are initializing within an existing Firebase project directory
-
-[debug] [2025-08-06T12:42:27.944Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
-[debug] [2025-08-06T12:42:27.945Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+  datastore.indexes.create
+  datastore.indexes.delete
+  datastore.indexes.list
+  datastore.indexes.update
+  firebase.projects.get
 [info] 
-=== Account Setup
+[info] === Deploying to 'skillsg-44ea6'...
 [info] 
-[info] Which account do you want to use for this project? Choose an account or add a new one now
-[info] 
-[debug] [2025-08-06T12:45:28.242Z] setProjectAccount(C:\Users\User\Desktop\platform project\skillsg, innocentmafusire@gmail.com)
-[info] 
-[info] +  Using account: innocentmafusire@gmail.com 
-[info] 
-=== Project Setup
-[info] 
-[info] First, let's associate this project directory with a Firebase project.
-[info] You can create multiple project aliases by running firebase use --add, 
-[info] but for now we'll just set up a default project.
-[info] 
-[debug] [2025-08-06T12:45:28.250Z] Using project from CLI flag: skillssg-9f2bf
-[debug] [2025-08-06T12:45:28.251Z] No OAuth tokens found
-[debug] [2025-08-06T12:45:28.252Z] No OAuth tokens found
-[debug] [2025-08-06T12:45:28.252Z] > refreshing access token with scopes: []
-[debug] [2025-08-06T12:45:28.254Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
-[debug] [2025-08-06T12:45:28.254Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
-[debug] [2025-08-06T12:45:29.672Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
-[debug] [2025-08-06T12:45:29.672Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
-[debug] [2025-08-06T12:45:29.681Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/skillssg-9f2bf [none]
-[debug] [2025-08-06T12:45:31.681Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/skillssg-9f2bf 200
-[debug] [2025-08-06T12:45:31.682Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/skillssg-9f2bf {"projectId":"skillssg-9f2bf","projectNumber":"966597589839","displayName":"skillssg","name":"projects/skillssg-9f2bf","resources":{"hostingSite":"skillssg-9f2bf"},"state":"ACTIVE","etag":"1_6abea79e-a590-4165-a861-2c271c147d65"}
-[info] i  Using project skillssg-9f2bf (skillssg) 
-[info] 
-=== Firestore Setup
-[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
-[debug] [2025-08-06T12:45:31.701Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:45:31.701Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:45:31.702Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/firestore.googleapis.com [none]
-[debug] [2025-08-06T12:45:31.702Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/firestore.googleapis.com x-goog-quota-user=projects/skillssg-9f2bf
-[debug] [2025-08-06T12:45:35.687Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/firestore.googleapis.com 200
-[debug] [2025-08-06T12:45:35.687Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/firestore.googleapis.com [omitted]
-[info] +  firestore: required API firestore.googleapis.com is enabled 
-[debug] [2025-08-06T12:45:35.705Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:45:35.705Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:45:35.706Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/skillssg-9f2bf/databases [none]
-[debug] [2025-08-06T12:45:38.804Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/skillssg-9f2bf/databases 200
-[debug] [2025-08-06T12:45:38.805Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/skillssg-9f2bf/databases {"databases":[{"name":"projects/skillssg-9f2bf/databases/(default)","uid":"a5a8fbb0-82e9-4f79-8a60-b9acf12f55b9","createTime":"2025-07-24T16:07:31.225349Z","updateTime":"2025-07-24T16:07:31.225349Z","locationId":"africa-south1","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2025-08-06T11:45:38.775167Z","appEngineIntegrationMode":"DISABLED","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"etag":"IJqb/r2b9o4DMPLa7+nx144D"}]}
-[info] 
-[info] Firestore Security Rules allow you to define how and when to allow
-[info] requests. You can keep these rules in your project directory
-[info] and publish them with firebase deploy.
-[info] 
-[debug] [2025-08-06T12:45:38.813Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:45:38.813Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:45:38.814Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/skillssg-9f2bf/releases pageSize=10&pageToken=
-[debug] [2025-08-06T12:45:41.554Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/skillssg-9f2bf/releases 200
-[debug] [2025-08-06T12:45:41.554Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/skillssg-9f2bf/releases {"releases":[{"name":"projects/skillssg-9f2bf/releases/cloud.firestore","rulesetName":"projects/skillssg-9f2bf/rulesets/be70d4a2-06f9-4752-a782-0d91cc41d0d6","createTime":"2025-07-24T16:07:40.067435Z","updateTime":"2025-08-06T11:32:00.848538Z"},{"name":"projects/skillssg-9f2bf/releases/firebase.storage/skillssg-9f2bf.firebasestorage.app","rulesetName":"projects/skillssg-9f2bf/rulesets/4074a70e-18e9-450f-82c2-d55e0da29b9b","createTime":"2025-07-24T16:13:19.801365Z","updateTime":"2025-07-25T14:23:09.650832Z"}]}
-[debug] [2025-08-06T12:45:41.575Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:45:41.575Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:45:41.575Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/skillssg-9f2bf/rulesets/be70d4a2-06f9-4752-a782-0d91cc41d0d6 [none]
-[debug] [2025-08-06T12:45:42.382Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/skillssg-9f2bf/rulesets/be70d4a2-06f9-4752-a782-0d91cc41d0d6 200
-[debug] [2025-08-06T12:45:42.382Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/skillssg-9f2bf/rulesets/be70d4a2-06f9-4752-a782-0d91cc41d0d6 [omitted]
-[info] i  Downloaded the existing Firestore Security Rules from the Firebase console 
-[info] 
-[info] Firestore indexes allow you to perform complex queries while
-[info] maintaining performance that scales with the size of the result
-[info] set. You can keep index definitions in your project directory
-[info] and publish them with firebase deploy.
-[info] 
-[debug] [2025-08-06T12:45:55.841Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:45:55.841Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:45:55.841Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:45:55.841Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:45:55.841Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/skillssg-9f2bf/databases/(default)/collectionGroups/-/indexes [none]
-[debug] [2025-08-06T12:45:55.846Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/skillssg-9f2bf/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* [none]
-[debug] [2025-08-06T12:45:56.479Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/skillssg-9f2bf/databases/(default)/collectionGroups/-/indexes 200
-[debug] [2025-08-06T12:45:56.480Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/skillssg-9f2bf/databases/(default)/collectionGroups/-/indexes {"indexes":[{"name":"projects/skillssg-9f2bf/databases/(default)/collectionGroups/certificates/indexes/CICAgJiUpoMJ","queryScope":"COLLECTION","fields":[{"fieldPath":"studentUid","order":"ASCENDING"},{"fieldPath":"completionDate","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/skillssg-9f2bf/databases/(default)/collectionGroups/tutorials/indexes/CICAgJim14AK","queryScope":"COLLECTION","fields":[{"fieldPath":"studentUid","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/skillssg-9f2bf/databases/(default)/collectionGroups/interviewReports/indexes/CICAgOjXh4EK","queryScope":"COLLECTION","fields":[{"fieldPath":"companyUid","order":"ASCENDING"},{"fieldPath":"interviewDate","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/skillssg-9f2bf/databases/(default)/collectionGroups/users/indexes/CICAgJjF9oIK","queryScope":"COLLECTION","fields":[{"fieldPath":"role","order":"ASCENDING"},{"fieldPath":"profileCompleted","order":"ASCENDING"},{"fieldPath":"__name__","order":"ASCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/skillssg-9f2bf/databases/(default)/collectionGroups/invitations/indexes/CICAgJiUpoMK","queryScope":"COLLECTION","fields":[{"fieldPath":"companyUid","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"},{"name":"projects/skillssg-9f2bf/databases/(default)/collectionGroups/achievements/indexes/CICAgJiUsZIK","queryScope":"COLLECTION","fields":[{"fieldPath":"status","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}],"state":"READY","density":"SPARSE_ALL"}]}
-[debug] [2025-08-06T12:45:56.689Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/skillssg-9f2bf/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* 200
-[debug] [2025-08-06T12:45:56.690Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/skillssg-9f2bf/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* {"fields":[{"name":"projects/skillssg-9f2bf/databases/(default)/collectionGroups/__default__/fields/*","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","arrayConfig":"CONTAINS"}],"state":"READY"}]}}]}
-[info] i  Downloaded the existing Firestore indexes from the Firebase console 
-[info] +  Wrote firestore.rules 
-[info] +  Wrote firestore.indexes.json 
-[info] 
-=== Functions Setup
-[debug] [2025-08-06T12:46:06.429Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
-[debug] [2025-08-06T12:46:06.430Z] > authorizing via signed-in user (innocentmafusire@gmail.com)
-[debug] [2025-08-06T12:46:06.430Z] [iam] checking project skillssg-9f2bf for permissions ["firebase.projects.get"]
-[debug] [2025-08-06T12:46:06.431Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:46:06.431Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:46:06.431Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillssg-9f2bf:testIamPermissions [none]
-[debug] [2025-08-06T12:46:06.431Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillssg-9f2bf:testIamPermissions x-goog-quota-user=projects/skillssg-9f2bf
-[debug] [2025-08-06T12:46:06.431Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillssg-9f2bf:testIamPermissions {"permissions":["firebase.projects.get"]}
-[debug] [2025-08-06T12:46:09.380Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillssg-9f2bf:testIamPermissions 200
-[debug] [2025-08-06T12:46:09.381Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillssg-9f2bf:testIamPermissions {"permissions":["firebase.projects.get"]}
-[info] Let's create a new codebase for your functions.
-[info] A directory corresponding to the codebase will be created in your project
-[info] with sample code pre-configured.
-
-[info] See https://firebase.google.com/docs/functions/organize-functions for
-[info] more information on organizing your functions using codebases.
-
-[info] Functions can be deployed with firebase deploy.
-
-[info] +  Wrote functions/package.json 
-[info] +  Wrote functions/.eslintrc.js 
-[info] +  Wrote functions/index.js 
-[info] +  Wrote functions/.gitignore 
-[info] 
-=== App Hosting Setup
-[debug] [2025-08-06T12:51:49.316Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:51:49.317Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:51:49.317Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/skillssg-9f2bf/billingInfo [none]
-[debug] [2025-08-06T12:51:51.951Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/skillssg-9f2bf/billingInfo 200
-[debug] [2025-08-06T12:51:51.951Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/skillssg-9f2bf/billingInfo {"name":"projects/skillssg-9f2bf/billingInfo","projectId":"skillssg-9f2bf","billingAccountName":"billingAccounts/01CAD3-6D9E63-C7F3A4","billingEnabled":true}
-[debug] [2025-08-06T12:51:51.953Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:51:51.953Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:51:51.953Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/firebaseapphosting.googleapis.com [none]
-[debug] [2025-08-06T12:51:51.953Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/skillssg-9f2bf
-[debug] [2025-08-06T12:51:55.669Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/firebaseapphosting.googleapis.com 200
-[debug] [2025-08-06T12:51:55.669Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/firebaseapphosting.googleapis.com [omitted]
-[debug] [2025-08-06T12:51:55.671Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:51:55.671Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:51:55.671Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/firebaseapphosting.googleapis.com:enable [none]
-[debug] [2025-08-06T12:51:55.671Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/firebaseapphosting.googleapis.com:enable x-goog-quota-user=projects/skillssg-9f2bf
-[debug] [2025-08-06T12:51:57.792Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/firebaseapphosting.googleapis.com:enable 200
-[debug] [2025-08-06T12:51:57.792Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/firebaseapphosting.googleapis.com:enable [omitted]
-[debug] [2025-08-06T12:52:07.807Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:07.807Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:07.808Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:07.808Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:07.809Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:07.809Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:07.810Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:07.810Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:07.811Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/developerconnect.googleapis.com [none]
-[debug] [2025-08-06T12:52:07.811Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/developerconnect.googleapis.com x-goog-quota-user=projects/skillssg-9f2bf
-[debug] [2025-08-06T12:52:07.813Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/secretmanager.googleapis.com [none]
-[debug] [2025-08-06T12:52:07.813Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/secretmanager.googleapis.com x-goog-quota-user=projects/skillssg-9f2bf
-[debug] [2025-08-06T12:52:07.814Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/run.googleapis.com [none]
-[debug] [2025-08-06T12:52:07.815Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/run.googleapis.com x-goog-quota-user=projects/skillssg-9f2bf
-[debug] [2025-08-06T12:52:07.816Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/iam.googleapis.com [none]
-[debug] [2025-08-06T12:52:07.816Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/iam.googleapis.com x-goog-quota-user=projects/skillssg-9f2bf
-[debug] [2025-08-06T12:52:09.713Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/secretmanager.googleapis.com 200
-[debug] [2025-08-06T12:52:09.713Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/secretmanager.googleapis.com [omitted]
-[debug] [2025-08-06T12:52:09.842Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/run.googleapis.com 200
-[debug] [2025-08-06T12:52:09.842Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/run.googleapis.com [omitted]
-[debug] [2025-08-06T12:52:10.558Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/developerconnect.googleapis.com 200
-[debug] [2025-08-06T12:52:10.558Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/developerconnect.googleapis.com [omitted]
-[debug] [2025-08-06T12:52:10.559Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:10.559Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:10.559Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/developerconnect.googleapis.com:enable [none]
-[debug] [2025-08-06T12:52:10.559Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/developerconnect.googleapis.com:enable x-goog-quota-user=projects/skillssg-9f2bf
-[debug] [2025-08-06T12:52:10.562Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/iam.googleapis.com 200
-[debug] [2025-08-06T12:52:10.562Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/iam.googleapis.com [omitted]
-[debug] [2025-08-06T12:52:11.466Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/developerconnect.googleapis.com:enable 200
-[debug] [2025-08-06T12:52:11.466Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/skillssg-9f2bf/services/developerconnect.googleapis.com:enable [omitted]
-[debug] [2025-08-06T12:52:21.482Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:21.483Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:21.483Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/skillssg-9f2bf/serviceAccounts/firebase-app-hosting-compute@skillssg-9f2bf.iam.gserviceaccount.com:testIamPermissions [none]
-[debug] [2025-08-06T12:52:21.483Z] >>> [apiv2][(partial)header] POST https://iam.googleapis.com/v1/projects/skillssg-9f2bf/serviceAccounts/firebase-app-hosting-compute@skillssg-9f2bf.iam.gserviceaccount.com:testIamPermissions x-goog-quota-user=projects/skillssg-9f2bf
-[debug] [2025-08-06T12:52:21.483Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/skillssg-9f2bf/serviceAccounts/firebase-app-hosting-compute@skillssg-9f2bf.iam.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
-[debug] [2025-08-06T12:52:31.673Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/skillssg-9f2bf/serviceAccounts/firebase-app-hosting-compute@skillssg-9f2bf.iam.gserviceaccount.com:testIamPermissions 404
-[debug] [2025-08-06T12:52:31.674Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/skillssg-9f2bf/serviceAccounts/firebase-app-hosting-compute@skillssg-9f2bf.iam.gserviceaccount.com:testIamPermissions {"error":{"code":404,"message":"Unknown service account","status":"NOT_FOUND"}}
-[debug] [2025-08-06T12:52:31.674Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:31.675Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:31.675Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/skillssg-9f2bf/serviceAccounts [none]
-[debug] [2025-08-06T12:52:31.675Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/skillssg-9f2bf/serviceAccounts {"accountId":"firebase-app-hosting-compute","serviceAccount":{"displayName":"Firebase App Hosting compute service account","description":"Default service account used to run builds and deploys for Firebase App Hosting"}}
-[debug] [2025-08-06T12:52:32.399Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/skillssg-9f2bf/serviceAccounts 200
-[debug] [2025-08-06T12:52:32.399Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/skillssg-9f2bf/serviceAccounts [omitted]
-[debug] [2025-08-06T12:52:32.399Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:32.399Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:32.400Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillssg-9f2bf:getIamPolicy [none]
-[debug] [2025-08-06T12:52:36.683Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillssg-9f2bf:getIamPolicy 200
-[debug] [2025-08-06T12:52:36.684Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillssg-9f2bf:getIamPolicy {"version":1,"etag":"BwY7O4RbDy0=","bindings":[{"role":"roles/artifactregistry.serviceAgent","members":["serviceAccount:service-966597589839@gcp-sa-artifactregistry.iam.gserviceaccount.com"]},{"role":"roles/cloudbuild.builds.builder","members":["serviceAccount:966597589839@cloudbuild.gserviceaccount.com"]},{"role":"roles/cloudbuild.serviceAgent","members":["serviceAccount:service-966597589839@gcp-sa-cloudbuild.iam.gserviceaccount.com"]},{"role":"roles/cloudfunctions.serviceAgent","members":["serviceAccount:service-966597589839@gcf-admin-robot.iam.gserviceaccount.com"]},{"role":"roles/containerregistry.ServiceAgent","members":["serviceAccount:service-966597589839@containerregistry.iam.gserviceaccount.com"]},{"role":"roles/editor","members":["serviceAccount:966597589839-compute@developer.gserviceaccount.com","serviceAccount:966597589839@cloudservices.gserviceaccount.com","serviceAccount:skillssg-9f2bf@appspot.gserviceaccount.com"]},{"role":"roles/firebase.managementServiceAgent","members":["serviceAccount:service-966597589839@gcp-sa-firebase.iam.gserviceaccount.com"]},{"role":"roles/firebase.sdkAdminServiceAgent","members":["serviceAccount:firebase-adminsdk-fbsvc@skillssg-9f2bf.iam.gserviceaccount.com"]},{"role":"roles/firebaseauth.admin","members":["serviceAccount:firebase-adminsdk-fbsvc@skillssg-9f2bf.iam.gserviceaccount.com"]},{"role":"roles/firebasemods.serviceAgent","members":["serviceAccount:service-966597589839@gcp-sa-firebasemods.iam.gserviceaccount.com"]},{"role":"roles/firebaserules.system","members":["serviceAccount:service-966597589839@firebase-rules.iam.gserviceaccount.com"]},{"role":"roles/firebasestorage.serviceAgent","members":["serviceAccount:service-966597589839@gcp-sa-firebasestorage.iam.gserviceaccount.com"]},{"role":"roles/firestore.serviceAgent","members":["serviceAccount:service-966597589839@gcp-sa-firestore.iam.gserviceaccount.com"]},{"role":"roles/iam.serviceAccountTokenCreator","members":["serviceAccount:firebase-adminsdk-fbsvc@skillssg-9f2bf.iam.gserviceaccount.com"]},{"role":"roles/owner","members":["user:innocentmafusire@gmail.com"]},{"role":"roles/run.serviceAgent","members":["serviceAccount:service-966597589839@serverless-robot-prod.iam.gserviceaccount.com"]},{"role":"roles/storage.admin","members":["serviceAccount:firebase-adminsdk-fbsvc@skillssg-9f2bf.iam.gserviceaccount.com"]}]}
-[debug] [2025-08-06T12:52:36.685Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:36.685Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T12:52:36.685Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillssg-9f2bf:setIamPolicy [none]
-[debug] [2025-08-06T12:52:36.685Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillssg-9f2bf:setIamPolicy {"policy":{"version":1,"etag":"BwY7O4RbDy0=","bindings":[{"role":"roles/artifactregistry.serviceAgent","members":["serviceAccount:service-966597589839@gcp-sa-artifactregistry.iam.gserviceaccount.com"]},{"role":"roles/cloudbuild.builds.builder","members":["serviceAccount:966597589839@cloudbuild.gserviceaccount.com"]},{"role":"roles/cloudbuild.serviceAgent","members":["serviceAccount:service-966597589839@gcp-sa-cloudbuild.iam.gserviceaccount.com"]},{"role":"roles/cloudfunctions.serviceAgent","members":["serviceAccount:service-966597589839@gcf-admin-robot.iam.gserviceaccount.com"]},{"role":"roles/containerregistry.ServiceAgent","members":["serviceAccount:service-966597589839@containerregistry.iam.gserviceaccount.com"]},{"role":"roles/editor","members":["serviceAccount:966597589839-compute@developer.gserviceaccount.com","serviceAccount:966597589839@cloudservices.gserviceaccount.com","serviceAccount:skillssg-9f2bf@appspot.gserviceaccount.com"]},{"role":"roles/firebase.managementServiceAgent","members":["serviceAccount:service-966597589839@gcp-sa-firebase.iam.gserviceaccount.com"]},{"role":"roles/firebase.sdkAdminServiceAgent","members":["serviceAccount:firebase-adminsdk-fbsvc@skillssg-9f2bf.iam.gserviceaccount.com","serviceAccount:firebase-app-hosting-compute@skillssg-9f2bf.iam.gserviceaccount.com"]},{"role":"roles/firebaseauth.admin","members":["serviceAccount:firebase-adminsdk-fbsvc@skillssg-9f2bf.iam.gserviceaccount.com"]},{"role":"roles/firebasemods.serviceAgent","members":["serviceAccount:service-966597589839@gcp-sa-firebasemods.iam.gserviceaccount.com"]},{"role":"roles/firebaserules.system","members":["serviceAccount:service-966597589839@firebase-rules.iam.gserviceaccount.com"]},{"role":"roles/firebasestorage.serviceAgent","members":["serviceAccount:service-966597589839@gcp-sa-firebasestorage.iam.gserviceaccount.com"]},{"role":"roles/firestore.serviceAgent","members":["serviceAccount:service-966597589839@gcp-sa-firestore.iam.gserviceaccount.com"]},{"role":"roles/iam.serviceAccountTokenCreator","members":["serviceAccount:firebase-adminsdk-fbsvc@skillssg-9f2bf.iam.gserviceaccount.com"]},{"role":"roles/owner","members":["user:innocentmafusire@gmail.com"]},{"role":"roles/run.serviceAgent","members":["serviceAccount:service-966597589839@serverless-robot-prod.iam.gserviceaccount.com"]},{"role":"roles/storage.admin","members":["serviceAccount:firebase-adminsdk-fbsvc@skillssg-9f2bf.iam.gserviceaccount.com"]},{"role":"roles/firebaseapphosting.computeRunner","members":["serviceAccount:firebase-app-hosting-compute@skillssg-9f2bf.iam.gserviceaccount.com"]},{"role":"roles/developerconnect.readTokenAccessor","members":["serviceAccount:firebase-app-hosting-compute@skillssg-9f2bf.iam.gserviceaccount.com"]},{"role":"roles/storage.objectViewer","members":["serviceAccount:firebase-app-hosting-compute@skillssg-9f2bf.iam.gserviceaccount.com"]}]},"updateMask":"bindings"}
-[debug] [2025-08-06T12:52:37.648Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillssg-9f2bf:setIamPolicy 200
-[debug] [2025-08-06T12:52:37.648Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/skillssg-9f2bf:setIamPolicy {"version":1,"etag":"BwY7sdC7w4E=","bindings":[{"role":"roles/artifactregistry.serviceAgent","members":["serviceAccount:service-966597589839@gcp-sa-artifactregistry.iam.gserviceaccount.com"]},{"role":"roles/cloudbuild.builds.builder","members":["serviceAccount:966597589839@cloudbuild.gserviceaccount.com"]},{"role":"roles/cloudbuild.serviceAgent","members":["serviceAccount:service-966597589839@gcp-sa-cloudbuild.iam.gserviceaccount.com"]},{"role":"roles/cloudfunctions.serviceAgent","members":["serviceAccount:service-966597589839@gcf-admin-robot.iam.gserviceaccount.com"]},{"role":"roles/containerregistry.ServiceAgent","members":["serviceAccount:service-966597589839@containerregistry.iam.gserviceaccount.com"]},{"role":"roles/developerconnect.readTokenAccessor","members":["serviceAccount:firebase-app-hosting-compute@skillssg-9f2bf.iam.gserviceaccount.com"]},{"role":"roles/editor","members":["serviceAccount:966597589839-compute@developer.gserviceaccount.com","serviceAccount:966597589839@cloudservices.gserviceaccount.com","serviceAccount:skillssg-9f2bf@appspot.gserviceaccount.com"]},{"role":"roles/firebase.managementServiceAgent","members":["serviceAccount:service-966597589839@gcp-sa-firebase.iam.gserviceaccount.com"]},{"role":"roles/firebase.sdkAdminServiceAgent","members":["serviceAccount:firebase-adminsdk-fbsvc@skillssg-9f2bf.iam.gserviceaccount.com","serviceAccount:firebase-app-hosting-compute@skillssg-9f2bf.iam.gserviceaccount.com"]},{"role":"roles/firebaseapphosting.computeRunner","members":["serviceAccount:firebase-app-hosting-compute@skillssg-9f2bf.iam.gserviceaccount.com"]},{"role":"roles/firebaseauth.admin","members":["serviceAccount:firebase-adminsdk-fbsvc@skillssg-9f2bf.iam.gserviceaccount.com"]},{"role":"roles/firebasemods.serviceAgent","members":["serviceAccount:service-966597589839@gcp-sa-firebasemods.iam.gserviceaccount.com"]},{"role":"roles/firebaserules.system","members":["serviceAccount:service-966597589839@firebase-rules.iam.gserviceaccount.com"]},{"role":"roles/firebasestorage.serviceAgent","members":["serviceAccount:service-966597589839@gcp-sa-firebasestorage.iam.gserviceaccount.com"]},{"role":"roles/firestore.serviceAgent","members":["serviceAccount:service-966597589839@gcp-sa-firestore.iam.gserviceaccount.com"]},{"role":"roles/iam.serviceAccountTokenCreator","members":["serviceAccount:firebase-adminsdk-fbsvc@skillssg-9f2bf.iam.gserviceaccount.com"]},{"role":"roles/owner","members":["user:innocentmafusire@gmail.com"]},{"role":"roles/run.serviceAgent","members":["serviceAccount:service-966597589839@serverless-robot-prod.iam.gserviceaccount.com"]},{"role":"roles/storage.admin","members":["serviceAccount:firebase-adminsdk-fbsvc@skillssg-9f2bf.iam.gserviceaccount.com"]},{"role":"roles/storage.objectViewer","members":["serviceAccount:firebase-app-hosting-compute@skillssg-9f2bf.iam.gserviceaccount.com"]}]}
-[info] i  This command links your local project to Firebase App Hosting. You will be able to deploy your web app with `firebase deploy` after setup. 
-[info] i  === Set up your backend 
-[debug] [2025-08-06T13:00:53.814Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T13:00:53.814Z] Checked if tokens are valid: true, expires at: 1754487928672
-[debug] [2025-08-06T13:00:53.814Z] >>> [apiv2][query] GET https://firebaseapphosting.googleapis.com/v1beta/projects/skillssg-9f2bf/locations 
-[debug] [2025-08-06T13:01:05.729Z] *** [apiv2] error from fetch(https://firebaseapphosting.googleapis.com/v1beta/projects/skillssg-9f2bf/locations, {"headers":{},"method":"GET"}): FetchError: request to https://firebaseapphosting.googleapis.com/v1beta/projects/skillssg-9f2bf/locations failed, reason: getaddrinfo ENOTFOUND firebaseapphosting.googleapis.com
-[debug] [2025-08-06T13:01:10.750Z] Error: Timed out.
-    at Timeout._onTimeout (C:\Users\User\AppData\Roaming\npm\node_modules\firebase-tools\lib\utils.js:272:49)
-    at listOnTimeout (node:internal/timers:588:17)
-    at process.processTimers (node:internal/timers:523:7)
+[info] i  deploying firestore 
+[info] i  firestore: reading indexes from firestore.indexes.json... 
+[info] i  cloud.firestore: checking firestore.rules for compilation errors... 
+[debug] [2025-11-27T11:50:45.061Z] Checked if tokens are valid: true, expires at: 1764247783790
+[debug] [2025-11-27T11:50:45.062Z] Checked if tokens are valid: true, expires at: 1764247783790
+[debug] [2025-11-27T11:50:45.063Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/skillsg-44ea6:test [none]
+[debug] [2025-11-27T11:50:45.063Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/skillsg-44ea6:test [omitted]
+[debug] [2025-11-27T11:50:46.360Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/skillsg-44ea6:test 403
+[debug] [2025-11-27T11:50:46.360Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/skillsg-44ea6:test {"error":{"code":403,"message":"The caller does not have permission","status":"PERMISSION_DENIED"}}
 [error] 
-[error] Error: An unexpected error has occurred.
+[error] Error: Request to https://firebaserules.googleapis.com/v1/projects/skillsg-44ea6:test had HTTP Error: 403, The caller does not have permission
+[debug] [2025-11-27T11:50:46.792Z] Error Context: {
+  "body": {
+    "error": {
+      "code": 403,
+      "message": "The caller does not have permission",
+      "status": "PERMISSION_DENIED"
+    }
+  },
+  "response": {
+    "statusCode": 403
+  }
+}

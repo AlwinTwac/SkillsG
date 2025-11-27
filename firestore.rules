@@ -68,8 +68,10 @@ service cloud.firestore {
         (request.auth != null && request.auth.uid == userId) ||
         (isCompany() && 
          resource.data.role == 'student' && 
-         resource.data.companyUid == request.auth.uid &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['enrolledCourseIds']));
+         ((resource.data.companyUid == request.auth.uid &&
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['enrolledCourseIds'])) ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['companyUid', 'enrolledCourseIds']) &&
+           request.resource.data.companyUid == request.auth.uid)));
     }
 
     match /platformConfig/singleton {
@@ -116,13 +118,12 @@ service cloud.firestore {
     }
 
     match /enrollments/{enrollmentId} {
-      // Creation with full validation
+      // Creation with validation - allow companies to enroll students not yet linked to them
       allow create: if 
         isCompany() && 
         request.resource.data.companyUid == request.auth.uid &&
         request.resource.data.studentUid != null &&
         request.resource.data.courseId != null &&
-        get(/databases/$(database)/documents/users/$(request.resource.data.studentUid)).data.companyUid == request.auth.uid &&
         get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.companyUid == request.auth.uid;
       
       // Status updates only
@@ -165,5 +166,24 @@ service cloud.firestore {
         request.resource.data.status in ['Present', 'Absent', 'Late'];
       allow delete: if false; // Disallow deletions
     }
+
+    match /hollacaller/{callerId} {
+      // Read permissions for companies
+      allow read, list: if isCompany();
+      
+      // Create: Only companies can create entries, must have valid data
+      allow create: if 
+        isCompany() &&
+        request.resource.data.email is string &&
+        request.resource.data.email.size() > 0 &&
+        request.resource.data.Name is string &&
+        request.resource.data.Name.size() > 0;
+      
+      // Update: Only companies can update
+      allow update: if isCompany();
+      
+      // Delete: Only companies can delete
+      allow delete: if isCompany();
+    }
   }
-} 
+}
