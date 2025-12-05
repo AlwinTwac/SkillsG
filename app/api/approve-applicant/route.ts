@@ -6,12 +6,26 @@ export async function POST(request: Request) {
   try {
     const { reportId, reportData } = await request.json();
 
+    console.log('Received data:', { reportId, reportData });
+
     if (!reportId || !reportData?.studentEmail || !reportData?.studentName) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(reportData.studentEmail)) {
+      console.error('Invalid email format:', reportData.studentEmail);
+      return NextResponse.json(
+        { error: `Invalid email format: ${reportData.studentEmail}` },
+        { status: 400 }
+      );
+    }
+
+    console.log('Creating user with email:', reportData.studentEmail);
 
     const user = await adminAuth.createUser({
       email: reportData.studentEmail,
