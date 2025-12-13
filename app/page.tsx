@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signInAnonymously, signOut, User as FirebaseAuthUser } from 'firebase/auth';
 import { doc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { User, Building2, Search, ArrowLeft, Loader2, CheckCircle, Trophy, Newspaper, Mail, Phone, MapPin } from 'lucide-react';
+import { User, Building2, Search, ArrowLeft, Loader2, CheckCircle, Trophy, Newspaper, Mail, Phone, MapPin, ChevronRight } from 'lucide-react';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import AuthComponent from '@/components/login';
@@ -53,150 +53,33 @@ interface Achievement {
 type FlowState = 'roleSelection' | 'learnerChoice' | 'interviewing' | 'interviewComplete' | 'auth' | 'dashboard';
 type InitialRole = 'learner' | 'company' | 'recruiter';
 
-const carouselImages = [
-  {
-    id: 1,
-    alt: "Students learning together",
-    image: "/images/img2.jpg",
-    title: "Transform Your Future",
-    description: "Join our platform to access world-class learning resources"
-  },
-  {
-    id: 2,
-    alt: "Professional networking event",
-    image: "/images/img1.jpg",
-    title: "Connect With Industry Leaders",
-    description: "Build your network with top companies and recruiters"
-  },
-  {
-    id: 3,
-    alt: "Graduation ceremony",
-    image: "/images/img0.jpg",
-    title: "Achieve Your Career Goals",
-    description: "Get the skills you need to succeed in today's job market"
-  }
-];
-
 const Home = () => {
   const [user, setUser] = useState<FirebaseAuthUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [flowState, setFlowState] = useState<FlowState>('roleSelection');
   const [initialRoleSelection, setInitialRoleSelection] = useState<InitialRole>('learner');
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [currentAchievementIndex, setCurrentAchievementIndex] = useState(0);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [featuredIndex, setFeaturedIndex] = useState(0);
-  const [generalNews, setGeneralNews] = useState<NewsItem[]>([]);
-  const [events, setEvents] = useState<NewsItem[]>([]);
-  const [outstanding, setOutstanding] = useState<NewsItem[]>([]);
   const [partnerships, setPartnerships] = useState<NewsItem[]>([]);
-  const [newsIndex, setNewsIndex] = useState(0);
-  const [outIndex, setOutIndex] = useState(0);
-  const [partIndex, setPartIndex] = useState(0);
-  const [pauseNews, setPauseNews] = useState(false);
-  const [pauseOut, setPauseOut] = useState(false);
-
-  useEffect(() => {
-    if (flowState === 'roleSelection') {
-      const carouselInterval = setInterval(() => {
-        setCurrentSlide((prev) => (prev + 1) % carouselImages.length);
-      }, 5000);
-      return () => clearInterval(carouselInterval);
-    }
-  }, [flowState]);
-
-  useEffect(() => {
-    const newsQuery = query(
-      collection(db, "news"),
-      where("type", "==", "news"),
-      orderBy("createdAt", "desc")
-    );
-    return onSnapshot(newsQuery, (snapshot) =>
-      setGeneralNews(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as NewsItem))
-    );
-  }, []);
-
-  useEffect(() => {
-    const eventsQuery = query(
-      collection(db, "news"),
-      where("type", "==", "event"),
-      orderBy("createdAt", "desc")
-    );
-    return onSnapshot(eventsQuery, (snapshot) =>
-      setEvents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as NewsItem))
-    );
-  }, []);
-
-  useEffect(() => {
-    const outQuery = query(
-      collection(db, "news"),
-      where("type", "==", "outstanding"),
-      orderBy("createdAt", "desc")
-    );
-    return onSnapshot(outQuery, (snapshot) =>
-      setOutstanding(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as NewsItem))
-    );
-  }, []);
-
-  useEffect(() => {
-    const partQuery = query(
-      collection(db, "news"),
-      where("type", "==", "partnership"),
-      orderBy("createdAt", "desc")
-    );
-    return onSnapshot(partQuery, (snapshot) =>
-      setPartnerships(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as NewsItem))
-    );
-  }, []);
-
-  useEffect(() => {
-    if (!pauseNews && generalNews.length > 1) {
-      const interval = setInterval(() => {
-        setNewsIndex((prev) => (prev + 1) % generalNews.length);
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [generalNews, pauseNews]);
-
-  useEffect(() => {
-    if (!pauseOut && outstanding.length > 1) {
-      const interval = setInterval(() => {
-        setOutIndex((prev) => (prev + 1) % outstanding.length);
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [outstanding, pauseOut]);
-
-  useEffect(() => {
-    if (partnerships.length > 1) {
-      const interval = setInterval(() => {
-        setPartIndex((prev) => (prev + 1) % partnerships.length);
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [partnerships]);
-
-  useEffect(() => {
-    if (achievements.length > 1) {
-      const interval = setInterval(() => {
-        setCurrentAchievementIndex((prev) => (prev + 1) % achievements.length);
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [achievements.length]);
-
-  useEffect(() => {
-    const featured = achievements.filter(a => a.isFeatured);
-    if (featured.length <= 1) {
-      setFeaturedIndex(0);
-      return;
-    }
-    const t = setInterval(() => {
-      setFeaturedIndex((prev) => (prev + 1) % featured.length);
-    }, 4000);
-    return () => clearInterval(t);
-  }, [achievements]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [cardsVisible, setCardsVisible] = useState(false);
+  const [card1Flipped, setCard1Flipped] = useState(false);
+  const [card2Flipped, setCard2Flipped] = useState(false);
+  const [card3Flipped, setCard3Flipped] = useState(false);
+  const [circlesVisible, setCirclesVisible] = useState(false);
+  const [activeSpinCircle, setActiveSpinCircle] = useState<number>(-1);
+  const [finalTransition, setFinalTransition] = useState(false);
+  const [showQuotes, setShowQuotes] = useState(false);
+  
+  const carouselImages = [
+    '/images/img0.jpg',
+    '/images/img2.jpg',
+    '/images/img3.jpg',
+    '/images/img4.jpg',
+    '/images/img5.jpg',
+    '/images/img6.jpg',
+    '/images/img9.jpg'
+  ];
 
   useEffect(() => {
     const achievementsQuery = query(
@@ -219,6 +102,66 @@ const Home = () => {
     );
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const newsQuery = query(
+      collection(db, 'news'),
+      where('type', '==', 'partnership'),
+      orderBy('createdAt', 'desc')
+    );
+    const unsubscribe = onSnapshot(newsQuery, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as NewsItem));
+      setPartnerships(items);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % carouselImages.length);
+    }, 2000);
+    
+    return () => clearInterval(interval);
+  }, [carouselImages.length]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const bottomSection = document.getElementById('bottom-section');
+      if (bottomSection) {
+        const rect = bottomSection.getBoundingClientRect();
+        const isVisible = rect.top < window.innerHeight * 0.8;
+        
+        if (isVisible && !cardsVisible) {
+          setCardsVisible(true);
+          setTimeout(() => setCard1Flipped(true), 300);
+          setTimeout(() => setCard2Flipped(true), 600);
+          setTimeout(() => setCard3Flipped(true), 900);
+          setTimeout(() => {
+            setCirclesVisible(true);
+            // Start sequential coin-spin animation after circles appear
+            setActiveSpinCircle(0);
+          }, 1400);
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    handleScroll();
+    
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [cardsVisible]);
+
+  // Trigger final transition immediately after cards flip
+  useEffect(() => {
+    if (card3Flipped && !finalTransition) {
+      const transitionTimer = setTimeout(() => {
+        setFinalTransition(true);
+        setTimeout(() => setShowQuotes(true), 400); // Show quotes faster
+      }, 500); // Start transition sooner
+      
+      return () => clearTimeout(transitionTimer);
+    }
+  }, [card3Flipped, finalTransition]);
 
   useEffect(() => {
     let firestoreUnsub: (() => void) | null = null;
@@ -311,20 +254,13 @@ const Home = () => {
     setFlowState('roleSelection');
   };
 
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % carouselImages.length);
-  };
-
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + carouselImages.length) % carouselImages.length);
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-blue-50">
-        <div className="flex flex-col items-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-          <span className="text-lg text-blue-800">Loading your experience...</span>
+      <div className="min-h-screen flex items-center justify-center bg-dark-bg relative overflow-hidden">
+        <div className="gradient-mesh"></div>
+        <div className="flex flex-col items-center gap-4 relative z-10">
+          <Loader2 className="w-16 h-16 text-cyan-400 animate-spin" />
+          <span className="text-xl font-semibold text-white">Loading your experience...</span>
         </div>
       </div>
     );
@@ -332,15 +268,82 @@ const Home = () => {
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <div className="min-h-screen bg-white">
-        <header className="sticky top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-          <div className="w-full px-4 py-2 flex justify-between items-center">
-            <div className="text-lg font-bold text-blue-800">KG LEARNING PLATFORM</div>
-            <ThemeSwitcher />
+      <div className="min-h-screen bg-dark-bg relative">
+        <div className="gradient-mesh"></div>
+        <header className={`sticky top-0 left-0 right-0 z-50 glass-card border-b border-white/10 relative overflow-hidden ${flowState === 'dashboard' ? 'hidden' : ''}`}>
+          {/* Animated Tech Background */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-0 left-0 w-full h-full">
+              {/* Circuit board pattern */}
+              <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <pattern id="circuit" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+                    <circle cx="10" cy="10" r="2" fill="#22d3ee" className="animate-pulse" />
+                    <circle cx="90" cy="90" r="2" fill="#a855f7" className="animate-pulse" style={{animationDelay: '0.5s'}} />
+                    <circle cx="50" cy="50" r="2" fill="#10b981" className="animate-pulse" style={{animationDelay: '1s'}} />
+                    <line x1="10" y1="10" x2="50" y2="50" stroke="#22d3ee" strokeWidth="0.5" />
+                    <line x1="50" y1="50" x2="90" y2="90" stroke="#a855f7" strokeWidth="0.5" />
+                    <line x1="10" y1="90" x2="90" y2="10" stroke="#10b981" strokeWidth="0.5" opacity="0.3" />
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#circuit)" />
+              </svg>
+            </div>
+            {/* Floating particles */}
+            <div className="absolute top-1/2 left-1/4 w-2 h-2 bg-cyan-400 rounded-full animate-ping" style={{animationDuration: '3s'}}></div>
+            <div className="absolute top-1/3 right-1/4 w-2 h-2 bg-purple-400 rounded-full animate-ping" style={{animationDuration: '4s', animationDelay: '1s'}}></div>
+            <div className="absolute bottom-1/3 left-1/2 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{animationDuration: '5s', animationDelay: '2s'}}></div>
+          </div>
+          
+          {/* Header Row with Logo, Ticker, and Icons */}
+          <div className="w-full px-6 py-3 flex items-center gap-4 relative z-10">
+            <div className="text-xl font-bold gradient-text tracking-wider flex-shrink-0">KG Learning</div>
+            
+            {/* Notification Ticker - Center */}
+            <div className="flex-1 bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-green-500/10 rounded-lg py-2 px-4 overflow-hidden">
+              <div className="animate-marquee whitespace-nowrap">
+                <span className="text-sm text-white/80">
+                  {partnerships.length > 0 
+                    ? partnerships.map((news, idx) => (
+                        <span key={news.id}>
+                          🔔 {news.title || news.content || 'New Update'}
+                          {idx < partnerships.length - 1 && ' • '}
+                        </span>
+                      ))
+                    : 'No new announcements today'
+                  }
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4 flex-shrink-0">
+              {/* Contact Icons with Hover */}
+              <div className="hidden md:flex items-center gap-3">
+                <div className="group relative">
+                  <Mail className="w-5 h-5 text-white/70 hover:text-white cursor-pointer transition-colors" />
+                  <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-3 py-2 bg-black/90 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    support@kimtronixglobal.com
+                  </div>
+                </div>
+                <div className="group relative">
+                  <Phone className="w-5 h-5 text-white/70 hover:text-white cursor-pointer transition-colors" />
+                  <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-3 py-2 bg-black/90 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    +263 77 488 2645
+                  </div>
+                </div>
+                <div className="group relative">
+                  <MapPin className="w-5 h-5 text-white/70 hover:text-white cursor-pointer transition-colors" />
+                  <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-3 py-2 bg-black/90 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    53, Karigamombe Centre, 4th Floor
+                  </div>
+                </div>
+              </div>
+              <ThemeSwitcher />
+            </div>
           </div>
         </header>
 
-        <main className="pt-0 bg-gradient-to-b from-white to-blue-50 w-full">
+        <main className="pt-0 w-full relative z-10">
           {flowState === 'dashboard' && user && userProfile ? (
             <>
               {userProfile.role === 'student' && <StudentDashboard userDisplayName={userProfile.name || user.displayName || ''} userEmail={user.email || ''} userUid={user.uid} />}
@@ -350,16 +353,16 @@ const Home = () => {
           ) : flowState === 'interviewing' && user ? (
             <AIInterviewer user={user} onInterviewComplete={handleInterviewComplete} onGoBack={handleReturnHome} />
           ) : flowState === 'interviewComplete' ? (
-            <div className="max-w-md mx-auto my-12 p-8 bg-white rounded-xl shadow-lg border border-blue-100">
+            <div className="max-w-md mx-auto my-12 p-8 glass-card rounded-xl shadow-lg border border-white/20">
               <div className="text-center">
-                <CheckCircle className="w-16 h-16 text-blue-600 mx-auto mb-4"/>
-                <h2 className="text-3xl font-bold text-blue-800 mb-4">Interview Complete!</h2>
-                <p className="text-blue-700 mb-6">
+                <CheckCircle className="w-16 h-16 text-cyber-blue mx-auto mb-4"/>
+                <h2 className="text-3xl font-bold gradient-text mb-4">Interview Complete!</h2>
+                <p className="text-white/80 mb-6">
                   Your report has been submitted for review. If your application is approved, you'll receive an email to set your password.
                 </p>
                 <button 
                   onClick={handleReturnHome} 
-                  className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+                  className="w-full px-6 py-3 bg-gradient-cyber text-white rounded-lg font-medium hover:scale-105 transition-all shadow-md"
                 >
                   Return Home
                 </button>
@@ -372,25 +375,25 @@ const Home = () => {
               onBack={handleReturnHome}
             />
           ) : flowState === 'learnerChoice' ? (
-            <div className="max-w-md mx-auto my-12 p-8 bg-white rounded-xl shadow-lg border border-blue-100">
+            <div className="max-w-md mx-auto my-12 p-8 glass-card rounded-xl shadow-lg border border-white/20">
               <button 
                 onClick={() => setFlowState('roleSelection')} 
-                className="flex items-center text-sm text-blue-600 hover:text-blue-800 mb-6"
+                className="flex items-center text-sm text-cyber-blue hover:text-white mb-6"
               >
                 <ArrowLeft className="w-4 h-4 mr-1"/> Back
               </button>
               <div className="text-center">
-                <h2 className="text-3xl font-bold text-blue-800 mb-6">Welcome, Learner!</h2>
+                <h2 className="text-3xl font-bold gradient-text mb-6">Welcome, Learner!</h2>
                 <div className="space-y-4">
                   <button 
                     onClick={handleNewStudentStart} 
-                    className="w-full px-6 py-3 bg-blue-600 text-blue-100 rounded-lg font-medium hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+                    className="w-full px-6 py-3 bg-gradient-cyber text-white rounded-lg font-medium hover:scale-105 transition-all shadow-md"
                   >
                     New Student (Start AI Interview)
                   </button>
                   <button 
                     onClick={() => { setInitialRoleSelection('learner'); setFlowState('auth'); }} 
-                    className="w-full px-6 py-3 bg-blue-100 text-blue-800 rounded-lg font-medium hover:bg-blue-200 transition-all shadow-sm hover:shadow-md"
+                    className="w-full px-6 py-3 glass-card text-white rounded-lg font-medium hover:bg-white/10 transition-all shadow-sm"
                   >
                     Existing Account (Login)
                   </button>
@@ -398,412 +401,295 @@ const Home = () => {
               </div>
             </div>
           ) : (
-            <div className="w-full px-0 py-0">
-              <section className="mb-16">
-                <div className="relative h-[500px] w-full overflow-hidden shadow-lg bg-gray-100">
-                  {carouselImages.map((image, index) => (
-                    <div 
-                      key={image.id}
-                      className={`absolute inset-0 transition-opacity duration-1000 ${
-                        index === currentSlide ? 'opacity-100' : 'opacity-0'
-                      }`}
-                      style={{ 
-                        backgroundImage: `url(${image.image})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        width: '100%',
-                        height: '100%'
-                      }}
-                    >
-                      <div className="absolute inset-0 bg-black/30"></div>
-                      
-                      <div className="absolute bottom-8 left-8 z-10 text-white max-w-md">
-                        <h2 className="text-3xl md:text-4xl font-extrabold mb-3 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                          {image.title}
-                        </h2>
-                        <p className="text-lg md:text-xl font-medium text-white/90 bg-black/20 backdrop-blur-sm px-4 py-2 rounded-lg">
-                          {image.description}
-                        </p>
-                      </div>
-                      
-                      <div className="absolute bottom-8 right-8 z-10">
-                        <button 
-                          onClick={() => setFlowState('learnerChoice')}
-                          className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-                        >
-                          Get Started
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+            <div className="w-full min-h-screen p-4 md:p-6">
+              {/* Top Section - Hero + Success Stories + Latest Updates */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6 max-w-[1800px] mx-auto">
+                {/* Left: Hero Section with Background Image */}
+                <div className="lg:col-span-2 relative h-[500px] md:h-[600px] rounded-2xl overflow-hidden shadow-2xl">
+                  <img 
+                    src="/images/img1.jpg" 
+                    alt="Hero background"
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-black/20"></div>
                   
-                  <button 
-                    onClick={prevSlide}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/30 text-white p-2 rounded-full hover:bg-white/50 transition-all"
-                  >
-                    <ArrowLeft className="w-6 h-6" />
-                  </button>
-                  <button 
-                    onClick={nextSlide}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/30 text-white p-2 rounded-full hover:bg-white/50 transition-all"
-                  >
-                    <ArrowLeft className="w-6 h-6 rotate-180" />
-                  </button>
-                  <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
-                    {carouselImages.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentSlide(index)}
-                        className={`w-3 h-3 rounded-full transition-all ${
-                          index === currentSlide ? 'bg-white w-6' : 'bg-white/50'
-                        }`}
-                        aria-label={`Go to slide ${index + 1}`}
-                      />
-                    ))}
+                  <div className="relative z-10 h-full flex flex-col justify-start p-6 md:p-10">
+                    <div>
+                      <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-3 leading-tight">
+                        Achieve Your<br />Career Goals
+                      </h1>
+                      <p className="text-base md:text-lg text-white/90 mb-6 max-w-lg">
+                        Get the skills you need to succeed in today's job market
+                      </p>
+                      <button 
+                        onClick={() => setFlowState('learnerChoice')}
+                        className="px-8 py-3.5 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600 transition-all shadow-xl hover:shadow-2xl transform hover:scale-105"
+                      >
+                        Get Started
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </section>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 px-4">
-                <section className="bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg transition-all duration-300 group hover:border-blue-300 relative overflow-hidden h-[500px]">
-                  <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300"></div>
-                  <h3 className="text-xl font-bold text-blue-800 mb-4 flex items-center">
-                    <Trophy className="w-5 h-5 mr-2 text-blue-600" />
-                    Student Success Stories
-                  </h3>
-                  {achievements.length > 0 ? (
-                    <div className="relative h-[calc(100%-2rem)]">
-                      {achievements.map((achievement, index) => (
-                        <div 
-                          key={achievement.id}
-                          className={`absolute inset-0 transition-opacity duration-1000 flex flex-col ${
-                            index === currentAchievementIndex ? 'opacity-100' : 'opacity-0'
-                          }`}
-                        >
-                          <div className="relative w-full h-64 overflow-hidden rounded-lg">
-                            <img 
-                              src={achievement.imageUrl} 
-                              alt={achievement.description}
-                              className="w-full h-full object-cover object-center"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
-                          </div>
-                          <div className="mt-4 p-2 bg-white rounded-lg">
-                            <p className="text-gray-700 mb-4 line-clamp-3">"{achievement.description}"</p>
-                            <div className="flex items-center justify-between bg-blue-50 p-2 rounded-lg">
-                              <div className="flex items-center">
-                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-2 border-2 border-blue-200 shadow-sm">
-                                  <span className="text-sm font-medium text-blue-800">
-                                    {achievement.studentName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                                  </span>
-                                </div>
-                                <p className="font-medium text-blue-800">{achievement.studentName}</p>
+                {/* Right Column: Student Success Stories + Latest Updates */}
+                <div className="lg:col-span-1 flex flex-col gap-4">
+                  {/* Student Success Stories */}
+                  <div className="glass-card rounded-2xl border border-white/20 shadow-xl max-h-[350px] overflow-hidden">
+                    <div className="sticky top-0 p-5 pb-3 z-10">
+                      <h2 className="text-xl font-bold text-white">Student Success Stories</h2>
+                    </div>
+                    <div className="px-5 pb-5 max-h-[290px] overflow-y-auto">
+                  <div className="space-y-4 mb-5">
+                    {achievements.length > 0 ? (
+                      achievements.slice(0, 5).map((achievement, index) => {
+                        const colors = [
+                          'from-blue-500 to-cyan-500',
+                          'from-purple-500 to-pink-500',
+                          'from-green-500 to-emerald-500',
+                          'from-orange-500 to-red-500',
+                          'from-indigo-500 to-blue-500'
+                        ];
+                        const bgColor = colors[index % colors.length];
+                        const initials = achievement.studentName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+                        
+                        return (
+                          <div key={achievement.id} className="glass-card rounded-xl p-4 hover:bg-white/5 transition-all cursor-pointer border border-white/10 group hover:border-green-400/50 hover:shadow-lg">
+                            <div className="flex items-start gap-3 mb-3">
+                              <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${bgColor} flex items-center justify-center flex-shrink-0 shadow-lg`}>
+                                <span className="text-white font-bold text-sm">{initials}</span>
                               </div>
-                              <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-md shadow-sm">
-                                {new Date(achievement.createdAt).toLocaleDateString()}
-                              </span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-white truncate">{achievement.studentName.split(' ')[0]}'s achievement</p>
+                                <p className="text-xs text-white/60 truncate">{achievement.studentName}</p>
+                              </div>
+                            </div>
+                            <p className="text-xs text-white/70 mb-2 line-clamp-2">{achievement.description}</p>
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs text-white/50">{new Date(achievement.createdAt).toLocaleDateString()}</p>
+                              <Trophy className="w-4 h-4 text-green-400" />
                             </div>
                           </div>
-                        </div>
-                      ))}
-                      
-                      {achievements.length > 1 && (
-                        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
-                          {achievements.map((_, index) => (
-                            <button
-                              key={index}
-                              onClick={() => setCurrentAchievementIndex(index)}
-                              className={`w-3 h-3 rounded-full transition-all ${
-                                index === currentAchievementIndex ? 'bg-blue-600 w-6' : 'bg-gray-300'
-                              }`}
-                              aria-label={`Show achievement ${index + 1}`}
-                            />
-                          ))}
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-10">
+                        <Trophy className="w-12 h-12 text-white/30 mx-auto mb-3" />
+                        <p className="text-sm text-white/50">No success stories yet</p>
+                      </div>
+                    )}
+                    </div>
+                  </div>
+                  </div>
+                  
+                  {/* Latest Updates */}
+                  <div className="glass-card rounded-2xl p-5 border border-white/20 shadow-xl max-h-[230px] overflow-y-auto">
+                    <h2 className="text-lg font-bold text-white mb-4">Latest Updates</h2>
+                    <div className="space-y-3">
+                      {partnerships.length > 0 ? (
+                        partnerships.slice(0, 3).map((news) => (
+                          <div key={news.id} className="glass-card rounded-lg p-3 hover:bg-white/5 transition-all cursor-pointer border border-white/10 group hover:border-green-400/50">
+                            <div className="flex items-start gap-2 mb-2">
+                              <div className="bg-gradient-to-br from-green-500 to-emerald-500 p-1.5 rounded-lg flex-shrink-0">
+                                <Newspaper className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-xs font-bold text-white truncate">{news.title || 'Update'}</h3>
+                                <p className="text-xs text-white/60">{news.createdAt ? new Date(news.createdAt.toDate()).toLocaleDateString() : 'Recent'}</p>
+                              </div>
+                            </div>
+                            {news.content && (
+                              <p className="text-xs text-white/70 line-clamp-2">{news.content}</p>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-6">
+                          <Newspaper className="w-10 h-10 text-white/30 mx-auto mb-2" />
+                          <p className="text-xs text-white/50">No news updates yet</p>
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-center p-4 bg-blue-50 rounded-lg">
-                      <Trophy className="w-12 h-12 text-blue-400 mb-4" />
-                      <h4 className="text-lg font-medium text-blue-800 mb-2">No achievements yet</h4>
-                      <p className="text-blue-600 text-sm max-w-xs">
-                        When students post achievements and they get approved, they'll appear here
-                      </p>
-                    </div>
-                  )}
-                </section>
+                  </div>
+                </div>
+              </div>
 
-                <section className="bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg transition-all duration-300 group hover:border-blue-300 relative overflow-hidden h-[500px]">
-                  <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300"></div>
-                  <h3 className="text-xl font-bold text-blue-800 mb-4 flex items-center">
-                    <Newspaper className="w-5 h-5 mr-2 text-blue-600" />
-                    Latest Updates
-                  </h3>
-
-                  <div className="space-y-3">
-                    {partnerships.map(news => (
-                      <div
-                        key={news.id}
-                        className="p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-all cursor-pointer group hover:shadow-md hover:-translate-y-1 duration-300 border border-transparent hover:border-blue-200 relative overflow-hidden"
-                      >
-                        <div className="absolute top-0 left-0 w-0 h-1 bg-blue-400 group-hover:w-full transition-all duration-500"></div>
-                        <div className="flex items-start">
-                          <div className="mr-2 mt-0.5">
-                            <Newspaper className="w-5 h-5 text-blue-600" />
+              {/* Bottom Section - Start Your Journey with Quarter Circle Design */}
+              <div id="bottom-section" className="max-w-[1800px] mx-auto mb-6">
+                <div className="glass-card rounded-2xl border border-white/20 shadow-xl relative overflow-hidden">
+                  {/* Floating animated elements for visual interest */}
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20">
+                    <div className="absolute top-10 left-10 w-20 h-20 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full blur-xl animate-pulse" style={{animationDuration: '3s'}}></div>
+                    <div className="absolute top-1/3 right-20 w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full blur-xl animate-pulse" style={{animationDuration: '4s', animationDelay: '1s'}}></div>
+                    <div className="absolute bottom-20 left-1/4 w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full blur-xl animate-pulse" style={{animationDuration: '5s', animationDelay: '2s'}}></div>
+                  </div>
+                  
+                  <div className="flex flex-col md:flex-row min-h-[450px]">
+                    {/* Left Side - Content */}
+                    <div className="w-full md:w-1/2 p-6 md:p-8 relative z-10">
+                      <div className="mb-6">
+                        <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Start Your Journey Today</h2>
+                        <p className="text-sm md:text-base text-white/70">Join thousands of learners who have transformed their careers through our AI-powered platform connections.</p>
+                      </div>
+                      
+                      <div className="space-y-3">
+                      {/* Row 1: Learner Card with circles on right */}
+                      <div className="relative flex items-center justify-between gap-6 group/row">
+                        <div className={`glass-card rounded-lg p-3 border border-white/20 hover:border-green-500/50 transition-all group w-80`}
+                          style={{
+                            transform: card1Flipped ? 'rotateY(0deg)' : 'rotateY(90deg)',
+                            transition: 'transform 0.6s, margin 0.8s ease-in-out',
+                            transformStyle: 'preserve-3d'
+                          }}>
+                          <div className="bg-gradient-to-br from-green-500 to-emerald-500 p-2 rounded-lg w-max mx-auto mb-2 group-hover:scale-110 transition-all shadow-lg">
+                            <User className="w-6 h-6 text-white" />
                           </div>
-                          <div>
-                            <h4 className="font-bold text-blue-800 group-hover:text-blue-700 text-sm">
-                              {news.title}
-                            </h4>
-                            <p className="text-xs text-gray-700">{news.content}</p>
-                            <span className="text-xs text-blue-600 mt-1 block">
-                              By {news.companyName}
-                            </span>
+                          <h3 className="text-base font-bold text-white mb-1 text-center">Learner</h3>
+                          <p className="text-xs text-white/70 mb-3 text-center">
+                            Start your personalized learning journey with our AI-powered platform.
+                          </p>
+                          <div className="flex justify-center">
+                            <button 
+                              onClick={() => setFlowState('learnerChoice')}
+                              className="px-4 py-2 text-sm bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                            >
+                              Get Started
+                            </button>
                           </div>
                         </div>
-                      </div>
-                    ))}
 
-                    {partnerships.length === 0 && (
-                      <div className="text-center py-8 text-gray-500">
-                        <Newspaper className="w-12 h-12 mx-auto text-gray-400 mb-2" />
-                        <p>No news updates yet</p>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-3 gap-4 mt-6">
-                      <div
-                        className="aspect-square rounded-lg p-4 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative"
-                        onMouseEnter={() => setPauseNews(true)}
-                        onMouseLeave={() => setPauseNews(false)}
-                      >
-                        <div className="absolute inset-0">
-                          <img src="/images/news_image.png" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20"></div>
-                        </div>
-
-                        {generalNews.length > 0 ? (
-                          <div className="absolute inset-0 flex items-center justify-center p-3 z-10">
-                            <div className="bg-white/80 p-2 rounded-md max-h-full overflow-hidden">
-                              <h4 className="font-bold text-blue-800 text-xs mb-1">
-                                {generalNews[newsIndex].title}
-                              </h4>
-                              <p className="text-xs text-gray-700 line-clamp-4">
-                                {generalNews[newsIndex].content}
-                              </p>
-                            </div>
+                        {/* Quote between panel and profile */}
+                        {showQuotes && (
+                          <div className="flex-1 px-4 animate-fade-in">
+                            <p className="text-sm italic text-white/80">
+                              "Learning is the key to unlocking your potential and achieving your dreams."
+                            </p>
                           </div>
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <h4 className="text-white bg-blue-800/70 px-3 py-1 rounded-md">
-                              No News
-                            </h4>
+                        )}
+
+                        {/* Single profile circle after final transition */}
+                        {finalTransition && (
+                          <div className="w-28 h-28 glass-card rounded-full border-2 border-green-400/40 flex items-center justify-center flex-shrink-0 overflow-hidden animate-fade-in">
+                            <img src="/images/learner.png" alt="Learner Profile" className="w-full h-full object-cover rounded-full" />
                           </div>
                         )}
                       </div>
 
-                      <div
-                        className="aspect-square rounded-lg p-4 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative"
-                        onMouseEnter={() => setPauseOut(true)}
-                        onMouseLeave={() => setPauseOut(false)}
-                      >
-                        <div className="absolute inset-0">
-                          <img src="/images/outstanding.png" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20"></div>
+                      {/* Row 2: Company Card with circles on both sides */}
+                      <div className="relative flex items-center justify-between gap-6 group/row">
+                        <div className={`glass-card rounded-lg p-3 border border-white/20 hover:border-cyan-500/50 transition-all group w-80`}
+                          style={{
+                            transform: card2Flipped ? 'rotateY(0deg)' : 'rotateY(90deg)',
+                            transition: 'transform 0.6s, margin 0.8s ease-in-out',
+                            transformStyle: 'preserve-3d'
+                          }}>
+                          <div className="bg-gradient-to-br from-cyan-500 to-blue-500 p-2 rounded-lg w-max mx-auto mb-2 group-hover:scale-110 transition-all shadow-lg">
+                            <Building2 className="w-6 h-6 text-white" />
+                          </div>
+                          <h3 className="text-base font-bold text-white mb-1 text-center">Company</h3>
+                          <p className="text-xs text-white/70 mb-3 text-center">
+                            Access top talent and manage your organization's learning programs.
+                          </p>
+                          <div className="flex justify-center">
+                            <button 
+                              onClick={() => handlePortalSelection('company')}
+                              className="px-4 py-2 text-sm bg-cyan-500 text-white font-semibold rounded-lg hover:bg-cyan-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                            >
+                              Get Started
+                            </button>
+                          </div>
                         </div>
 
-                        {outstanding.length > 0 ? (
-                          <div className="absolute inset-0 flex items-center justify-center p-3 z-10">
-                            <div className="bg-white/80 p-2 rounded-md max-h-full overflow-hidden">
-                              <h4 className="font-bold text-blue-800 text-xs mb-1">
-                                {outstanding[outIndex].title}
-                              </h4>
-                              <p className="text-xs text-gray-700 line-clamp-4">
-                                {outstanding[outIndex].content}
-                              </p>
-                            </div>
+                        {/* Quote between panel and profile */}
+                        {showQuotes && (
+                          <div className="flex-1 px-4 animate-fade-in">
+                            <p className="text-sm italic text-white/80">
+                              "Empowering organizations to build skilled teams and drive innovation forward."
+                            </p>
                           </div>
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <h4 className="text-white bg-blue-800/70 px-3 py-1 rounded-md">
-                              No Outstanding Students
-                            </h4>
+                        )}
+
+                        {/* Single profile circle after final transition */}
+                        {finalTransition && (
+                          <div className="w-28 h-28 glass-card rounded-full border-2 border-cyan-400/40 flex items-center justify-center flex-shrink-0 overflow-hidden animate-fade-in">
+                            <img src="/images/img2.jpg" alt="Company Profile" className="w-full h-full object-cover rounded-full" />
                           </div>
                         )}
                       </div>
 
-                      <div className="aspect-square rounded-lg bg-gray-900 p-4 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
-                        {(() => {
-                          const featured = achievements.filter(a => a.isFeatured);
-                          if (featured.length === 0) {
-                            return (
-                              <div className="flex flex-col items-center justify-center w-full h-full bg-blue-100 rounded-lg p-4">
-                                <Trophy className="w-10 h-10 text-blue-500 mb-3" />
-                                <h4 className="text-sm font-bold text-blue-800">
-                                  No featured stories yet
-                                </h4>
-                              </div>
-                            );
-                          }
-                          const item = featured[featuredIndex % featured.length];
-                          return (
-                            <div className="relative w-full h-full flex flex-col bg-blue-900 justify-end rounded-lg overflow-hidden">
-                              <img src={item.imageUrl} alt={item.description} className="w-full h-full object-contain bg-gray-900" />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                              <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent">
-                                <p className="text-xs text-white line-clamp-3 mb-1">"{item.description}"</p>
-                                <div className="flex items-center">
-                                  <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center mr-2">
-                                    <span className="text-[10px] font-bold text-white">
-                                      {item.studentName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                                    </span>
-                                  </div>
-                                  <p className="text-[11px] text-white">{item.studentName}</p>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })()}
+                      {/* Row 3: Recruiter Card with circles on left */}
+                      <div className="relative flex items-center justify-between gap-6 group/row">
+                        <div className={`glass-card rounded-lg p-3 border border-white/20 hover:border-purple-500/50 transition-all group w-80`}
+                          style={{
+                            transform: card3Flipped ? 'rotateY(0deg)' : 'rotateY(90deg)',
+                            transition: 'transform 0.6s, margin 0.8s ease-in-out',
+                            transformStyle: 'preserve-3d'
+                          }}>
+                          <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-2 rounded-lg w-max mx-auto mb-2 group-hover:scale-110 transition-all shadow-lg">
+                            <Search className="w-6 h-6 text-white" />
+                          </div>
+                          <h3 className="text-base font-bold text-white mb-1 text-center">Recruiter</h3>
+                          <p className="text-xs text-white/70 mb-3 text-center">
+                            Find and connect with talent in our growing network.
+                          </p>
+                          <div className="flex justify-center">
+                            <button 
+                              onClick={() => handlePortalSelection('recruiter')}
+                              className="px-4 py-2 text-sm bg-purple-500 text-white font-semibold rounded-lg hover:bg-purple-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                            >
+                              Recruiter Portal
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Quote between panel and profile */}
+                        {showQuotes && (
+                          <div className="flex-1 px-4 animate-fade-in">
+                            <p className="text-sm italic text-white/80">
+                              "Connecting exceptional talent with opportunities that transform careers."
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Single profile circle after final transition */}
+                        {finalTransition && (
+                          <div className="w-28 h-28 glass-card rounded-full border-2 border-purple-400/40 flex items-center justify-center flex-shrink-0 overflow-hidden animate-fade-in">
+                            <img src="/images/recruiter.png" alt="Recruiter Profile" className="w-full h-full object-cover rounded-full" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                      {/* Footer Links */}
+                      <div className="pt-6 border-t border-white/10">
+                        <div className="flex flex-wrap justify-center gap-4 md:gap-6 text-xs text-white/70 mb-3">
+                          <a href="https://www.kimtronix.com/" className="hover:text-white transition-colors">About Us</a>
+                          <a href="#" className="hover:text-white transition-colors">Courses</a>
+                          <a href="#" onClick={(e) => { e.preventDefault(); handlePortalSelection('company'); }} className="hover:text-white transition-colors cursor-pointer">For Companies</a>
+                          <a href="#" onClick={(e) => { e.preventDefault(); handlePortalSelection('recruiter'); }} className="hover:text-white transition-colors cursor-pointer">For Recruiters</a>
+                          <a href="#" className="hover:text-white transition-colors">Resources</a>
+                        </div>
+                        <p className="text-center text-xs text-white/50">© {new Date().getFullYear()} KG Learning Platform. All rights reserved.</p>
+                      </div>
+                    </div>
+                    
+                    {/* Right Side - Image Carousel with Curved Edge */}
+                    <div className="hidden md:block w-1/2 relative">
+                      <div className="absolute inset-0 rounded-bl-[200px] overflow-hidden">
+                        {carouselImages.map((img, idx) => (
+                          <img
+                            key={idx}
+                            src={img}
+                            alt={`Carousel ${idx + 1}`}
+                            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+                              idx === currentImageIndex ? 'opacity-100' : 'opacity-0'
+                            }`}
+                          />
+                        ))}
                       </div>
                     </div>
                   </div>
-                </section>
-              </div>
-
-              <div className="bg-gradient-to-b from-white via-blue-100 to-white text-blue-800 rounded-xl p-8 text-center mb-16 px-4 shadow-md hover:shadow-lg transition-all duration-300 group relative overflow-hidden mx-4 border border-blue-200">
-                <div className="absolute top-0 left-0 right-0 h-0 bg-blue-200/50 group-hover:h-1 transition-all duration-300"></div>
-                <h2 className="text-2xl font-bold mb-4">Start Your Journey Today</h2>
-                <p className="mb-6 max-w-2xl mx-auto">Join thousands of learners who have transformed their careers through our platform</p>
-                <button 
-                  className="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5"
-                  onClick={() => setFlowState('learnerChoice')}
-                >
-                  Get Started
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 px-4 mb-16 mt-8">
-                <div 
-                  onClick={() => setFlowState('learnerChoice')}
-                  className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-blue-300 hover:-translate-y-1 group relative overflow-hidden"
-                >
-                  <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300"></div>
-                  <div className="bg-blue-100 p-3 rounded-full w-max mb-4">
-                    <User className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <h3 className="text-xl font-bold text-blue-800 mb-2">Learner</h3>
-                  <p className="text-gray-700 text-sm mb-4">
-                    Start your personalized learning journey with our AI-powered platform.
-                  </p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-blue-600">Get Started</span>
-                    <div className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center">
-                      <ArrowLeft className="w-3.5 h-3.5 text-white rotate-180" />
-                    </div>
-                  </div>
-                </div>
-                
-                <div 
-                  onClick={() => handlePortalSelection('company')}
-                  className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-blue-300 hover:-translate-y-1 group relative overflow-hidden"
-                >
-                  <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300"></div>
-                  <div className="bg-blue-100 p-3 rounded-full w-max mb-4">
-                    <Building2 className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <h3 className="text-xl font-bold text-blue-800 mb-2">Company</h3>
-                  <p className="text-gray-700 text-sm mb-4">
-                    Access top talent and manage your organization's learning programs.
-                  </p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-blue-600">Company Portal</span>
-                    <div className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center">
-                      <ArrowLeft className="w-3.5 h-3.5 text-white rotate-180" />
-                    </div>
-                  </div>
-                </div>
-                
-                <div 
-                  onClick={() => handlePortalSelection('recruiter')}
-                  className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-blue-300 hover:-translate-y-1 group relative overflow-hidden"
-                >
-                  <div className="absolute top-0 left-0 right-0 h-0 bg-blue-500 group-hover:h-1 transition-all duration-300"></div>
-                  <div className="bg-blue-100 p-3 rounded-full w-max mb-4">
-                    <Search className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <h3 className="text-xl font-bold text-blue-800 mb-2">Recruiter</h3>
-                  <p className="text-gray-700 text-sm mb-4">
-                    Find and connect with exceptional talent in our growing network.
-                  </p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-blue-600">Recruiter Portal</span>
-                    <div className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center">
-                      <ArrowLeft className="w-3.5 h-3.5 text-white rotate-180" />
-                    </div>
-                  </div>
                 </div>
               </div>
-
-              <footer className="bg-blue-900 text-white p-8 w-full mx-4 rounded-xl mt-8 shadow-md">
-                <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
-                  <div>
-                    <h3 className="text-xl font-bold mb-4">KG Learning Platform</h3>
-                    <p className="text-blue-200">Empowering careers through skills-based learning and industry connections.</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-3">Quick Links</h4>
-                    <ul className="space-y-2">
-                      <li><a href="https://www.kimtronix.com/" className="text-blue-200 hover:text-white transition-colors">About Us</a></li>
-                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Courses</a></li>
-                      <li>
-                        <a 
-                          href="#" 
-                          onClick={(e) => {
-                            e.preventDefault(); 
-                            handlePortalSelection('company');
-                          }}
-                          className="text-blue-200 hover:text-white transition-colors cursor-pointer"
-                        >
-                          For Companies
-                        </a>
-                      </li>
-                      <li><a href="#" onClick={(e) => {
-                        e.preventDefault(); 
-                        handlePortalSelection('recruiter');
-                      }} className="text-blue-200 hover:text-white transition-colors">For Recruiters</a></li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-3">Resources</h4>
-                    <ul className="space-y-2">
-                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Blog</a></li>
-                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Webinars</a></li>
-                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Success Stories</a></li>
-                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">FAQ</a></li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-3">Contact</h4>
-                    <ul className="space-y-2">
-                      <li className="flex items-center text-blue-200">
-                        <Mail className="w-4 h-4 mr-2" />
-                        <span>support@kimtronixglobal.com</span>
-                      </li>
-                      <li className="flex items-center text-blue-200">
-                        <Phone className="w-4 h-4 mr-2" />
-                        <span>+263 77 488 2645</span>
-                      </li>
-                      <li className="flex items-center text-blue-200">
-                        <MapPin className="w-4 h-4 mr-2" />
-                        <span>53, Karigamombe Centre, 4th Floor</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-                <div className="border-t border-blue-800 mt-8 pt-6 text-center text-blue-300">
-                  <p>© {new Date().getFullYear()} KG Learning Platform. All rights reserved.</p>
-                </div>
-              </footer>
             </div>
           )}
         </main>

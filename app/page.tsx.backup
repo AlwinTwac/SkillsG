@@ -1,0 +1,844 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { onAuthStateChanged, signInAnonymously, signOut, User as FirebaseAuthUser } from 'firebase/auth';
+import { doc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
+import { User, Building2, Search, ArrowLeft, Loader2, CheckCircle, Trophy, Newspaper, Mail, Phone, MapPin } from 'lucide-react';
+import { ThemeProvider } from '@/components/theme-provider';
+import { ThemeSwitcher } from '@/components/theme-switcher';
+import AuthComponent from '@/components/login';
+import AIInterviewer from '@/components/interviewerai';
+import StudentDashboard from '@/components/studentdash';
+import CompanyDashboard from '@/components/companydash';
+import RecruiterDashboard from '@/components/recruiter';
+
+interface UserProfile {
+  email: string;
+  displayName?: string;
+  photoURL?: string;
+  createdAt: string;
+  authProvider: string;
+  profileCompleted: boolean;
+  role: 'student' | 'company' | 'recruiter';
+  name?: string;
+}
+
+interface NewsItem {
+  id: string;
+  title?: string;
+  content?: string;
+  description?: string;
+  createdAt?: any;
+  companyName?: string;
+  imageUrl?: string;
+  type?: 'news' | 'event' | 'outstanding' | 'partnership';
+}
+
+interface Achievement {
+  id: string;
+  studentName: string;
+  studentAvatar?: string;
+  description: string;
+  imageUrl: string;
+  createdAt: string;
+  status: 'approved' | 'pending' | 'rejected'; 
+  studentUid: string; 
+  isFeatured?: boolean; 
+  category?: string;
+  skillsDemonstrated?: string[];
+  companyApprover?: string; 
+}
+
+type FlowState = 'roleSelection' | 'learnerChoice' | 'interviewing' | 'interviewComplete' | 'auth' | 'dashboard';
+type InitialRole = 'learner' | 'company' | 'recruiter';
+
+const carouselImages = [
+  {
+    id: 1,
+    alt: "Students learning together",
+    image: "/images/img2.jpg",
+    title: "Transform Your Future",
+    description: "Join our platform to access world-class learning resources"
+  },
+  {
+    id: 2,
+    alt: "Professional networking event",
+    image: "/images/img1.jpg",
+    title: "Connect With Industry Leaders",
+    description: "Build your network with top companies and recruiters"
+  },
+  {
+    id: 3,
+    alt: "Graduation ceremony",
+    image: "/images/img0.jpg",
+    title: "Achieve Your Career Goals",
+    description: "Get the skills you need to succeed in today's job market"
+  }
+];
+
+const Home = () => {
+  const [user, setUser] = useState<FirebaseAuthUser | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [flowState, setFlowState] = useState<FlowState>('roleSelection');
+  const [initialRoleSelection, setInitialRoleSelection] = useState<InitialRole>('learner');
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [currentAchievementIndex, setCurrentAchievementIndex] = useState(0);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [featuredIndex, setFeaturedIndex] = useState(0);
+  const [generalNews, setGeneralNews] = useState<NewsItem[]>([]);
+  const [events, setEvents] = useState<NewsItem[]>([]);
+  const [outstanding, setOutstanding] = useState<NewsItem[]>([]);
+  const [partnerships, setPartnerships] = useState<NewsItem[]>([]);
+  const [newsIndex, setNewsIndex] = useState(0);
+  const [outIndex, setOutIndex] = useState(0);
+  const [partIndex, setPartIndex] = useState(0);
+  const [pauseNews, setPauseNews] = useState(false);
+  const [pauseOut, setPauseOut] = useState(false);
+
+  useEffect(() => {
+    if (flowState === 'roleSelection') {
+      const carouselInterval = setInterval(() => {
+        setCurrentSlide((prev) => (prev + 1) % carouselImages.length);
+      }, 5000);
+      return () => clearInterval(carouselInterval);
+    }
+  }, [flowState]);
+
+  useEffect(() => {
+    const newsQuery = query(
+      collection(db, "news"),
+      where("type", "==", "news"),
+      orderBy("createdAt", "desc")
+    );
+    return onSnapshot(newsQuery, (snapshot) =>
+      setGeneralNews(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as NewsItem))
+    );
+  }, []);
+
+  useEffect(() => {
+    const eventsQuery = query(
+      collection(db, "news"),
+      where("type", "==", "event"),
+      orderBy("createdAt", "desc")
+    );
+    return onSnapshot(eventsQuery, (snapshot) =>
+      setEvents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as NewsItem))
+    );
+  }, []);
+
+  useEffect(() => {
+    const outQuery = query(
+      collection(db, "news"),
+      where("type", "==", "outstanding"),
+      orderBy("createdAt", "desc")
+    );
+    return onSnapshot(outQuery, (snapshot) =>
+      setOutstanding(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as NewsItem))
+    );
+  }, []);
+
+  useEffect(() => {
+    const partQuery = query(
+      collection(db, "news"),
+      where("type", "==", "partnership"),
+      orderBy("createdAt", "desc")
+    );
+    return onSnapshot(partQuery, (snapshot) =>
+      setPartnerships(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as NewsItem))
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!pauseNews && generalNews.length > 1) {
+      const interval = setInterval(() => {
+        setNewsIndex((prev) => (prev + 1) % generalNews.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [generalNews, pauseNews]);
+
+  useEffect(() => {
+    if (!pauseOut && outstanding.length > 1) {
+      const interval = setInterval(() => {
+        setOutIndex((prev) => (prev + 1) % outstanding.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [outstanding, pauseOut]);
+
+  useEffect(() => {
+    if (partnerships.length > 1) {
+      const interval = setInterval(() => {
+        setPartIndex((prev) => (prev + 1) % partnerships.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [partnerships]);
+
+  useEffect(() => {
+    if (achievements.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentAchievementIndex((prev) => (prev + 1) % achievements.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [achievements.length]);
+
+  useEffect(() => {
+    const featured = achievements.filter(a => a.isFeatured);
+    if (featured.length <= 1) {
+      setFeaturedIndex(0);
+      return;
+    }
+    const t = setInterval(() => {
+      setFeaturedIndex((prev) => (prev + 1) % featured.length);
+    }, 4000);
+    return () => clearInterval(t);
+  }, [achievements]);
+
+  useEffect(() => {
+    const achievementsQuery = query(
+      collection(db, 'achievements'),
+      where('status', '==', 'approved'),
+      orderBy('createdAt', 'desc')
+    );
+    const unsubscribe = onSnapshot(
+      achievementsQuery,
+      (snapshot) => {
+        const fetchedAchievements = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as Achievement));
+        setAchievements(fetchedAchievements);
+      },
+      (err) => {
+        console.error('Error listening to public achievements:', err);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    let firestoreUnsub: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+
+      if (firestoreUnsub) {
+        try {
+          firestoreUnsub();
+        } catch (e) {
+          console.warn('Error while unsubscribing from previous user doc listener', e);
+        }
+        firestoreUnsub = null;
+      }
+
+      if (currentUser && !currentUser.isAnonymous) {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        firestoreUnsub = onSnapshot(
+          userDocRef,
+          (docSnap) => {
+            if (docSnap.exists()) {
+              setUserProfile(docSnap.data() as UserProfile);
+              setFlowState('dashboard');
+            } else {
+              signOut(auth);
+            }
+            setLoading(false);
+          },
+          (err) => {
+            console.error('Error listening to current user document:', err);
+            setLoading(false);
+            setUserProfile(null);
+            setFlowState('roleSelection');
+            try {
+              signOut(auth);
+            } catch (e) {
+              console.warn('Failed to sign out after firestore error', e);
+            }
+          }
+        );
+      } else if (currentUser && currentUser.isAnonymous) {
+        setFlowState('interviewing');
+        setLoading(false);
+      } else {
+        setUserProfile(null);
+        setFlowState('roleSelection');
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      if (firestoreUnsub) {
+        try { firestoreUnsub(); } catch (e) { /* ignore */ }
+      }
+    };
+  }, []);
+
+  const handleNewStudentStart = async () => {
+    setLoading(true);
+    try {
+      await signInAnonymously(auth);
+    } catch (error) {
+      console.error("Anonymous sign-in failed:", error);
+      setLoading(false);
+    }
+  };
+
+  const handleInterviewComplete = () => {
+    setFlowState('interviewComplete');
+  };
+
+  const handleAuthSuccess = (loggedInUser: FirebaseAuthUser) => {
+    setFlowState('dashboard');
+  };
+  
+  const handlePortalSelection = (role: 'company' | 'recruiter') => {
+    if (user && user.isAnonymous) {
+      signOut(auth);
+    }
+    setInitialRoleSelection(role);
+    setFlowState('auth');
+  };
+
+  const handleReturnHome = () => {
+    if (user && user.isAnonymous) {
+      signOut(auth);
+    }
+    setFlowState('roleSelection');
+  };
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % carouselImages.length);
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + carouselImages.length) % carouselImages.length);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-dark-bg relative overflow-hidden">
+        <div className="gradient-mesh"></div>
+        <div className="flex flex-col items-center relative z-10">
+          <Loader2 className="w-16 h-16 text-cyber-blue animate-spin mb-6 neon-glow-blue" />
+          <span className="text-xl font-semibold gradient-text">Loading your experience...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <div className="min-h-screen bg-dark-bg relative">
+        <div className="gradient-mesh"></div>
+        <header className="sticky top-0 left-0 right-0 z-50 glass-card border-b border-white/10">
+          <div className="w-full px-6 py-4 flex justify-between items-center">
+            <div className="text-xl font-bold gradient-text tracking-wider">KG LEARNING PLATFORM</div>
+            <ThemeSwitcher />
+          </div>
+        </header>
+
+        <main className="pt-0 w-full relative z-10">
+          {flowState === 'dashboard' && user && userProfile ? (
+            <>
+              {userProfile.role === 'student' && <StudentDashboard userDisplayName={userProfile.name || user.displayName || ''} userEmail={user.email || ''} userUid={user.uid} />}
+              {userProfile.role === 'company' && <CompanyDashboard userDisplayName={userProfile.displayName || null} userEmail={user.email || ''} userUid={user.uid} />}
+              {userProfile.role === 'recruiter' && <RecruiterDashboard userDisplayName={userProfile.name || user.displayName || ''} userEmail={user.email || ''} />}
+            </>
+          ) : flowState === 'interviewing' && user ? (
+            <AIInterviewer user={user} onInterviewComplete={handleInterviewComplete} onGoBack={handleReturnHome} />
+          ) : flowState === 'interviewComplete' ? (
+            <div className="max-w-md mx-auto my-12 p-8 bg-white rounded-xl shadow-lg border border-blue-100">
+              <div className="text-center">
+                <CheckCircle className="w-16 h-16 text-blue-600 mx-auto mb-4"/>
+                <h2 className="text-3xl font-bold text-blue-800 mb-4">Interview Complete!</h2>
+                <p className="text-blue-700 mb-6">
+                  Your report has been submitted for review. If your application is approved, you'll receive an email to set your password.
+                </p>
+                <button 
+                  onClick={handleReturnHome} 
+                  className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+                >
+                  Return Home
+                </button>
+              </div>
+            </div>
+          ) : flowState === 'auth' ? (
+            <AuthComponent 
+              onAuthSuccess={handleAuthSuccess} 
+              defaultRole={initialRoleSelection} 
+              onBack={handleReturnHome}
+            />
+          ) : flowState === 'learnerChoice' ? (
+            <div className="max-w-md mx-auto my-12 p-8 bg-white rounded-xl shadow-lg border border-blue-100">
+              <button 
+                onClick={() => setFlowState('roleSelection')} 
+                className="flex items-center text-sm text-blue-600 hover:text-blue-800 mb-6"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1"/> Back
+              </button>
+              <div className="text-center">
+                <h2 className="text-3xl font-bold text-blue-800 mb-6">Welcome, Learner!</h2>
+                <div className="space-y-4">
+                  <button 
+                    onClick={handleNewStudentStart} 
+                    className="w-full px-6 py-3 bg-blue-600 text-blue-100 rounded-lg font-medium hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+                  >
+                    New Student (Start AI Interview)
+                  </button>
+                  <button 
+                    onClick={() => { setInitialRoleSelection('learner'); setFlowState('auth'); }} 
+                    className="w-full px-6 py-3 bg-blue-100 text-blue-800 rounded-lg font-medium hover:bg-blue-200 transition-all shadow-sm hover:shadow-md"
+                  >
+                    Existing Account (Login)
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="w-full px-0 py-0">
+              <section className="mb-16">
+                <div className="relative h-[600px] w-full overflow-hidden">
+                  {carouselImages.map((image, index) => (
+                    <div 
+                      key={image.id}
+                      className={`absolute inset-0 transition-opacity duration-1000 ${
+                        index === currentSlide ? 'opacity-100' : 'opacity-0'
+                      }`}
+                      style={{ 
+                        backgroundImage: `url(${image.image})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        width: '100%',
+                        height: '100%'
+                      }}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-t from-dark-bg/90 via-dark-bg/40 to-transparent"></div>
+                      
+                      <div className="absolute bottom-12 left-8 md:left-16 z-10 max-w-2xl">
+                        <h2 className="text-4xl md:text-6xl font-extrabold mb-4 gradient-text neon-text">
+                          {image.title}
+                        </h2>
+                        <p className="text-lg md:text-2xl font-medium text-white/90 glass-card px-6 py-3 rounded-xl mb-6">
+                          {image.description}
+                        </p>
+                        <button 
+                          onClick={() => setFlowState('learnerChoice')}
+                          className="px-10 py-4 bg-gradient-cyber text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-2xl transform hover:scale-105 neon-glow-blue"
+                        >
+                          Get Started
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <button 
+                    onClick={prevSlide}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 z-20 glass-card text-white p-3 rounded-full hover:neon-glow-blue transition-all"
+                  >
+                    <ArrowLeft className="w-6 h-6" />
+                  </button>
+                  <button 
+                    onClick={nextSlide}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 z-20 glass-card text-white p-3 rounded-full hover:neon-glow-blue transition-all"
+                  >
+                    <ArrowLeft className="w-6 h-6 rotate-180" />
+                  </button>
+                  <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
+                    {carouselImages.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentSlide(index)}
+                        className={`w-3 h-3 rounded-full transition-all ${
+                          index === currentSlide ? 'bg-white w-6' : 'bg-white/50'
+                        }`}
+                        aria-label={`Go to slide ${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : flowState === 'auth' ? (
+                <AuthComponent 
+                  onAuthSuccess={handleAuthSuccess} 
+                  defaultRole={initialRoleSelection} 
+                  onBack={handleReturnHome}
+                />
+              ) : flowState === 'learnerChoice' ? (
+                <div className="max-w-md mx-auto my-12 p-8 bg-white rounded-xl shadow-lg border border-blue-100">
+                  <button 
+                    onClick={() => setFlowState('roleSelection')} 
+                    className="flex items-center text-sm text-blue-600 hover:text-blue-800 mb-6"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-1"/> Back
+                  </button>
+                  <div className="text-center">
+                    <h2 className="text-3xl font-bold text-blue-800 mb-6">Welcome, Learner!</h2>
+                    <div className="space-y-4">
+                      <button 
+                        onClick={handleNewStudentStart} 
+                        className="w-full px-6 py-3 bg-blue-600 text-blue-100 rounded-lg font-medium hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+                      >
+                        New Student (Start AI Interview)
+                      </button>
+                      <button 
+                        onClick={() => { setInitialRoleSelection('learner'); setFlowState('auth'); }} 
+                        className="w-full px-6 py-3 bg-blue-100 text-blue-800 rounded-lg font-medium hover:bg-blue-200 transition-all shadow-sm hover:shadow-md"
+                      >
+                        Existing Account (Login)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full px-0 py-0">
+                  <section className="mb-16">
+                    <div className="relative h-[600px] w-full overflow-hidden">
+                      {carouselImages.map((image, index) => (
+                        <div 
+                          key={image.id}
+                          className={`absolute inset-0 transition-opacity duration-1000 ${
+                            index === currentSlide ? 'opacity-100' : 'opacity-0'
+                          key={achievement.id}
+                          className={`absolute inset-0 transition-opacity duration-1000 flex flex-col ${
+                            index === currentAchievementIndex ? 'opacity-100' : 'opacity-0'
+                          }`}
+                        >
+                          <div className={"relative w-full h-64 overflow-hidden rounded-lg"}>
+                            <img 
+                              src={achievement.imageUrl} 
+                              alt={achievement.description}
+{{ ... }
+                              className="w-full h-full object-cover object-center"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+                          </div>
+                          <div className="mt-4 p-3 glass-card rounded-xl">
+                            <p className="text-white/90 mb-4 line-clamp-3 font-medium">"{achievement.description}"</p>
+                            <div className="flex items-center justify-between glass-card p-3 rounded-xl">
+                              <div className="flex items-center">
+                                <div className="w-10 h-10 rounded-full bg-gradient-cyber flex items-center justify-center mr-3 shadow-lg">
+                                  <span className="text-sm font-bold text-white">
+                                    {achievement.studentName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                  </span>
+                                </div>
+                                <p className="font-semibold text-white">{achievement.studentName}</p>
+                              </div>
+                              <span className="text-xs text-white/70 bg-white/10 px-3 py-1 rounded-lg">
+                                {new Date(achievement.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {achievements.length > 1 && (
+                        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
+                          {achievements.map((_, index) => (
+                            <button
+                              key={index}
+                              onClick={() => setCurrentAchievementIndex(index)}
+                              className={`w-3 h-3 rounded-full transition-all ${
+                                index === currentAchievementIndex ? 'bg-cyber-purple w-6' : 'bg-gray-300'
+                              }`}
+                              aria-label={`Show achievement ${index + 1}`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-4 glass-card rounded-xl">
+                      <Trophy className="w-16 h-16 text-cyber-purple mb-4 animate-float" />
+                      <h4 className="text-xl font-bold gradient-text mb-2">No achievements yet</h4>
+                      <p className="text-white/70 text-sm max-w-xs">
+                        When students post achievements and they get approved, they'll appear here
+                      </p>
+                    </div>
+                  )}
+                </section>
+
+                <section className="glass-card-light rounded-2xl p-6 hover:scale-[1.02] transition-all duration-300 group relative overflow-hidden h-[500px] border border-white/20 hover:border-cyber-blue/50">
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-cyber opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
+                  <h3 className="text-2xl font-bold gradient-text mb-4 flex items-center">
+                    <Newspaper className="w-6 h-6 mr-3 text-cyber-blue" />
+                    Latest Updates
+                  </h3>
+
+                  <div className="space-y-3">
+                    {partnerships.map(news => (
+                      <div
+                        key={news.id}
+                        className="p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-all cursor-pointer group hover:shadow-md hover:-translate-y-1 duration-300 border border-transparent hover:border-blue-200 relative overflow-hidden"
+                      >
+                        <div className="absolute top-0 left-0 w-0 h-1 bg-blue-400 group-hover:w-full transition-all duration-500"></div>
+                        <div className="flex items-start">
+                          <div className="mr-2 mt-0.5">
+                            <Newspaper className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-blue-800 group-hover:text-blue-700 text-sm">
+                              {news.title}
+                            </h4>
+                            <p className="text-xs text-gray-700">{news.content}</p>
+                            <span className="text-xs text-blue-600 mt-1 block">
+                              By {news.companyName}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {partnerships.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <Newspaper className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+                        <p>No news updates yet</p>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-3 gap-4 mt-6">
+                      <div
+                        className="aspect-square rounded-lg p-4 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative"
+                        onMouseEnter={() => setPauseNews(true)}
+                        onMouseLeave={() => setPauseNews(false)}
+                      >
+                        <div className="absolute inset-0">
+                          <img src="/images/news_image.png" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20"></div>
+                        </div>
+
+                        {generalNews.length > 0 ? (
+                          <div className="absolute inset-0 flex items-center justify-center p-3 z-10">
+                            <div className="bg-white/80 p-2 rounded-md max-h-full overflow-hidden">
+                              <h4 className="font-bold text-blue-800 text-xs mb-1">
+                                {generalNews[newsIndex].title}
+                              </h4>
+                              <p className="text-xs text-gray-700 line-clamp-4">
+                                {generalNews[newsIndex].content}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <h4 className="text-white bg-blue-800/70 px-3 py-1 rounded-md">
+                              No News
+                            </h4>
+                          </div>
+                        )}
+                      </div>
+
+                      <div
+                        className="aspect-square rounded-lg p-4 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative"
+                        onMouseEnter={() => setPauseOut(true)}
+                        onMouseLeave={() => setPauseOut(false)}
+                      >
+                        <div className="absolute inset-0">
+                          <img src="/images/outstanding.png" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-blue-600/30 group-hover:bg-blue-600/20"></div>
+                        </div>
+
+                        {outstanding.length > 0 ? (
+                          <div className="absolute inset-0 flex items-center justify-center p-3 z-10">
+                            <div className="bg-white/80 p-2 rounded-md max-h-full overflow-hidden">
+                              <h4 className="font-bold text-blue-800 text-xs mb-1">
+                                {outstanding[outIndex].title}
+                              </h4>
+                              <p className="text-xs text-gray-700 line-clamp-4">
+                                {outstanding[outIndex].content}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <h4 className="text-white bg-blue-800/70 px-3 py-1 rounded-md">
+                              No Outstanding Students
+                            </h4>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="aspect-square rounded-lg bg-gray-900 p-4 border border-transparent hover:border-blue-300 text-center overflow-hidden group relative">
+                        {(() => {
+                          const featured = achievements.filter(a => a.isFeatured);
+                          if (featured.length === 0) {
+                            return (
+                              <div className="flex flex-col items-center justify-center w-full h-full bg-blue-100 rounded-lg p-4">
+                                <Trophy className="w-10 h-10 text-blue-500 mb-3" />
+                                <h4 className="text-sm font-bold text-blue-800">
+                                  No featured stories yet
+                                </h4>
+                              </div>
+                            );
+                          }
+                          const item = featured[featuredIndex % featured.length];
+                          return (
+                            <div className="relative w-full h-full flex flex-col bg-blue-900 justify-end rounded-lg overflow-hidden">
+                              <img src={item.imageUrl} alt={item.description} className="w-full h-full object-contain bg-gray-900" />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                              <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent">
+                                <p className="text-xs text-white line-clamp-3 mb-1">"{item.description}"</p>
+                                <div className="flex items-center">
+                                  <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center mr-2">
+                                    <span className="text-[10px] font-bold text-white">
+                                      {item.studentName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-white">{item.studentName}</p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <div className="glass-card-light rounded-2xl p-12 text-center mb-16 mx-4 border border-white/30 hover:border-cyber-purple/50 transition-all duration-500 group relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-cyber opacity-0 group-hover:opacity-10 transition-all duration-500"></div>
+                <div className="relative z-10">
+                  <h2 className="text-4xl font-bold mb-6 gradient-text">Start Your Journey Today</h2>
+                  <p className="mb-8 max-w-2xl mx-auto text-lg text-gray-700 font-medium">Join thousands of learners who have transformed their careers through our platform</p>
+                  <button 
+                    className="bg-gradient-cyber text-white font-bold py-4 px-10 rounded-xl hover:scale-105 transition-all duration-300 neon-glow-blue shadow-xl"
+                    onClick={() => setFlowState('learnerChoice')}
+                  >
+                    Get Started Now
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 px-4 mb-16 mt-8">
+                <div 
+                  onClick={() => setFlowState('learnerChoice')}
+                  className="glass-card-light rounded-2xl p-6 hover:scale-105 transition-all duration-300 cursor-pointer border border-white/20 hover:border-cyber-blue/50 group relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-cyber opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
+                  <div className="bg-gradient-cyber p-4 rounded-2xl w-max mb-4 neon-glow-blue">
+                    <User className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold gradient-text mb-3">Learner</h3>
+                  <p className="text-gray-700 mb-6">
+                    Start your personalized learning journey with our AI-powered platform.
+                  </p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold gradient-text">Get Started</span>
+                    <div className="w-10 h-10 bg-gradient-cyber rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                      <ArrowLeft className="w-4 h-4 text-white rotate-180" />
+                    </div>
+                  </div>
+                </div>
+                
+                <div 
+                  onClick={() => handlePortalSelection('company')}
+                  className="glass-card-light rounded-2xl p-6 hover:scale-105 transition-all duration-300 cursor-pointer border border-white/20 hover:border-cyber-purple/50 group relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-cyber opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
+                  <div className="bg-gradient-cyber p-4 rounded-2xl w-max mb-4 neon-glow-purple">
+                    <Building2 className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold gradient-text mb-3">Company</h3>
+                  <p className="text-gray-700 mb-6">
+                    Access top talent and manage your organization's learning programs.
+                  </p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold gradient-text">Company Portal</span>
+                    <div className="w-10 h-10 bg-gradient-cyber rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                      <ArrowLeft className="w-4 h-4 text-white rotate-180" />
+                    </div>
+                  </div>
+                </div>
+                
+                <div 
+                  onClick={() => handlePortalSelection('recruiter')}
+                  className="glass-card-light rounded-2xl p-6 hover:scale-105 transition-all duration-300 cursor-pointer border border-white/20 hover:border-neon-green/50 group relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-cyber opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
+                  <div className="bg-gradient-cyber p-4 rounded-2xl w-max mb-4 neon-glow-blue">
+                    <Search className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold gradient-text mb-3">Recruiter</h3>
+                  <p className="text-gray-700 mb-6">
+                    Find and connect with exceptional talent in our growing network.
+                  </p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold gradient-text">Recruiter Portal</span>
+                    <div className="w-10 h-10 bg-gradient-cyber rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                      <ArrowLeft className="w-4 h-4 text-white rotate-180" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <footer className="glass-card border border-white/10 text-white p-10 w-full mx-4 rounded-2xl mt-8 relative overflow-hidden">
+                <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+                  <div>
+                    <h3 className="text-xl font-bold mb-4">KG Learning Platform</h3>
+                    <p className="text-blue-200">Empowering careers through skills-based learning and industry connections.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-3">Quick Links</h4>
+                    <ul className="space-y-2">
+                      <li><a href="https://www.kimtronix.com/" className="text-blue-200 hover:text-white transition-colors">About Us</a></li>
+                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Courses</a></li>
+                      <li>
+                        <a 
+                          href="#" 
+                          onClick={(e) => {
+                            e.preventDefault(); 
+                            handlePortalSelection('company');
+                          }}
+                          className="text-blue-200 hover:text-white transition-colors cursor-pointer"
+                        >
+                          For Companies
+                        </a>
+                      </li>
+                      <li><a href="#" onClick={(e) => {
+                        e.preventDefault(); 
+                        handlePortalSelection('recruiter');
+                      }} className="text-blue-200 hover:text-white transition-colors">For Recruiters</a></li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-3">Resources</h4>
+                    <ul className="space-y-2">
+                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Blog</a></li>
+                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Webinars</a></li>
+                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Success Stories</a></li>
+                      <li><a href="#" className="text-blue-200 hover:text-white transition-colors">FAQ</a></li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-3">Contact</h4>
+                    <ul className="space-y-2">
+                      <li className="flex items-center text-blue-200">
+                        <Mail className="w-4 h-4 mr-2" />
+                        <span>support@kimtronixglobal.com</span>
+                      </li>
+                      <li className="flex items-center text-blue-200">
+                        <Phone className="w-4 h-4 mr-2" />
+                        <span>+263 77 488 2645</span>
+                      </li>
+                      <li className="flex items-center text-blue-200">
+                        <MapPin className="w-4 h-4 mr-2" />
+                        <span>53, Karigamombe Centre, 4th Floor</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="border-t border-blue-800 mt-8 pt-6 text-center text-blue-300">
+                  <p>© {new Date().getFullYear()} KG Learning Platform. All rights reserved.</p>
+                </div>
+              </footer>
+            </div>
+          )}
+        </main>
+      </div>
+    </ThemeProvider>
+  );
+};
+
+export default Home;
