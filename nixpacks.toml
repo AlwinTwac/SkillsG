@@ -7,4 +7,4 @@ cmds = ["npm ci"]
 cmds = ["npm run build"]
 
 [start]
-cmd = "npm run start -- -p $PORT"
+cmd = "npm run start"
