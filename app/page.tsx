@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { onAuthStateChanged, signInAnonymously, signOut, User as FirebaseAuthUser } from 'firebase/auth';
 import { doc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -53,6 +53,13 @@ interface Achievement {
 type FlowState = 'roleSelection' | 'learnerChoice' | 'interviewing' | 'interviewComplete' | 'auth' | 'dashboard';
 type InitialRole = 'learner' | 'company' | 'recruiter';
 
+interface TrendingPick {
+  title: string;
+  summary: string;
+  bullets: string[];
+  accent: string;
+}
+
 const Home = () => {
   const [user, setUser] = useState<FirebaseAuthUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -70,6 +77,9 @@ const Home = () => {
   const [activeSpinCircle, setActiveSpinCircle] = useState<number>(-1);
   const [finalTransition, setFinalTransition] = useState(false);
   const [showQuotes, setShowQuotes] = useState(false);
+  const [trendingStage, setTrendingStage] = useState(0);
+  const [hoveredPanel, setHoveredPanel] = useState<number | null>(null);
+  const trendingRef = useRef<HTMLDivElement | null>(null);
   
   const carouselImages = [
     '/images/img0.jpg',
@@ -79,6 +89,100 @@ const Home = () => {
     '/images/img5.jpg',
     '/images/img6.jpg',
     '/images/img9.jpg'
+  ];
+
+  const startTrendingAnimation = useCallback(() => {
+    setTrendingStage(1);
+    setTimeout(() => setTrendingStage(2), 450);
+    setTimeout(() => setTrendingStage(3), 900);
+  }, []);
+
+  useEffect(() => {
+    if (trendingStage > 0) return;
+    const handleScroll = () => {
+      if (trendingStage > 0) return;
+      const target = trendingRef.current;
+      if (!target) return;
+      const rect = target.getBoundingClientRect();
+      const triggerPoint = window.innerHeight * 0.75;
+      if (rect.top < triggerPoint && rect.bottom > 0) {
+        startTrendingAnimation();
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [trendingStage, startTrendingAnimation]);
+
+  const panelPositions: { x: number; y: number }[] = [
+    { x: 0, y: 0 },
+    { x: 90, y: 110 },
+    { x: 180, y: 220 },
+  ];
+
+  const getPanelTransform = (index: number) => {
+    if (trendingStage >= index + 1) {
+      const { x, y } = panelPositions[index];
+      return `translate(${x}px, ${y}px)`;
+    }
+    if (trendingStage === 0) {
+      return 'translate(0, 0)';
+    }
+    return 'translate(0, 0)';
+  };
+
+  const trendingPicks: TrendingPick[] = [
+    {
+      title: 'Digital Systems Integration & IoT',
+      summary: 'Connected infrastructure spanning hardware fleets and cloud intelligence.',
+      bullets: [
+        'Smart cities, homes, and industrial grids',
+        'Trackers + telemetry for logistics',
+        'Autonomous / automated control systems',
+      ],
+      accent: 'from-cyan-400/30 via-blue-500/30 to-indigo-600/30',
+    },
+    {
+      title: 'Software as a Tool',
+      summary: 'HMIs, databases, and circuits working together as one product layer.',
+      bullets: [
+        'Image processing HMIs',
+        'Python · PHP · MySQL orchestration',
+        'Hardware + software co-design & scaling',
+      ],
+      accent: 'from-fuchsia-500/30 via-purple-500/30 to-sky-500/30',
+    },
+    {
+      title: 'In-depth ISD Monitoring & Control',
+      summary: 'Instrumentation journeys from simulations to field-ready reporting.',
+      bullets: [
+        'Circuit design & Proteus simulations',
+        'Immersive Arduino adventures',
+        'Sensor analysis & data presentation',
+      ],
+      accent: 'from-emerald-500/30 via-lime-400/30 to-amber-400/30',
+    },
+  ];
+
+  const whySkillsPoints = [
+    {
+      title: 'Flexible learning paths',
+      description: 'Move between guided tracks, mentor-led studios, and self-paced labs without losing momentum.',
+    },
+    {
+      title: 'Depth across hardware & software',
+      description: 'Diverse courses designed for every experience level with real industrial briefs.',
+    },
+    {
+      title: 'On-demand industrial skills',
+      description: 'Access curated content libraries and live rooms to cover critical shop-floor and cloud workflows.',
+    },
+    {
+      title: '24/7 support + custom AI copilots',
+      description: 'Tap into round-the-clock assistance and proprietary AI tools that accelerate your learning loops.',
+    },
   ];
 
   useEffect(() => {
@@ -403,7 +507,7 @@ const Home = () => {
           ) : (
             <div className="w-full min-h-screen p-4 md:p-6">
               {/* Top Section - Hero + Success Stories + Latest Updates */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6 max-w-[1800px] mx-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-10 md:mb-16 max-w-[1800px] mx-auto">
                 {/* Left: Hero Section with Background Image */}
                 <div className="lg:col-span-2 relative h-[500px] md:h-[600px] rounded-2xl overflow-hidden shadow-2xl">
                   <img 
@@ -508,6 +612,70 @@ const Home = () => {
                           <p className="text-xs text-white/50">No news updates yet</p>
                         </div>
                       )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Trending Picks + Why SkillsG */}
+              <div className="mb-16 md:mb-28">
+                <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 max-w-[1800px] mx-auto">
+                  {/* Trending Picks Column */}
+                  <div className="flex-1" ref={trendingRef}>
+                    <div className="mb-6 md:mb-10">
+                      <h2 className="text-3xl md:text-4xl font-bold text-white">Trending Picks</h2>
+                    </div>
+
+                    <div className="relative h-[440px] pb-10">
+                      {trendingPicks.map((pick, index) => {
+                        const active = trendingStage === 0 ? index === 0 : trendingStage >= index + 1;
+                        return (
+                          <div
+                            key={pick.title}
+                            className="absolute w-[95%] max-w-xl transition-[transform,opacity] duration-500 ease-out"
+                            style={{
+                              transform: getPanelTransform(index),
+                              opacity: active ? 1 : 0,
+                              zIndex: hoveredPanel === index ? 50 : 10 + index,
+                            }}
+                            onMouseEnter={() => setHoveredPanel(index)}
+                            onMouseLeave={() => setHoveredPanel(null)}
+                          >
+                            <div className={`glass-card rounded-2xl border border-white/15 backdrop-blur-2xl px-5 py-5 md:px-6 md:py-6 shadow-2xl bg-gradient-to-br ${pick.accent} transition-all hover:scale-[1.04] hover:border-white/70 hover:shadow-[0_30px_55px_rgba(8,18,36,0.55)] relative overflow-hidden group`}>
+                            <div className="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="relative z-10">
+                              <h3 className="text-lg md:text-xl font-bold text-white">{pick.title}</h3>
+                              <p className="text-white/85 text-sm leading-relaxed mb-4">{pick.summary}</p>
+                              <ul className="space-y-2">
+                                {pick.bullets.map((bullet) => (
+                                  <li key={bullet} className="text-sm text-white/90 flex gap-2">
+                                    <span className="text-white/70">•</span>
+                                    <span>{bullet}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Why SkillsG Column */}
+                  <div className="flex-1 lg:pl-16 xl:pl-24">
+                    <h3 className="text-3xl font-bold text-white mb-8">Why SkillsG</h3>
+                    <div className="space-y-7">
+                      {whySkillsPoints.map((point) => (
+                        <div key={point.title} className="flex gap-4 items-start">
+                          <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center mt-1.5">
+                            <CheckCircle className="w-5 h-5 text-emerald-300" />
+                          </div>
+                          <div>
+                            <p className="text-base font-semibold text-white mb-1">{point.title}</p>
+                            <p className="text-sm text-white/70 leading-relaxed">{point.description}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
