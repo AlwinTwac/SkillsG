@@ -37,21 +37,22 @@ function ensureFirebaseAdminInitialized() {
 
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY;
     const privateKeyBase64 = process.env.FIREBASE_PRIVATE_KEY_BASE64;
+    let privateKey: string | undefined = privateKeyRaw;
 
-    if (!projectId || !clientEmail || (!privateKey && !privateKeyBase64)) {
+    if (!projectId || !clientEmail || (!privateKeyRaw && !privateKeyBase64)) {
       throw new Error(
         "Firebase Admin credentials are not configured. Please add serviceAccountKey.json or set environment variables."
       );
     }
 
     // Handle different private key formats
-    if (!privateKey && privateKeyBase64) {
+    if ((!privateKey || !privateKey.trim()) && privateKeyBase64) {
       privateKey = Buffer.from(privateKeyBase64, "base64").toString("utf8");
     }
 
-    if (!privateKey) {
+    if (!privateKey || !privateKey.trim()) {
       throw new Error("Firebase Admin private key is missing or invalid.");
     }
 
@@ -60,8 +61,11 @@ function ensureFirebaseAdminInitialized() {
       privateKey = privateKey.slice(1, -1);
     }
 
-    // Convert escaped newlines into real newlines (most common Coolify issue)
-    privateKey = privateKey.replace(/\\n/g, "\n");
+    // Convert escaped newlines into real newlines (handles both literal '\n' and actual newlines)
+    privateKey = privateKey
+      .replace(/\r\n/g, "\n")
+      .replace(/\n+/g, "\n")
+      .replace(/\\n/g, "\n");
 
     admin.initializeApp({
       credential: admin.credential.cert({
