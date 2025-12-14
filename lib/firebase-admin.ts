@@ -21,12 +21,21 @@ if (!admin.apps.length) {
       const projectId = process.env.FIREBASE_PROJECT_ID;
       const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
       let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+      const privateKeyBase64 = process.env.FIREBASE_PRIVATE_KEY_BASE64;
 
-      if (!projectId || !clientEmail || !privateKey) {
+      if (!projectId || !clientEmail || (!privateKey && !privateKeyBase64)) {
         throw new Error("Firebase Admin credentials are not configured. Please add serviceAccountKey.json or set environment variables.");
       }
 
       // Handle different private key formats
+      if (!privateKey && privateKeyBase64) {
+        privateKey = Buffer.from(privateKeyBase64, 'base64').toString('utf8');
+      }
+
+      if (!privateKey) {
+        throw new Error("Firebase Admin private key is missing or invalid.");
+      }
+
       if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
         privateKey = privateKey.slice(1, -1);
       }
