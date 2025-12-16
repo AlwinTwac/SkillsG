@@ -233,7 +233,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
 
     const unsubscribers: (() => void)[] = [];
 
-    const reportsQuery = query(collection(db, 'interviewReports'), where('companyUid', '==', userUid), orderBy('interviewDate', 'desc'));
+    const reportsQuery = query(collection(db, 'interviewReports'), orderBy('interviewDate', 'desc'));
     const reportsUnsub = onSnapshot(
       reportsQuery,
       (snapshot) => {
@@ -248,7 +248,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     );
     unsubscribers.push(reportsUnsub);
 
-    const materialsQuery = query(collection(db, 'learningContent'), where('companyUid', '==', userUid));
+    const materialsQuery = query(collection(db, 'learningContent'));
     const materialsUnsub = onSnapshot(
       materialsQuery,
       (snapshot) => {
@@ -263,7 +263,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     );
     unsubscribers.push(materialsUnsub);
 
-    const coursesQuery = query(collection(db, 'courses'), where('companyUid', '==', userUid));
+    const coursesQuery = query(collection(db, 'courses'));
     const coursesUnsub = onSnapshot(
       coursesQuery,
       (snapshot) => {
@@ -308,7 +308,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     );
     unsubscribers.push(studentsUnsub);
 
-    const certsQuery = query(collection(db, 'certificates'), where('companyUid', '==', userUid));
+    const certsQuery = query(collection(db, 'certificates'));
     const certsUnsub = onSnapshot(
       certsQuery,
       (snapshot) => {
@@ -336,7 +336,7 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     );
     unsubscribers.push(unsubscribePending);
 
-    const enrollmentsQuery = query(collection(db, 'enrollments'), where('companyUid', '==', userUid));
+    const enrollmentsQuery = query(collection(db, 'enrollments'));
     const enrollmentsUnsub = onSnapshot(
       enrollmentsQuery,
       (snapshot) => {
@@ -382,7 +382,6 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     setLoading(prev => ({ ...prev, attendance: true }));
     const attendanceQuery = query(
       collection(db, 'attendance'),
-      where('companyUid', '==', userUid),
       where('date', '==', selectedDate)
     );
     const attendanceUnsub = onSnapshot(attendanceQuery, (snapshot) => {
@@ -437,7 +436,6 @@ export default function CompanyDashboard({ userDisplayName, userEmail, userUid }
     
     const newsQuery = query(
       collection(db, 'news'), 
-      where('companyUid', '==', userUid),
       orderBy('createdAt', 'desc')
     );
     
