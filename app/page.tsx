@@ -598,7 +598,14 @@ const Home = () => {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <h3 className="text-xs font-bold text-white truncate">{news.title || 'Update'}</h3>
-                                <p className="text-xs text-white/60">{news.createdAt ? new Date(news.createdAt.toDate()).toLocaleDateString() : 'Recent'}</p>
+                                <p className="text-xs text-white/60">
+                                  {news.createdAt
+                                    ? new Date(
+                                        (news.createdAt.seconds ? news.createdAt.seconds * 1000 : news.createdAt) ||
+                                          news.createdAt
+                                      ).toLocaleDateString()
+                                    : 'Recent'}
+                                </p>
                               </div>
                             </div>
                             {news.content && (
