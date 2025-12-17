@@ -1383,7 +1383,7 @@ const handleToggleFeature = async (achievementId: string, currentlyFeatured: boo
           <h3 className="font-medium text-blue-800 dark:text-blue-200">Date & Time</h3>
           <p className="text-gray-700 dark:text-gray-300">{currentDateTime || 'Loading...'}</p>
         </div>
-        <div className="bg-[url('/images/wewe.png')] bg-cover bg-right p-4 rounded-lg">
+        <div className="bg-white bg-cover bg-right p-4 rounded-lg">
           <h3 className="font-medium text-green-900 dark:text-green-200">Weather</h3>
           {weather ? (
             <p className="text-gray-700 dark:text-gray-300">

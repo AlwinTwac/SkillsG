@@ -13,24 +13,28 @@
     "@headlessui/react": "^2.2.7",
     "@stripe/stripe-js": "^7.4.0",
     "axios": "^1.10.0",
+    "clsx": "^2.1.1",
     "firebase": "^11.10.0",
     "firebase-admin": "^13.4.0",
     "lucide-react": "^0.525.0",
-    "next": "15.3.5",
+    "next": "^16.0.10",
     "next-pwa": "^5.6.0",
     "next-themes": "^0.4.6",
     "openai": "^5.9.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "react-hook-form": "^7.60.0",
     "resend": "^4.7.0"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.1.18",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@types/node": "^20.19.27",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.23",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3"
   }
 }
