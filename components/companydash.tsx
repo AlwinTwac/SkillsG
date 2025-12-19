@@ -2021,16 +2021,22 @@ const handleToggleFeature = async (achievementId: string, currentlyFeatured: boo
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Select Student (AI Interview Completed)
             </label>
-            <Combobox value={studentToEnrollId} onChange={(id: string) => setStudentToEnrollId(id)}>
+            <Combobox
+  value={studentToEnrollId}
+  onChange={(id: string | null) => setStudentToEnrollId(id ?? "")}
+>
+
               <div className="relative">
                 <Combobox.Input
                   className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   placeholder="Search student..."
                   onChange={(e) => setEnrollmentReportSearchTerm(e.target.value)}
-                  displayValue={(id: string) => {
-                    const student = students.find((s) => s.id === id);
-                    return student ? `${student.name} (${student.email})` : "";
-                  }}
+                  displayValue={(id: string | null) => {
+  if (!id) return "";
+  const student = students.find((s) => s.id === id);
+  return student ? `${student.name} (${student.email})` : "";
+}}
+
                 />
                 <Combobox.Button className="absolute inset-y-0 right-0 flex items-center pr-2">
                   <ChevronsUpDown className="h-5 w-5 text-gray-400" />
