@@ -115,29 +115,29 @@ IMPORTANT:
     const choice = completion.choices[0];
     let finalAiResponse = choice.message?.content || "";
     let interviewStatus: 'ongoing' | 'completed' = 'ongoing';
-    let reportData = null;
+    let reportData: any = null;
 
-   
+    // ---- HANDLE TOOL CALL RESULT (FIXED) ----
     if (choice.finish_reason === "tool_calls" && choice.message?.tool_calls?.length) {
-      const toolCall = choice.message.tool_calls?.[0];
+      const toolCall = choice.message.tool_calls[0];
 
-if (toolCall && toolCall.type === "function" && "function" in toolCall) {
-  const args = toolCall.function.arguments;
+      // Declare outside of blocks so it's available to the try/catch below
+      let argsRaw: unknown = null;
 
-  // existing logic:
-  reportData = JSON.parse(args);
-  interviewStatus = "completed";
-} else {
-  // tool call wasn't a function tool call
-  interviewStatus = "completed";
-}
+      if (toolCall?.type === "function" && "function" in toolCall) {
+        argsRaw = toolCall.function.arguments;
+      }
 
-      try {
-        reportData = JSON.parse(args);
-        interviewStatus = 'completed';
-        finalAiResponse = "Thank you! I have gathered all the necessary information.";
-      } catch (e) {
-        console.error("Error parsing function arguments:", e);
+      if (argsRaw) {
+        try {
+          // arguments are usually a JSON string; handle both string/object safely
+          reportData = typeof argsRaw === "string" ? JSON.parse(argsRaw) : argsRaw;
+
+          interviewStatus = 'completed';
+          finalAiResponse = "Thank you! I have gathered all the necessary information.";
+        } catch (e) {
+          console.error("Error parsing function arguments:", e);
+        }
       }
     }
 
