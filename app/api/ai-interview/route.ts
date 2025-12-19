@@ -129,7 +129,7 @@ if (toolCall && toolCall.type === "function" && "function" in toolCall) {
   interviewStatus = "completed";
 } else {
   // tool call wasn't a function tool call
-  interviewStatus = "failed";
+  interviewStatus = "completed";
 }
 
       try {
