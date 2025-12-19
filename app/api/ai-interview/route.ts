@@ -119,7 +119,19 @@ IMPORTANT:
 
    
     if (choice.finish_reason === "tool_calls" && choice.message?.tool_calls?.length) {
-      const args = choice.message.tool_calls[0].function.arguments;
+      const toolCall = choice.message.tool_calls?.[0];
+
+if (toolCall && toolCall.type === "function" && "function" in toolCall) {
+  const args = toolCall.function.arguments;
+
+  // existing logic:
+  reportData = JSON.parse(args);
+  interviewStatus = "completed";
+} else {
+  // tool call wasn't a function tool call
+  interviewStatus = "failed";
+}
+
       try {
         reportData = JSON.parse(args);
         interviewStatus = 'completed';
