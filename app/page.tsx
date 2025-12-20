@@ -426,7 +426,7 @@ const Home = () => {
                 <div className="group relative">
                   <Mail className="w-5 h-5 text-white/70 hover:text-white cursor-pointer transition-colors" />
                   <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-3 py-2 bg-black/90 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                    support@kimtronixglobal.com
+                    isd@kimtronix.com
                   </div>
                 </div>
                 <div className="group relative">
